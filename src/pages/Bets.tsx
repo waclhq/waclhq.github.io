@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import PixelMugshot from '../components/PixelMugshot'
 import { Chip, Panel, PageHeader, Scroller, Stat } from '../components/ui'
-import { Confetti } from '../components/effects'
+import { Confetti, FlameFrame } from '../components/effects'
 import { play } from '../lib/sfx'
 import { animationsDisabled } from '../lib/motion'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
@@ -263,19 +263,6 @@ export default function Bets() {
     }
   }
 
-  /**
-   * The live marker. A bet taken in the last two days burns — the flaming
-   * border is how you spot this week's action in a column of standing bets.
-   */
-  const LiveBadge = ({ bet }: { bet: Bet }) =>
-    isNewBet(bet) ? (
-      <span className="flame-ring" title="New — taken in the last 48 hours">
-        <Chip tone="up">Live</Chip>
-      </span>
-    ) : (
-      <Chip tone="up">Live</Chip>
-    )
-
   /** The commissioner's way into the editor. Icon-only — slip footers are tight. */
   const EditButton = ({ bet }: { bet: Bet }) => (
     <button
@@ -305,7 +292,7 @@ export default function Bets() {
     const lost = (id: ManagerId) => bet.status === 'settled' && bet.winner !== null && !won(id)
     const halves = [bet.proposer, bet.opponent] as const
 
-    return (
+    const card = (
       <div className="overflow-hidden rounded-xl border border-arc-line bg-arc-panel transition-colors hover:border-arc-ink-faint">
         {/* team colours across the top, like a game card */}
         <div className="flex h-1">
@@ -364,6 +351,10 @@ export default function Bets() {
         </div>
       </div>
     )
+
+    // Fresh money burns: a bet taken in the last two days rides in a wreath
+    // of flame, which is how you find this week's action in a stack of slips.
+    return bet.status === 'live' && isNewBet(bet) ? <FlameFrame>{card}</FlameFrame> : card
   }
 
   return (
@@ -570,7 +561,7 @@ export default function Bets() {
             <div className="grid gap-3 px-5 py-5 lg:grid-cols-2">
               {live.map((bet) => (
                 <Slip key={bet.id} bet={bet}>
-                  <LiveBadge bet={bet} />
+                  <Chip tone="up">Live</Chip>
                   {commissioner && (
                     <>
                       <span className="text-[12px] text-arc-ink-faint">Winner:</span>

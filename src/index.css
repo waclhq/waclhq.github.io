@@ -948,11 +948,11 @@
     animation: redzone 1.4s steps(1) infinite;
   }
 
-  /* Fresh money burns. A bet taken in the last two days wears a licking
-     gradient around its Live badge: the band slides through the fire palette
-     while the glow behind it breathes, so the eye lands on this week's action
-     first. Still motion draws a warm static ring, which is the point of the
-     badge anyway. */
+  /* Fresh money burns. A bet taken in the last two days is wreathed in fire:
+     tongues rise from every edge behind the card on staggered phases, over a
+     gradient outline that keeps the border hot between licks. The card's own
+     background is opaque, so what shows is flame licking up the back of it.
+     Still motion keeps the warm outline and drops the tongues. */
   @keyframes flame-run {
     from {
       background-position: 0% 50%;
@@ -964,23 +964,47 @@
   @keyframes flame-breathe {
     0%,
     100% {
-      opacity: 0.5;
-      transform: scale(1);
+      opacity: 0.4;
     }
     40% {
-      opacity: 0.85;
-      transform: scale(1.06);
+      opacity: 0.75;
     }
     70% {
-      opacity: 0.6;
-      transform: scale(1.02);
+      opacity: 0.5;
     }
   }
-  .flame-ring {
+  /* Tongue: up, out, gone. Percentages are of the tongue's own box, so one
+     keyframe set works on every edge. */
+  @keyframes ember-lick {
+    0% {
+      transform: translate(-50%, -35%) rotate(calc(var(--ember-tilt) * 0.4))
+        scale(calc(var(--ember-scale) * 0.55), 0.5);
+      opacity: 0;
+    }
+    22% {
+      opacity: 1;
+    }
+    55% {
+      transform: translate(calc(-50% + var(--ember-drift)), -95%) rotate(var(--ember-tilt))
+        scale(var(--ember-scale), calc(var(--ember-scale) * 1.15));
+      opacity: 0.8;
+    }
+    100% {
+      transform: translate(calc(-50% + var(--ember-drift) * 1.8), -185%)
+        rotate(calc(var(--ember-tilt) * 1.8))
+        scale(calc(var(--ember-scale) * 0.45), calc(var(--ember-scale) * 0.7));
+      opacity: 0;
+    }
+  }
+  .on-fire {
     position: relative;
-    display: inline-flex;
-    padding: 2px;
-    border-radius: 7px;
+    isolation: isolate;
+  }
+  .on-fire > .fire-ring {
+    position: absolute;
+    inset: -2px;
+    z-index: -2;
+    border-radius: 14px;
     background: linear-gradient(
       100deg,
       var(--color-arc-red),
@@ -992,24 +1016,40 @@
     background-size: 300% 100%;
     animation: flame-run 2.4s linear infinite;
   }
-  /* The glow sits behind the ring rather than around the badge, so the chip's
-     own text stays crisp. */
-  .flame-ring::before {
+  /* The glow sits behind the ring, not around the card, so the card's own
+     text stays crisp. */
+  .on-fire > .fire-ring::after {
     content: '';
     position: absolute;
-    inset: -3px;
-    z-index: -1;
-    border-radius: 10px;
+    inset: -7px;
+    border-radius: 19px;
     background: inherit;
     background-size: inherit;
-    filter: blur(6px);
-    opacity: 0.6;
+    filter: blur(11px);
+    opacity: 0.5;
     animation:
       flame-run 2.4s linear infinite,
-      flame-breathe 1.6s ease-in-out infinite;
+      flame-breathe 1.7s ease-in-out infinite;
   }
-  .flame-ring > * {
-    position: relative;
+  .on-fire > .embers {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .ember {
+    position: absolute;
+    width: 24px;
+    height: 42px;
+    /* Enough blur to soften the silhouette's edges without losing its shape. */
+    filter: blur(1.4px) drop-shadow(0 0 5px rgba(255, 140, 26, 0.45));
+    will-change: transform, opacity;
+    animation: ember-lick var(--ember-dur, 1.8s) ease-in-out var(--ember-delay, 0s) infinite;
+  }
+  .ember > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   /* Reduced motion is honoured unless the user flips the in-app FX switch,
@@ -1029,8 +1069,8 @@
     :root:not([data-motion='on']) .punt-y,
     :root:not([data-motion='on']) .punt-rot,
     :root:not([data-motion='on']) .redzone,
-    :root:not([data-motion='on']) .flame-ring,
-    :root:not([data-motion='on']) .flame-ring::before,
+    :root:not([data-motion='on']) .fire-ring,
+    :root:not([data-motion='on']) .fire-ring::after,
     :root:not([data-motion='on']) .cursor::after {
       animation: none !important;
     }
@@ -1048,7 +1088,8 @@
     :root:not([data-motion='on']) .boot-good {
       animation: none !important;
     }
-    :root:not([data-motion='on']) .sparkle {
+    :root:not([data-motion='on']) .sparkle,
+    :root:not([data-motion='on']) .ember {
       display: none;
     }
     :root:not([data-motion='on']) .confetti,

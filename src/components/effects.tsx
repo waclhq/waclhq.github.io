@@ -5,7 +5,7 @@
  * they fire.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import HeapScene from './HeapScene'
 
 /**
@@ -282,5 +282,109 @@ export function Sparkles({ count = 8 }: { count?: number }) {
         </span>
       ))}
     </span>
+  )
+}
+
+/**
+ * A card wreathed in fire.
+ *
+ * Tongues rise from every edge on staggered phases behind an opaque card, so
+ * what shows is flame licking up the back of it, over a gradient outline that
+ * keeps the border hot between licks. Each tongue is one small SVG path — a
+ * real flame silhouette rather than a blurred dot — animating transform and
+ * opacity only, which keeps a live board cheap on a phone.
+ *
+ * Offsets are deterministic (no Math.random) so a re-render never reshuffles
+ * the flames. Reduced motion drops the tongues and leaves the warm outline;
+ * that rule lives with the others in index.css.
+ */
+export function FlameFrame({ children }: { children: ReactNode }) {
+  const frame = useRef<HTMLSpanElement>(null)
+  const [box, setBox] = useState({ width: 0, height: 0 })
+
+  // Tongues are spaced along the edges rather than split by a fixed count:
+  // a wide desktop slip and a tall phone one then burn at the same density,
+  // instead of one reading as tongues and the other as an orange wash.
+  useEffect(() => {
+    const node = frame.current
+    if (!node || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setBox({ width, height })
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  const across = Math.max(2, Math.round(box.width / 62))
+  const down = Math.max(1, Math.round(box.height / 78))
+  const edges: ('top' | 'bottom' | 'left' | 'right')[] = box.width
+    ? [
+        ...Array<'top'>(across).fill('top'),
+        ...Array<'bottom'>(across).fill('bottom'),
+        ...Array<'left'>(down).fill('left'),
+        ...Array<'right'>(down).fill('right'),
+      ]
+    : []
+  const along = new Map<string, number>()
+
+  return (
+    <span className="on-fire block" ref={frame}>
+      <span className="fire-ring" aria-hidden />
+      <span className="embers" aria-hidden>
+        {edges.map((edge, i) => {
+          const seen = along.get(edge) ?? 0
+          along.set(edge, seen + 1)
+          const total = edge === 'top' || edge === 'bottom' ? across : down
+          // Spread along the edge, nudged per tongue so the row never reads
+          // as a comb.
+          const at = ((seen + 0.5) / total) * 100 + (((i * 37) % 13) - 6) * 0.4
+          const vertical = edge === 'left' || edge === 'right'
+          return (
+            <span
+              key={`${edge}-${seen}`}
+              className="ember"
+              style={{
+                left: vertical ? (edge === 'left' ? 0 : '100%') : `${at}%`,
+                top: vertical ? `${at}%` : edge === 'top' ? 0 : '100%',
+                ['--ember-delay' as string]: `${((i * 613) % 1700) / 1000}s`,
+                ['--ember-dur' as string]: `${1.5 + ((i * 7) % 9) / 10}s`,
+                ['--ember-drift' as string]: `${((i * 5) % 7) - 3}px`,
+                ['--ember-scale' as string]: `${0.75 + ((i * 11) % 8) / 10}`,
+                ['--ember-tilt' as string]: `${((i * 17) % 15) - 7}deg`,
+              }}
+            >
+              <Flame />
+            </span>
+          )
+        })}
+      </span>
+      {children}
+    </span>
+  )
+}
+
+/**
+ * One tongue of flame: an outer body that fades to nothing at its tip and a
+ * white-hot core two thirds of the way down, which is what stops a fire
+ * reading as an orange smudge.
+ */
+function Flame() {
+  return (
+    <svg viewBox="0 0 24 42" preserveAspectRatio="none" aria-hidden>
+      <path
+        d="M12 42C4.6 36.8 1.4 29.4 3.6 21.6 5 16.6 8 13 9.2 8.2c.6-2.5.5-5.1-.4-8.2 4.6 3.1 8.2 7.2 10.3 12 2.6 5.8 2.9 11.4 1 16.6-1.3 3.7-3.9 7.4-8.1 13.4Z"
+        fill="var(--color-arc-orange)"
+        opacity="0.85"
+      />
+      <path
+        d="M12 42c-3.9-3.9-5.6-8.4-4.6-13.1.7-3.1 2.4-5.4 3.1-8.4.4-1.6.4-3.2 0-5 2.9 2.2 4.9 4.9 6 8.1 1.3 3.9 1 7.6-.8 11.1-1 2-2.2 4.2-3.7 7.3Z"
+        fill="var(--color-arc-yellow)"
+      />
+      <path
+        d="M12 42c-2-2.6-2.8-5.3-2.2-8 .4-1.9 1.4-3.4 1.9-5.3 2.4 2.4 3.5 5 3.2 7.7-.2 1.8-1.1 3.7-2.9 5.6Z"
+        fill="#fff3c4"
+      />
+    </svg>
   )
 }

@@ -124,8 +124,8 @@ export default function Guide() {
             <Step n={1}>
               Managers propose and accept bets themselves on <B>The Book</B>, using the league
               password. A bet somebody has taken shows up under <B>Live action</B>; one taken in
-              the last couple of days wears a <B>flaming border</B> on its LIVE tag, so the new
-              money is easy to spot.
+              the last couple of days is <B>wreathed in flame</B>, so this week's action is
+              impossible to miss. The fire dies down on its own after two days.
             </Step>
             <Step n={2}>
               When a bet resolves, find it under <B>Live action</B> and <B>tap the name of the
