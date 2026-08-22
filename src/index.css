@@ -948,6 +948,70 @@
     animation: redzone 1.4s steps(1) infinite;
   }
 
+  /* Fresh money burns. A bet taken in the last two days wears a licking
+     gradient around its Live badge: the band slides through the fire palette
+     while the glow behind it breathes, so the eye lands on this week's action
+     first. Still motion draws a warm static ring, which is the point of the
+     badge anyway. */
+  @keyframes flame-run {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 300% 50%;
+    }
+  }
+  @keyframes flame-breathe {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    40% {
+      opacity: 0.85;
+      transform: scale(1.06);
+    }
+    70% {
+      opacity: 0.6;
+      transform: scale(1.02);
+    }
+  }
+  .flame-ring {
+    position: relative;
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 7px;
+    background: linear-gradient(
+      100deg,
+      var(--color-arc-red),
+      var(--color-arc-orange),
+      #ffe6a3,
+      var(--color-arc-yellow),
+      var(--color-arc-red)
+    );
+    background-size: 300% 100%;
+    animation: flame-run 2.4s linear infinite;
+  }
+  /* The glow sits behind the ring rather than around the badge, so the chip's
+     own text stays crisp. */
+  .flame-ring::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    z-index: -1;
+    border-radius: 10px;
+    background: inherit;
+    background-size: inherit;
+    filter: blur(6px);
+    opacity: 0.6;
+    animation:
+      flame-run 2.4s linear infinite,
+      flame-breathe 1.6s ease-in-out infinite;
+  }
+  .flame-ring > * {
+    position: relative;
+  }
+
   /* Reduced motion is honoured unless the user flips the in-app FX switch,
      which stamps data-motion="on" on the root. */
   @media (prefers-reduced-motion: reduce) {
@@ -965,6 +1029,8 @@
     :root:not([data-motion='on']) .punt-y,
     :root:not([data-motion='on']) .punt-rot,
     :root:not([data-motion='on']) .redzone,
+    :root:not([data-motion='on']) .flame-ring,
+    :root:not([data-motion='on']) .flame-ring::before,
     :root:not([data-motion='on']) .cursor::after {
       animation: none !important;
     }

@@ -65,6 +65,62 @@ export function newBetId(): string {
   return `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+/** How long a bet reads as fresh money on the board. */
+export const NEW_BET_WINDOW_MS = 48 * 60 * 60 * 1000
+
+/**
+ * True while a bet is still new — two days from the handshake, or from the
+ * proposal for one nobody has taken yet. Drives the flaming badge on the
+ * board, so the eye lands on this week's action rather than the backlog.
+ */
+export function isNewBet(bet: Bet, now: number = Date.now()): boolean {
+  const stamp = bet.acceptedAt ?? bet.proposedAt
+  const at = stamp ? Date.parse(stamp) : NaN
+  if (Number.isNaN(at)) return false
+  // A clock running fast should not hide a brand-new bet.
+  return now - at < NEW_BET_WINDOW_MS
+}
+
+/** The fields the commissioner can correct after the fact. */
+export interface BetEdit {
+  terms: string
+  stakeKind: StakeKind
+  stake: number
+  forfeit: string
+  resolves: string
+  /** Cash bets only — whether the loser has handed the money over. */
+  paid: boolean
+}
+
+export function betEditOf(bet: Bet): BetEdit {
+  return {
+    terms: bet.terms,
+    stakeKind: bet.stakeKind,
+    stake: bet.stake,
+    forfeit: bet.forfeit,
+    resolves: bet.resolves,
+    paid: Boolean(bet.paidAt),
+  }
+}
+
+/**
+ * Fold a correction back into a bet, keeping the two stake kinds from
+ * contaminating each other — a bet edited down to a dare carries no dollars,
+ * and a bet edited up to cash carries no forfeit text.
+ */
+export function editedBet(bet: Bet, edit: BetEdit, now: string): Bet {
+  const cash = edit.stakeKind === 'cash'
+  return {
+    ...bet,
+    terms: edit.terms.trim(),
+    stakeKind: edit.stakeKind,
+    stake: cash ? Math.max(0, Math.round(edit.stake)) : 0,
+    forfeit: cash ? '' : edit.forfeit.trim(),
+    resolves: edit.resolves.trim(),
+    paidAt: edit.paid ? (bet.paidAt ?? now) : undefined,
+  }
+}
+
 export function sideOf(bet: Bet, manager: ManagerId): 'proposer' | 'opponent' | null {
   if (bet.proposer === manager) return 'proposer'
   if (bet.opponent === manager) return 'opponent'

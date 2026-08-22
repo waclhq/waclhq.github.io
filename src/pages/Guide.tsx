@@ -117,7 +117,43 @@ export default function Guide() {
         </Panel>
 
         <Panel
-          title="4 · updating a keeper list"
+          title="4 · the book (side bets)"
+          subtitle="Managers post their own bets. You call the winners — and you're the only one who can fix a call."
+        >
+          <ol className="space-y-3 px-5 py-5">
+            <Step n={1}>
+              Managers propose and accept bets themselves on <B>The Book</B>, using the league
+              password. A bet somebody has taken shows up under <B>Live action</B>; one taken in
+              the last couple of days wears a <B>flaming border</B> on its LIVE tag, so the new
+              money is easy to spot.
+            </Step>
+            <Step n={2}>
+              When a bet resolves, find it under <B>Live action</B> and <B>tap the name of the
+              winner</B>. That is the ruling — it moves the bet down to <B>Settled</B> and puts
+              the money on the tab.
+            </Step>
+            <Step n={3}>
+              Called the wrong name, or the terms have a typo? Press <B>✎</B> — on the live bet,
+              or in the <B>Fix</B> column of the settled table. You can rewrite the bet, change
+              the stake, pick a different winner, or press <B>Nobody yet</B> to put it back on
+              the live board as unsettled.
+            </Step>
+            <Step n={4}>
+              The same panel deletes a bet outright: <B>Delete bet</B>, then <B>Delete for
+              good</B>. Use it for a bet posted by mistake or as a joke — it disappears from the
+              board, the records, and the tab. The history still remembers it, so nothing is
+              truly lost.
+            </Step>
+            <Step n={5}>
+              To rewrite terms or delete anything you also need the <B>league password</B>{' '}
+              entered on that device (the box at the top of The Book). Changing a winner only
+              needs your commissioner sign-in. The panel tells you which one is missing.
+            </Step>
+          </ol>
+        </Panel>
+
+        <Panel
+          title="5 · updating a keeper list"
           subtitle="After draft night, or to fix a mistake in any season."
         >
           <ol className="space-y-3 px-5 py-5">
@@ -142,7 +178,7 @@ export default function Guide() {
         </Panel>
 
         <Panel
-          title="5 · things that need no work at all"
+          title="6 · things that need no work at all"
           subtitle="Most of the site runs itself. Weekly waivers live entirely in Yahoo."
         >
           <div className="space-y-2.5 px-5 py-5 text-[14px] leading-relaxed text-arc-ink-soft">
@@ -164,7 +200,7 @@ export default function Guide() {
           </div>
         </Panel>
 
-        <Panel title="6 · if something looks wrong" subtitle="The two-step fix, then the human.">
+        <Panel title="7 · if something looks wrong" subtitle="The two-step fix, then the human.">
           <ol className="space-y-3 px-5 py-5">
             <Step n={1}>
               Refresh the page. Changes take a minute or two to show up on other devices — yours

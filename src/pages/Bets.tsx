@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import PixelMugshot from '../components/PixelMugshot'
-import { Chip, Panel, PageHeader, Stat } from '../components/ui'
+import { Chip, Panel, PageHeader, Scroller, Stat } from '../components/ui'
 import { Confetti } from '../components/effects'
 import { play } from '../lib/sfx'
 import { animationsDisabled } from '../lib/motion'
@@ -9,14 +9,18 @@ import { managerColor } from '../lib/identity'
 import { money, pct, shortDate } from '../lib/format'
 import {
   applyResults,
+  betEditOf,
   betRecords,
+  editedBet,
   headToHead,
+  isNewBet,
   loserOf,
   newBetId,
   openDebts,
   stakeLabel,
   venmoUrl,
   type Bet,
+  type BetEdit,
   type BetsFile,
   type Debt,
   type StakeKind,
@@ -48,6 +52,8 @@ export default function Bets() {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [composing, setComposing] = useState(false)
+  // The bet the commissioner is correcting, if any.
+  const [editing, setEditing] = useState<Bet | null>(null)
   // Bumped on a settle so the confetti remounts and fires again.
   const [celebrate, setCelebrate] = useState(0)
 
@@ -170,6 +176,119 @@ export default function Bets() {
       `Bet withdrawn: ${managerName(managers, bet.proposer)} vs ${managerName(managers, bet.opponent)}`,
       bet.id,
     )
+
+  const matchup = (bet: Bet) =>
+    `${managerName(managers, bet.proposer)} vs ${managerName(managers, bet.opponent)}`
+
+  /**
+   * A commissioner's correction to a bet already on the record.
+   *
+   * It can land in two places at once: the terms and stake live in the
+   * league-writable bets repo, the winner only in the commissioner-only
+   * results file. Each is written only if it actually changed, so fixing a
+   * typo doesn't restamp the settlement.
+   */
+  const correct = async (bet: Bet, edit: BetEdit, winner: ManagerId | null) => {
+    setBusy(bet.id)
+    setError(null)
+    try {
+      const now = new Date().toISOString()
+      // Edit the STORED bet, never the one applyResults has already folded a
+      // winner into — the results file stays the only source of settlements.
+      const stored = file?.bets.find((b) => b.id === bet.id)
+      if (stored && JSON.stringify(editedBet(stored, edit, now)) !== JSON.stringify(stored)) {
+        setFile(
+          await saveBets(
+            (current) => ({
+              ...current,
+              bets: current.bets.map((b) => (b.id === bet.id ? editedBet(b, edit, now) : b)),
+            }),
+            `Bet corrected by the commissioner: ${matchup(bet)}`,
+          ),
+        )
+      }
+
+      if (winner !== bet.winner) {
+        await save<BetResultsFile>(
+          'bet-results.json',
+          (current) => ({
+            results: [
+              ...current.results.filter((r) => r.betId !== bet.id),
+              ...(winner
+                ? [{ betId: bet.id, winner, settledAt: bet.settledAt ?? now }]
+                : []),
+            ],
+          }),
+          winner
+            ? `Bet result corrected: ${managerName(managers, winner)} wins`
+            : `Bet reopened: ${matchup(bet)}`,
+        )
+      }
+      setEditing(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save that correction.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /**
+   * Wipe a bet off the board entirely. The bet goes first and its result
+   * second: a leftover result keys off an id that no longer exists and is
+   * ignored, whereas a bet left behind without its result would quietly
+   * reappear as live.
+   */
+  const remove = async (bet: Bet) => {
+    setBusy(bet.id)
+    setError(null)
+    try {
+      setFile(
+        await saveBets(
+          (current) => ({ ...current, bets: current.bets.filter((b) => b.id !== bet.id) }),
+          `Bet deleted by the commissioner: ${matchup(bet)}`,
+        ),
+      )
+      if (betResults.results.some((r) => r.betId === bet.id)) {
+        await save<BetResultsFile>(
+          'bet-results.json',
+          (current) => ({ results: current.results.filter((r) => r.betId !== bet.id) }),
+          `Bet result removed: ${matchup(bet)}`,
+        )
+      }
+      setEditing(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not delete that bet.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /**
+   * The live marker. A bet taken in the last two days burns — the flaming
+   * border is how you spot this week's action in a column of standing bets.
+   */
+  const LiveBadge = ({ bet }: { bet: Bet }) =>
+    isNewBet(bet) ? (
+      <span className="flame-ring" title="New — taken in the last 48 hours">
+        <Chip tone="up">Live</Chip>
+      </span>
+    ) : (
+      <Chip tone="up">Live</Chip>
+    )
+
+  /** The commissioner's way into the editor. Icon-only — slip footers are tight. */
+  const EditButton = ({ bet }: { bet: Bet }) => (
+    <button
+      type="button"
+      className="btn ml-auto min-h-[34px] px-2.5 py-1"
+      disabled={busy === bet.id}
+      onClick={() => setEditing(bet)}
+      aria-label={`Edit or delete the bet: ${bet.terms}`}
+      title="Edit or delete this bet"
+    >
+      ✎
+    </button>
+  )
 
   const face = (id: ManagerId, size = 2) => (
     <span className="shrink-0 overflow-hidden rounded-md border border-arc-line">
@@ -451,7 +570,8 @@ export default function Bets() {
             <div className="grid gap-3 px-5 py-5 lg:grid-cols-2">
               {live.map((bet) => (
                 <Slip key={bet.id} bet={bet}>
-                  {commissioner ? (
+                  <LiveBadge bet={bet} />
+                  {commissioner && (
                     <>
                       <span className="text-[12px] text-arc-ink-faint">Winner:</span>
                       {[bet.proposer, bet.opponent].map((id) => (
@@ -465,9 +585,8 @@ export default function Bets() {
                           {managerName(managers, id)}
                         </button>
                       ))}
+                      <EditButton bet={bet} />
                     </>
-                  ) : (
-                    <Chip tone="up">Live</Chip>
                   )}
                 </Slip>
               ))}
@@ -478,33 +597,57 @@ export default function Bets() {
           </Panel>
 
           {settled.length > 0 && (
-            <Panel title="settled" subtitle="The record. Winners in green.">
-              <table className="out">
-                <thead>
-                  <tr>
-                    <th>Bet</th>
-                    <th>Winner</th>
-                    <th>Loser</th>
-                    <th className="n">Stake</th>
-                    <th className="n">Settled</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {settled.map((bet) => (
-                    <tr key={bet.id}>
-                      <td className="max-w-[280px] truncate">{bet.terms}</td>
-                      <td className="text-arc-green">{managerName(managers, bet.winner!)}</td>
-                      <td className="text-arc-ink-faint">
-                        {managerName(managers, loserOf(bet)!)}
-                      </td>
-                      <td className="n">{stakeLabel(bet)}</td>
-                      <td className="n text-arc-ink-faint">
-                        {bet.settledAt ? shortDate(bet.settledAt) : '—'}
-                      </td>
+            <Panel
+              title="settled"
+              subtitle={
+                commissioner
+                  ? 'The record. Winners in green. Yours to correct — ✎ fixes the terms, the stake, or the wrong name called.'
+                  : 'The record. Winners in green.'
+              }
+            >
+              <Scroller>
+                <table className="out">
+                  <thead>
+                    <tr>
+                      <th>Bet</th>
+                      <th>Winner</th>
+                      <th>Loser</th>
+                      <th className="n">Stake</th>
+                      <th className="n">Settled</th>
+                      {commissioner && <th className="n">Fix</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {settled.map((bet) => (
+                      <tr key={bet.id}>
+                        <td className="max-w-[280px] truncate">{bet.terms}</td>
+                        <td className="text-arc-green">{managerName(managers, bet.winner!)}</td>
+                        <td className="text-arc-ink-faint">
+                          {managerName(managers, loserOf(bet)!)}
+                        </td>
+                        <td className="n">{stakeLabel(bet)}</td>
+                        <td className="n text-arc-ink-faint">
+                          {bet.settledAt ? shortDate(bet.settledAt) : '—'}
+                        </td>
+                        {commissioner && (
+                          <td className="n">
+                            <button
+                              type="button"
+                              className="px-1 text-[15px] leading-none text-arc-ink-faint hover:text-arc-green"
+                              disabled={busy === bet.id}
+                              onClick={() => setEditing(bet)}
+                              aria-label={`Edit or delete the bet: ${bet.terms}`}
+                              title="Edit or delete this bet"
+                            >
+                              ✎
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Scroller>
             </Panel>
           )}
 
@@ -665,6 +808,22 @@ export default function Bets() {
             </div>
           )}
         </div>
+      )}
+
+      {editing && (
+        <BetEditor
+          bet={editing}
+          sides={[editing.proposer, editing.opponent].map((id) => ({
+            id,
+            name: managerName(managers, id),
+          }))}
+          unlocked={unlocked}
+          busy={busy === editing.id}
+          error={error}
+          onCancel={() => setEditing(null)}
+          onSave={(edit, winner) => void correct(editing, edit, winner)}
+          onDelete={() => void remove(editing)}
+        />
       )}
 
       {celebrate > 0 && (
@@ -873,5 +1032,240 @@ function Composer({
         </span>
       </div>
     </Panel>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * The commissioner's correction desk for one bet.
+ *
+ * A bet's two halves live in two repos: the terms and the stake in the
+ * league-writable bets repo, the winner in the commissioner-only results
+ * file. So a commissioner who hasn't entered the league password on this
+ * device can still overturn a call — they just can't rewrite the terms or
+ * delete the bet until they do, and the panel says so rather than failing at
+ * the save.
+ */
+function BetEditor({
+  bet,
+  sides,
+  unlocked,
+  busy,
+  error,
+  onCancel,
+  onSave,
+  onDelete,
+}: {
+  bet: Bet
+  sides: { id: ManagerId; name: string }[]
+  unlocked: boolean
+  busy: boolean
+  error: string | null
+  onCancel: () => void
+  onSave: (edit: BetEdit, winner: ManagerId | null) => void
+  onDelete: () => void
+}) {
+  const initial = useMemo(() => betEditOf(bet), [bet])
+  const [edit, setEdit] = useState<BetEdit>(initial)
+  const [winner, setWinner] = useState<ManagerId | null>(bet.winner)
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  const set = (patch: Partial<BetEdit>) => setEdit((current) => ({ ...current, ...patch }))
+  const cash = edit.stakeKind === 'cash'
+  const dirty = JSON.stringify(edit) !== JSON.stringify(initial) || winner !== bet.winner
+  const ready = Boolean(edit.terms.trim()) && (cash ? edit.stake > 0 : Boolean(edit.forfeit.trim()))
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-arc-bg-deep/85 px-3 py-[6vh] backdrop-blur-sm sm:px-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit bet"
+    >
+      <div className="win rise-in w-full max-w-xl">
+        <div className="win-head">
+          <span className="label">Editing a bet — {sides.map((s) => s.name).join(' v ')}</span>
+          <button
+            type="button"
+            className="px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
+            onClick={onCancel}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid gap-4 px-5 py-5 sm:grid-cols-2">
+          <label className="sm:col-span-2">
+            <span className="label">The bet</span>
+            <input
+              className="field mt-1.5"
+              value={edit.terms}
+              disabled={!unlocked}
+              onChange={(event) => set({ terms: event.target.value })}
+            />
+          </label>
+
+          <label>
+            <span className="label">Stake</span>
+            <select
+              className="field mt-1.5"
+              value={edit.stakeKind}
+              disabled={!unlocked}
+              onChange={(event) => set({ stakeKind: event.target.value as StakeKind })}
+            >
+              <option value="cash">Cash</option>
+              <option value="forfeit">Forfeit / dare</option>
+            </select>
+          </label>
+          {cash ? (
+            <label>
+              <span className="label">Amount each</span>
+              <input
+                type="number"
+                min={1}
+                className="field tnum mt-1.5"
+                value={edit.stake}
+                disabled={!unlocked}
+                onChange={(event) => set({ stake: Number(event.target.value) || 0 })}
+              />
+            </label>
+          ) : (
+            <label>
+              <span className="label">Loser must…</span>
+              <input
+                className="field mt-1.5"
+                value={edit.forfeit}
+                disabled={!unlocked}
+                onChange={(event) => set({ forfeit: event.target.value })}
+              />
+            </label>
+          )}
+
+          <label className="sm:col-span-2">
+            <span className="label">Resolves</span>
+            <input
+              className="field mt-1.5"
+              value={edit.resolves}
+              disabled={!unlocked}
+              onChange={(event) => set({ resolves: event.target.value })}
+            />
+          </label>
+
+          <div className="sm:col-span-2">
+            <span className="label">Winner</span>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {sides.map((side) => (
+                <button
+                  key={side.id}
+                  type="button"
+                  className="btn min-h-[36px] px-3 py-1"
+                  style={
+                    winner === side.id
+                      ? {
+                          borderColor: 'var(--color-arc-green)',
+                          background: 'var(--color-arc-green)',
+                          color: '#06210a',
+                        }
+                      : undefined
+                  }
+                  onClick={() => setWinner(side.id)}
+                >
+                  {side.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="btn min-h-[36px] px-3 py-1"
+                style={winner === null ? { borderColor: 'var(--color-arc-orange)' } : undefined}
+                onClick={() => setWinner(null)}
+              >
+                Nobody yet
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] text-arc-ink-faint">
+              {winner === null
+                ? 'Clearing the winner puts the bet back on the live board.'
+                : 'The result file is the only place a winner can come from, so this is the call of record.'}
+            </p>
+          </div>
+
+          {cash && (
+            <label className="flex items-center gap-2.5 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={edit.paid}
+                disabled={!unlocked}
+                onChange={(event) => set({ paid: event.target.checked })}
+              />
+              <span className="text-[13.5px]">
+                Loser has paid up
+                <span className="block text-[12px] text-arc-ink-faint">
+                  Unticking it puts the money back on the tab.
+                </span>
+              </span>
+            </label>
+          )}
+        </div>
+
+        {!unlocked && (
+          <p className="border-t border-arc-line px-5 py-3 text-[12.5px] text-[var(--color-arc-orange)]">
+            Enter the league password on this device to change the terms, the stake, or to delete
+            the bet. The winner can be corrected without it.
+          </p>
+        )}
+        {error && (
+          <p className="border-t border-arc-line px-5 py-3 text-[12.5px] text-[var(--color-arc-red)]">
+            {error}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-arc-line px-5 py-4">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!dirty || !ready || busy}
+            onClick={() => onSave(edit, winner)}
+          >
+            {busy ? 'Saving…' : 'Save changes'}
+          </button>
+          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+            Cancel
+          </button>
+          {unlocked && (
+            <span className="ml-auto flex items-center gap-2">
+              {confirming && (
+                <span className="text-[12px] text-arc-ink-faint">Wipes it from the record.</span>
+              )}
+              <button
+                type="button"
+                className={`btn min-h-[36px] px-3 py-1 ${confirming ? 'btn-danger' : ''}`}
+                style={
+                  confirming
+                    ? undefined
+                    : { borderColor: 'var(--color-arc-red)', color: 'var(--color-arc-red)' }
+                }
+                disabled={busy}
+                onClick={() => (confirming ? onDelete() : setConfirming(true))}
+              >
+                {busy ? 'Working…' : confirming ? 'Delete for good' : 'Delete bet'}
+              </button>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
