@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import PixelMugshot from '../components/PixelMugshot'
 import { Chip, Panel, PageHeader, Scroller, Stat } from '../components/ui'
-import { Confetti, FlameFrame } from '../components/effects'
+import { Confetti } from '../components/effects'
+import FireFrame from '../components/FireFrame'
 import { play } from '../lib/sfx'
 import { animationsDisabled } from '../lib/motion'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
@@ -354,7 +355,7 @@ export default function Bets() {
 
     // Fresh money burns: a bet taken in the last two days rides in a wreath
     // of flame, which is how you find this week's action in a stack of slips.
-    return bet.status === 'live' && isNewBet(bet) ? <FlameFrame>{card}</FlameFrame> : card
+    return bet.status === 'live' && isNewBet(bet) ? <FireFrame>{card}</FireFrame> : card
   }
 
   return (
@@ -558,7 +559,16 @@ export default function Bets() {
               commissioner ? 'Tap a winner when it resolves.' : 'The commissioner calls these.'
             }`}
           >
-            <div className="grid gap-3 px-5 py-5 lg:grid-cols-2">
+            {/* A burning slip needs air around it, or the panel clips its
+                flames off flat. Only pay for the room when something is
+                actually alight. */}
+            <div
+              className={`grid px-5 lg:grid-cols-2 ${
+                live.some(isNewBet) && !animationsDisabled()
+                  ? 'gap-9 pt-11 pb-8'
+                  : 'gap-3 py-5'
+              }`}
+            >
               {live.map((bet) => (
                 <Slip key={bet.id} bet={bet}>
                   <Chip tone="up">Live</Chip>
