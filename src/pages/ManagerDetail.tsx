@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ForAgainstChart, WinPctChart } from '../components/charts'
 import { Chip, Empty, Panel, PageHeader, Stat } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
+import { managerColor } from '../lib/identity'
 import { useLedger, useTrades } from '../lib/derive'
 import { money, num, ordinal, pct, record } from '../lib/format'
 import { careerTable, eraOptions, managerSeasons, rollingWinPct } from '../lib/stats'
@@ -60,6 +61,16 @@ export default function ManagerDetail() {
 
   return (
     <>
+      {/* The room takes on the manager's colour: their page is lit by their
+          own light, the way their row and badge already are. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 h-[46vh]"
+        style={{
+          zIndex: -1,
+          background: `radial-gradient(85% 100% at 50% 0%, ${managerColor(id)}1c, transparent 72%)`,
+        }}
+      />
       <PageHeader
         path="~/managers"
         eyebrow={manager.active ? `Active · ${manager.team}` : 'Former manager'}

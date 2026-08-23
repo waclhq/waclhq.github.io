@@ -71,12 +71,23 @@
   body::before {
     content: '';
     position: fixed;
-    inset: 0;
+    inset: -10%;
     z-index: -1;
     pointer-events: none;
     background:
       radial-gradient(95vmax 60vmax at 88% -14%, rgba(83, 211, 55, 0.12), transparent 55%),
       radial-gradient(85vmax 55vmax at -8% 110%, rgba(255, 182, 54, 0.06), transparent 55%);
+    /* Arena lights: an imperceptibly slow drift so the room breathes. */
+    animation: arena-drift 46s ease-in-out infinite;
+  }
+  @keyframes arena-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(-1.6%, 1.2%, 0) scale(1.05);
+    }
   }
 
   ::selection {
@@ -668,6 +679,13 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .glow-blue .recharts-curve {
+    filter: drop-shadow(0 0 6px rgba(90, 131, 255, 0.45));
+  }
+  .glow-soft .recharts-curve {
+    filter: drop-shadow(0 0 4px rgba(238, 241, 246, 0.22));
+  }
+
   /* Anchored panels land clear of the sticky bars. */
   section[id] {
     scroll-margin-top: 116px;
@@ -977,6 +995,80 @@
     animation: redzone 1.4s steps(1) infinite;
   }
 
+  /* ---- vibrancy layer --------------------------------------------------
+     Three registers of motion, never competing: looping fire = new money,
+     one-shot reveals = data arriving, ambient drift = the room. */
+
+  /* On-air: a scanline of signature green sweeps a panel header once as the
+     panel enters the viewport — the board segment powering up. */
+  .on-air {
+    position: relative;
+    overflow: hidden;
+  }
+  .on-air::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 34%;
+    background: linear-gradient(90deg, transparent, var(--color-arc-green), transparent);
+    transform: translateX(-110%);
+    animation: on-air-sweep 0.9s ease-out var(--air-delay, 0ms) forwards;
+  }
+  @keyframes on-air-sweep {
+    to {
+      transform: translateX(420%);
+      opacity: 0;
+    }
+  }
+
+  /* Sparklines draw left to right as they arrive. */
+  .spark-in {
+    animation: spark-in 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  @keyframes spark-in {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+
+  /* Bars behind leaderboard cells grow when first seen. */
+  .barcell {
+    transition: background-size 0.9s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  /* Championship gold catches the light — briefly, rarely, staggered. */
+  .glint {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+  }
+  .glint::after {
+    content: '';
+    position: absolute;
+    inset: -40% auto;
+    left: 0;
+    width: 34%;
+    transform: skewX(-20deg) translateX(-180%);
+    background: linear-gradient(90deg, transparent, rgba(255, 246, 214, 0.55), transparent);
+    animation: glint-sweep 8.5s linear var(--glint-delay, 0s) infinite;
+    pointer-events: none;
+  }
+  @keyframes glint-sweep {
+    0%,
+    86% {
+      transform: skewX(-20deg) translateX(-180%);
+    }
+    97%,
+    100% {
+      transform: skewX(-20deg) translateX(420%);
+    }
+  }
+
   /* ---- the bet board ---------------------------------------------------
      Compact matchup slabs: a checkerboard of square cards, each split on the
      diagonal between the two managers, tilting in 3D under the pointer with
@@ -1197,6 +1289,9 @@
      which stamps data-motion="on" on the root. */
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-motion='on']) .unfold,
+    :root:not([data-motion='on']) .spark-in,
+    :root:not([data-motion='on']) .on-air::after,
+    :root:not([data-motion='on']) .glint::after,
     :root:not([data-motion='on']) .tile-coals,
     :root:not([data-motion='on']) .live-dot,
     :root:not([data-motion='on']) .pop-in,
@@ -1240,6 +1335,15 @@
     }
     :root:not([data-motion='on']) .type-in {
       max-width: 100%;
+    }
+    :root:not([data-motion='on']) body::before {
+      animation: none !important;
+    }
+    :root:not([data-motion='on']) .barcell {
+      transition: none !important;
+    }
+    :root:not([data-motion='on']) .on-air::after {
+      opacity: 0;
     }
   }
 }

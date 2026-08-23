@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import ManagerTag from '../components/ManagerTag'
-import { Chip, Panel, PageHeader, SegmentedControl, Scroller, Sparkline } from '../components/ui'
+import { Chip, Panel, PageHeader, SegmentedControl, Scroller, Sparkline, useFlipList } from '../components/ui'
 import { useLeagueData } from '../lib/data'
 import { num, pct, record } from '../lib/format'
 import { careerTable, eraOptions, managerSeasons } from '../lib/stats'
@@ -11,6 +11,8 @@ export default function Managers() {
   const [eraId, setEraId] = useState(eras[0].id)
   const era = eras.find((option) => option.id === eraId) ?? eras[0]
   const table = careerTable(seasons, era)
+  const body = useRef<HTMLTableSectionElement>(null)
+  useFlipList(body)
 
   return (
     <>
@@ -46,11 +48,11 @@ export default function Managers() {
                 <th className="hidden sm:table-cell">Form</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={body}>
               {table.map((line) => {
                 const manager = managers.find((candidate) => candidate.id === line.manager)
                 return (
-                  <tr key={line.manager}>
+                  <tr key={line.manager} data-flip={line.manager}>
                     <td className="whitespace-nowrap">
                       <ManagerTag id={line.manager} />
                       {manager && !manager.active && (

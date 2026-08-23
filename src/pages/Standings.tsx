@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ManagerTag from '../components/ManagerTag'
 import { Chip, Panel, PageHeader } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
+import { managerColor } from '../lib/identity'
 import { num, pct, record } from '../lib/format'
 
 export default function Standings() {
@@ -107,7 +108,15 @@ export default function Standings() {
                   >
                     <td className="tnum w-14 text-arc-ink-faint">{row.year}</td>
                     <td>
-                      <span className="text-arc-green">{managerName(managers, row.champion)}</span>
+                      <span
+                        className="glint font-semibold"
+                        style={{
+                          color: managerColor(row.champion),
+                          ['--glint-delay' as string]: `${(row.year % 7) * 1.3}s`,
+                        }}
+                      >
+                        {managerName(managers, row.champion)}
+                      </span>
                       <span className="ml-2 text-[11px] text-arc-ink-faint">
                         d. {managerName(managers, row.runnerUp)}
                       </span>

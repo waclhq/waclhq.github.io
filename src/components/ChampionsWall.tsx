@@ -62,7 +62,11 @@ export default function ChampionsWall() {
                 ×{nth}
               </span>
             )}
-            <span className="flex shrink-0 items-center gap-1" aria-hidden>
+            <span
+              className="glint flex shrink-0 items-center gap-1"
+              style={{ ['--glint-delay' as string]: `${(index % 6) * 1.4}s` }}
+              aria-hidden
+            >
               {index === 0 && <PixelPlayer size={28} color={color} />}
               <span className="text-[16px]">{index === 0 ? '👑' : '🏆'}</span>
             </span>

@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ChampionsWall from '../components/ChampionsWall'
 import TradeFlow from '../components/TradeFlow'
 import { ScoringChart } from '../components/charts'
-import { Panel, PageHeader, SectionNav, SegmentedControl } from '../components/ui'
+import { Panel, PageHeader, SectionNav, SegmentedControl, useFlipList, useRevealed } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
+import { managerColor } from '../lib/identity'
 import { useTrades } from '../lib/derive'
 import { num, pct, record } from '../lib/format'
 import {
@@ -100,7 +101,7 @@ export default function Records() {
         subtitle="Average points per team per game. Kickers were removed in 2020, which moves the whole baseline — compare seasons against this line, not against each other."
         delay={60}
       >
-        <div className="px-4 py-5">
+        <div className="glow-blue px-4 py-5">
           <ScoringChart data={scoring} height={230} />
         </div>
       </Panel>
@@ -319,11 +320,27 @@ function useTopFive<T>(rows: T[]): { shown: T[]; toggle: React.ReactNode } {
   return { shown, toggle }
 }
 
-/** Bar drawn behind a cell's number: right-aligned figures, bar from the right. */
+/**
+ * Bar drawn behind a cell's number: right-aligned figures, bar from the
+ * right. Width rides background-size, which is animatable — pass ratio 0
+ * until the panel is seen and the bar grows in.
+ */
 function cellBar(ratio: number, color = 'rgba(83, 211, 55, 0.16)'): React.CSSProperties {
   const width = Math.max(0, Math.min(1, ratio)) * 100
   return {
-    backgroundImage: `linear-gradient(to left, ${color} ${width}%, transparent ${width}%)`,
+    backgroundImage: `linear-gradient(${color}, ${color})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right center',
+    backgroundSize: `${width}% 100%`,
+  }
+}
+
+/** The leader's row is lit by their own colour, not a generic highlight. */
+function leadWash(manager: string): React.CSSProperties {
+  const color = managerColor(manager)
+  return {
+    backgroundImage: `linear-gradient(90deg, ${color}17, transparent 60%)`,
+    boxShadow: `inset 2px 0 0 ${color}`,
   }
 }
 
@@ -346,6 +363,9 @@ function GameBoard({
 }) {
   const { shown, toggle } = useTopFive(rows)
   const most = Math.max(...rows.map((row) => row.points))
+  const body = useRef<HTMLTableSectionElement>(null)
+  const revealed = useRevealed(body)
+  useFlipList(body)
   return (
     <Panel id={id} title={title} subtitle={subtitle} delay={delay}>
       <table className="out">
@@ -357,9 +377,14 @@ function GameBoard({
             <th className="n">Year</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={body}>
           {shown.map((row, index) => (
-            <tr key={`${row.manager}-${row.points}`} className={index === 0 ? 'lead' : undefined}>
+            <tr
+              key={`${row.manager}-${row.points}`}
+              data-flip={`${row.manager}-${row.points}`}
+              className={index === 0 ? 'lead' : undefined}
+              style={index === 0 ? leadWash(row.manager) : undefined}
+            >
               <RankCell index={index} />
               <td>
                 <Link
@@ -370,9 +395,9 @@ function GameBoard({
                 </Link>
               </td>
               <td
-                className={`n ${tone === 'up' ? 'text-arc-green' : 'text-[var(--color-arc-red)]'}`}
+                className={`n barcell ${tone === 'up' ? 'text-arc-green' : 'text-[var(--color-arc-red)]'}`}
                 style={cellBar(
-                  tone === 'up' ? row.points / most : 1 - row.points / most,
+                  revealed ? (tone === 'up' ? row.points / most : 1 - row.points / most) : 0,
                   tone === 'up' ? undefined : 'rgba(255, 82, 82, 0.14)',
                 )}
               >
@@ -415,6 +440,9 @@ function Board({
   const { shown, toggle } = useTopFive(rows)
   const barColumn = columns.find((column) => column.highlight && column.value)
   const most = barColumn ? Math.max(...rows.map((line) => barColumn.value!(line)), 0) : 0
+  const body = useRef<HTMLTableSectionElement>(null)
+  const revealed = useRevealed(body)
+  useFlipList(body)
   return (
     <Panel id={id} title={title} delay={delay}>
       <table className="out">
@@ -429,9 +457,14 @@ function Board({
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={body}>
           {shown.map((line, index) => (
-            <tr key={line.manager} className={index === 0 ? 'lead' : undefined}>
+            <tr
+              key={line.manager}
+              data-flip={line.manager}
+              className={index === 0 ? 'lead' : undefined}
+              style={index === 0 ? leadWash(line.manager) : undefined}
+            >
               <RankCell index={index} />
               <td>
                 <Link
@@ -444,10 +477,12 @@ function Board({
               {columns.map((column) => (
                 <td
                   key={column.header}
-                  className={`n ${column.highlight ? 'text-arc-green' : 'text-arc-ink-soft'}`}
+                  className={`n ${column.highlight ? 'text-arc-green' : 'text-arc-ink-soft'} ${
+                    column === barColumn ? 'barcell' : ''
+                  }`}
                   style={
                     column === barColumn && most > 0
-                      ? cellBar(column.value!(line) / most)
+                      ? cellBar(revealed ? column.value!(line) / most : 0)
                       : undefined
                   }
                 >

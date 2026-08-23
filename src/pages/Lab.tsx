@@ -166,7 +166,11 @@ export default function Lab() {
         >
           <div className="px-2 py-5">
             <ResponsiveContainer width="100%" height={340}>
-              <LineChart data={eloRows} margin={{ top: 8, right: 14, bottom: 0, left: -10 }}>
+              <LineChart
+                className="glow-soft"
+                data={eloRows}
+                margin={{ top: 8, right: 14, bottom: 0, left: -10 }}
+              >
                 <CartesianGrid stroke="rgba(239,234,251,0.08)" vertical={false} />
                 <XAxis
                   dataKey="year"
@@ -202,6 +206,7 @@ export default function Lab() {
                     dot={false}
                     connectNulls
                     animationDuration={900}
+                    isAnimationActive={!animationsDisabled()}
                   />
                 ))}
               </LineChart>

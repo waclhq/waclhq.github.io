@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { animationsDisabled } from '../lib/motion'
 
 /*
   Chart palette for the ink surface (#0F1512):
@@ -122,6 +123,7 @@ export function WinPctChart({
           activeDot={{ r: 4, fill: GOLD, stroke: '#171128', strokeWidth: 2 }}
           connectNulls={false}
           animationDuration={900}
+          isAnimationActive={!animationsDisabled()}
           animationEasing="ease-out"
         />
       </LineChart>
@@ -167,6 +169,7 @@ export function ScoringChart({
           fill="url(#scoringFill)"
           activeDot={{ r: 4, fill: GOLD, stroke: '#171128', strokeWidth: 2 }}
           animationDuration={1000}
+          isAnimationActive={!animationsDisabled()}
           animationEasing="ease-out"
         />
       </AreaChart>
@@ -220,6 +223,7 @@ export function ForAgainstChart({
             activeDot={{ r: 4, fill: GOLD_MARK, stroke: '#171128', strokeWidth: 2 }}
             connectNulls={false}
             animationDuration={900}
+          isAnimationActive={!animationsDisabled()}
             animationEasing="ease-out"
           />
           <Line
@@ -232,6 +236,7 @@ export function ForAgainstChart({
             activeDot={{ r: 4, fill: PERIWINKLE, stroke: '#171128', strokeWidth: 2 }}
             connectNulls={false}
             animationDuration={900}
+          isAnimationActive={!animationsDisabled()}
             animationBegin={160}
             animationEasing="ease-out"
           />

@@ -1,5 +1,65 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { animationsDisabled } from '../lib/motion'
+
+/**
+ * True once the element has entered the viewport. Drives every one-shot
+ * reveal — bars growing, the on-air sweep — so data animates when seen,
+ * not when mounted three screens below the fold.
+ */
+export function useRevealed<T extends Element>(ref: React.RefObject<T | null>): boolean {
+  const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    if (animationsDisabled()) {
+      setRevealed(true)
+      return
+    }
+    const node = ref.current
+    if (!node) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [ref])
+  return revealed
+}
+
+/**
+ * FLIP for a re-sorting list: rows carry data-flip keys, and when an update
+ * moves one, it slides from where it was to where it is. Watching the table
+ * reshuffle when the era toggle flips IS the content — teleporting rows
+ * throw that information away.
+ */
+export function useFlipList<T extends HTMLElement>(ref: React.RefObject<T | null>): void {
+  const previous = useRef(new Map<string, number>())
+  useLayoutEffect(() => {
+    const container = ref.current
+    if (!container) return
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-flip]'))
+    const next = new Map<string, number>()
+    for (const row of rows) next.set(row.dataset.flip!, row.getBoundingClientRect().top)
+    if (!animationsDisabled()) {
+      for (const row of rows) {
+        const before = previous.current.get(row.dataset.flip!)
+        const after = next.get(row.dataset.flip!)
+        if (before === undefined || after === undefined) continue
+        const dy = before - after
+        if (Math.abs(dy) < 2) continue
+        row.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
+          { duration: 440, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' },
+        )
+      }
+    }
+    previous.current = next
+  })
+}
 
 /**
  * Horizontal scroll with a visible invitation. A wide table on a phone used
@@ -73,14 +133,20 @@ export function Panel({
   className?: string
   delay?: number
 }) {
+  const frame = useRef<HTMLElement>(null)
+  const aired = useRevealed(frame)
   return (
     <section
+      ref={frame}
       id={id}
       className={`win pop-in ${className}`}
       style={delay ? { animationDelay: `${delay}ms` } : undefined}
     >
       {(title || action) && (
-        <header className="win-head flex-wrap">
+        <header
+          className={`win-head flex-wrap ${aired ? 'on-air' : ''}`}
+          style={{ ['--air-delay' as string]: `${delay + 180}ms` }}
+        >
           <div className="min-w-0">
             {title && <h2 className="label">{title}</h2>}
             {subtitle && (
@@ -352,7 +418,7 @@ export function Sparkline({
   const max = Math.max(...present)
   const span = max - min || 1
   return (
-    <span className={`text-[13px] leading-none tracking-[-0.5px] ${tone}`} aria-hidden>
+    <span className={`spark-in text-[13px] leading-none tracking-[-0.5px] ${tone}`} aria-hidden>
       {values
         .map((value) =>
           value === null ? ' ' : blocks[Math.round(((value - min) / span) * (blocks.length - 1))],
