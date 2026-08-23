@@ -54,6 +54,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const pending = usePendingTrades()
   const [panelOpen, setPanelOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuClosing, setMenuClosing] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   // The OS is requesting reduced motion; offer an in-app override so the
   // animations the commissioner asked for are one tap away.
@@ -105,6 +106,18 @@ export default function Shell({ children }: { children: ReactNode }) {
     }
     if (!animationsDisabled()) setWipe((count) => count + 1)
   }, [location.pathname])
+
+  const closeMenu = () => {
+    if (animationsDisabled()) {
+      setMenuOpen(false)
+      return
+    }
+    setMenuClosing(true)
+    window.setTimeout(() => {
+      setMenuOpen(false)
+      setMenuClosing(false)
+    }, 230)
+  }
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
@@ -228,33 +241,39 @@ export default function Shell({ children }: { children: ReactNode }) {
           its own colour with a one-line scent. */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-arc-bg-deep/80 backdrop-blur-sm lg:hidden"
+          className={`menu-scrim fixed inset-0 z-50 flex flex-col justify-end bg-arc-bg-deep/80 backdrop-blur-sm lg:hidden ${
+            menuClosing ? 'menu-leaving' : ''
+          }`}
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setMenuOpen(false)
+            if (event.target === event.currentTarget) closeMenu()
           }}
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
         >
           <div className="sheet-up max-h-[82dvh] overflow-y-auto rounded-t-2xl border-t-[3px] border-x border-arc-line bg-arc-bg pb-[env(safe-area-inset-bottom)]">
-            <div className="sticky top-0 flex items-center justify-between border-b border-arc-line bg-arc-bg px-4 py-3">
-              <span className="label">Everything</span>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                className="px-1 text-[20px] leading-none text-arc-ink-faint"
-                aria-label="Close menu"
-              >
-                ×
-              </button>
+            <div className="sticky top-0 z-10 border-b border-arc-line bg-arc-bg px-4 pt-2 pb-3">
+              <span aria-hidden className="mx-auto mb-2 block h-1 w-10 rounded-full bg-arc-line" />
+              <div className="flex items-center justify-between">
+                <span className="label">Everything</span>
+                <button
+                  type="button"
+                  onClick={closeMenu}
+                  className="px-1 text-[20px] leading-none text-arc-ink-faint"
+                  aria-label="Close menu"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2 px-3 py-3">
-              {NAV.map((item) => (
+              {NAV.map((item, index) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   end={item.end}
-                  className="block no-underline"
+                  className="menu-tile block no-underline"
+                  style={{ ['--i' as string]: index }}
                   onClick={() => {
                     play('blip')
                     setMenuOpen(false)
@@ -262,12 +281,16 @@ export default function Shell({ children }: { children: ReactNode }) {
                 >
                   {({ isActive }) => (
                     <span
-                      className="flex min-h-[58px] flex-col justify-center rounded-lg border border-arc-line px-3 py-2"
+                      className="relative flex min-h-[58px] flex-col justify-center overflow-hidden rounded-lg border border-arc-line px-3 py-2 transition-transform duration-100 active:scale-[0.97]"
                       style={{
                         background: isActive ? item.color : 'var(--color-arc-panel)',
-                        boxShadow: `inset 3px 0 0 ${item.color}`,
                       }}
                     >
+                      <span
+                        aria-hidden
+                        className="menu-tile-bar"
+                        style={{ background: item.color, ['--i' as string]: index }}
+                      />
                       <span
                         className="arcade flex items-center gap-2 text-[14px]"
                         style={{ color: isActive ? 'var(--color-arc-panel)' : 'var(--color-arc-ink)' }}
@@ -295,7 +318,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                 </NavLink>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-2.5 border-t border-arc-line px-4 py-3">
+            <div className="sheet-foot flex flex-wrap items-center gap-2.5 border-t border-arc-line px-4 py-3">
               <button
                 type="button"
                 onClick={() => {
@@ -339,7 +362,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                 setMenuOpen(false)
                 setPanelOpen(true)
               }}
-              className="arcade flex min-h-[48px] w-full items-center gap-2 border-t border-arc-line px-4 py-3 text-left text-[11px]"
+              className="sheet-foot arcade flex min-h-[48px] w-full items-center gap-2 border-t border-arc-line px-4 py-3 text-left text-[11px]"
             >
               <span
                 aria-hidden
@@ -373,7 +396,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                 <span className="relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1">
                   <span
                     aria-hidden
-                    className="absolute inset-x-3 top-0 h-[3px]"
+                    className={`absolute inset-x-3 top-0 h-[3px] ${isActive ? 'tab-lit' : ''}`}
                     style={{ background: isActive ? item.color : 'transparent' }}
                   />
                   <span
