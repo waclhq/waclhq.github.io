@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import ManagerTag from '../components/ManagerTag'
-import { Chip, Panel, PageHeader } from '../components/ui'
+import { Chip, Panel, PageHeader , SectionNav } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
@@ -117,8 +117,22 @@ export default function Lab() {
         lede="Twenty-two seasons put under the microscope: who was lucky, who was robbed, who was actually great, and who Vegas would take in 2026."
       />
 
+      <SectionNav
+        sections={[
+          { id: 'odds', label: 'Title odds' },
+          { id: 'elo', label: 'Empires' },
+          { id: 'luck', label: 'Luck' },
+          { id: 'blessed', label: 'Blessed' },
+          { id: 'goatindex', label: 'GOAT index' },
+          { id: 'torture', label: 'Torture' },
+          { id: 'contracts', label: 'Contracts' },
+          { id: 'glossary', label: 'Glossary' },
+        ]}
+      />
+
       {/* Vegas board */}
       <Panel
+        id="odds"
         title={`${league.currentSeason} title odds`}
         subtitle="Monte Carlo on each manager's keeper-era scoring history — 5,000 simulated seasons, no schedules, no mercy. A toy, but a fair toy."
       >
@@ -146,6 +160,7 @@ export default function Lab() {
       {/* Elo timeline */}
       <div className="mt-6">
         <Panel
+          id="elo"
           title="empires rise and fall"
           subtitle="Season-granularity Elo, 2004–2025. Watch Baugh's three-peat dynasty crest and Stu's fifteen-year gap between rings."
         >
@@ -210,6 +225,7 @@ export default function Lab() {
       {/* Luck */}
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
         <Panel
+          id="luck"
           title="the luck index"
           subtitle="Wins earned vs a neutral schedule that excludes each manager from their own opponent pool — a top scorer's opponents really are weaker for lacking them, and that's priced in, not called luck. Draw = opponents ran cold/hot against you; Pairing = how the chips fell."
         >
@@ -261,7 +277,7 @@ export default function Lab() {
           </table>
         </Panel>
 
-        <Panel title="most blessed & most cursed seasons" subtitle="Single-season gaps between record and points, all-time.">
+        <Panel id="blessed" title="most blessed & most cursed seasons" subtitle="Single-season gaps between record and points, all-time.">
           <table className="out">
             <thead>
               <tr>
@@ -302,6 +318,7 @@ export default function Lab() {
       {/* GOAT + Torture */}
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
         <Panel
+          id="goatindex"
           title="the goat index"
           subtitle="Scoring measured against each season's own field (z-scores), so eras compare honestly. Sum rewards dominance and longevity together."
         >
@@ -339,6 +356,7 @@ export default function Lab() {
         </Panel>
 
         <Panel
+          id="torture"
           title="the torture board"
           subtitle="Championship droughts among the current twelve, measured to the coming season. Runner-ups shown because they hurt more."
         >
@@ -495,6 +513,7 @@ export default function Lab() {
       {/* Contracts */}
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
         <Panel
+          id="contracts"
           title="best contracts ever"
           subtitle="Points scored minus dollars spent across the keeper run. Quarterbacks excluded — everyone finds a cheap QB."
         >
@@ -511,6 +530,7 @@ export default function Lab() {
       {/* Definitions, in league vernacular */}
       <div className="mt-6">
         <Panel
+          id="glossary"
           title="explain it like i'm alex"
           subtitle="Every Lab stat in one sentence a fourth-rounder could follow. Tap one."
         >

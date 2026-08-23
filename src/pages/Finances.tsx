@@ -65,7 +65,7 @@ function AuctionBook() {
       title="Auction dollars traded"
       subtitle="Sellers receive draft dollars in the listed season; buyers pay them. Every column nets to zero."
     >
-      <div className="overflow-x-auto">
+      <div>
         <table className="out">
           <thead>
             <tr>

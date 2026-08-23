@@ -139,7 +139,7 @@ export default function Dashboard() {
             subtitle={`Pulled from Yahoo ${shortDate(data.live.updatedAt)}.`}
             delay={90}
           >
-            <div className="overflow-x-auto">
+            <div>
               <table className="out">
                 <thead>
                   <tr>
@@ -191,15 +191,15 @@ export default function Dashboard() {
           }
           delay={120}
         >
-          <div className="overflow-x-auto">
+          <div>
             <table className="out">
               <thead>
                 <tr>
                   <th>Manager</th>
-                  <th>Team</th>
-                  <th className="n">Keepers</th>
+                  <th className="hidden md:table-cell">Team</th>
+                  <th className="n hidden sm:table-cell">Keepers</th>
                   <th className="n">Salary</th>
-                  <th className="n">Trades</th>
+                  <th className="n hidden sm:table-cell">Trades</th>
                   <th className="n">Available</th>
                 </tr>
               </thead>
@@ -209,11 +209,11 @@ export default function Dashboard() {
                     <td>
                       <ManagerTag id={budget.manager} />
                     </td>
-                    <td className="text-[12px] text-arc-ink-faint">{budget.team}</td>
-                    <td className="n text-arc-ink-soft">{budget.keeperCount}</td>
+                    <td className="hidden text-[12px] text-arc-ink-faint md:table-cell">{budget.team}</td>
+                    <td className="n hidden text-arc-ink-soft sm:table-cell">{budget.keeperCount}</td>
                     <td className="n text-arc-ink-soft">{money(-budget.keeperSalary)}</td>
                     <td
-                      className={`n ${
+                      className={`n hidden sm:table-cell ${
                         budget.cashNet > 0
                           ? 'text-[var(--color-arc-green)]'
                           : budget.cashNet < 0

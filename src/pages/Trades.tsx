@@ -327,7 +327,7 @@ export default function Trades() {
           title="Recorded trades"
           subtitle={`${visible.length} of ${decided.length} trades. Amounts are auction dollars owed by the buyer in each listed season.`}
         >
-          <div className="overflow-x-auto">
+          <div>
             <table className="out">
               <thead>
                 <tr>

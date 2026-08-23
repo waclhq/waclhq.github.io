@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import ManagerTag from '../components/ManagerTag'
-import { Panel, PageHeader } from '../components/ui'
+import { Fold, PageHeader } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { num } from '../lib/format'
 import { almanac, type AlmanacEntry } from '../lib/analytics'
@@ -138,12 +138,34 @@ export default function Almanac() {
       <PageHeader
         eyebrow="The official record, machine-written"
         title="The Almanac"
-        lede="Twenty-two seasons, one entry per year. Rosters, points, trades and luck are computed from the record — the prose just delivers the verdicts."
+        lede="Twenty-two seasons, one entry per year, folded to the verdict — tap a season to read its full story. Rosters, points, trades and luck are computed from the record; the prose just delivers the verdicts."
       />
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         {entries.map((entry, index) => (
-          <Panel key={entry.year} delay={Math.min(index * 30, 300)}>
+          <Fold
+            key={entry.year}
+            delay={Math.min(index * 30, 300)}
+            defaultOpen={index === 0}
+            summary={
+              <>
+                <span className="arcade w-14 shrink-0 text-[17px] text-arc-ink">
+                  {entry.year}
+                </span>
+                <span className="pointer-events-none min-w-0">
+                  <ManagerTag id={entry.champion} link={false} size={24} />
+                </span>
+                <span className="hidden truncate text-[12px] text-arc-ink-faint sm:inline">
+                  def. {name(entry.runnerUp)}
+                </span>
+                {!entry.keeperEra && (
+                  <span className="hidden text-[10px] tracking-[0.1em] text-arc-ink-faint uppercase md:inline">
+                    pre-keeper
+                  </span>
+                )}
+              </>
+            }
+          >
             <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:gap-6">
               <div className="shrink-0 sm:w-40">
                 <div className="arcade text-[26px] text-arc-ink">{entry.year}</div>
@@ -199,7 +221,7 @@ export default function Almanac() {
                 </div>
               </div>
             </div>
-          </Panel>
+          </Fold>
         ))}
       </div>
     </>

@@ -668,6 +668,35 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Anchored panels land clear of the sticky bars. */
+  section[id] {
+    scroll-margin-top: 116px;
+  }
+  .section-rail {
+    background: color-mix(in srgb, var(--color-arc-bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--color-arc-line);
+  }
+
+  /* Leaderboard podium: the top three ranks read as medals, and the leader's
+     row carries slightly more weight than the field. */
+  .pod-1 {
+    color: var(--color-arc-yellow);
+    font-weight: 700;
+  }
+  .pod-2 {
+    color: #c8d2e0;
+    font-weight: 700;
+  }
+  .pod-3 {
+    color: var(--color-arc-brown);
+    font-weight: 700;
+  }
+  tr.lead td {
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
   /* ---- football flourishes -------------------------------------------- */
 
   /* Confetti for a title. Falls the height of its container, then stops. */

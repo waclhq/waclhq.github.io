@@ -37,7 +37,7 @@ export default function Standings() {
           title={`${season.year} final table`}
           subtitle={`${season.teamCount} teams · ${season.keeperEra ? 'Keeper era' : 'Pre-keeper era'}`}
         >
-          <div className="overflow-x-auto">
+          <div>
             <table className="out">
               <thead>
                 <tr>
@@ -45,11 +45,11 @@ export default function Standings() {
                   <th>Team</th>
                   <th>Manager</th>
                   <th className="n">Record</th>
-                  <th className="n">Win %</th>
-                  <th className="n">PF</th>
-                  <th className="n">PA</th>
+                  <th className="n hidden sm:table-cell">Win %</th>
+                  <th className="n hidden sm:table-cell">PF</th>
+                  <th className="n hidden md:table-cell">PA</th>
                   <th className="n">Avg</th>
-                  <th className="n">Playoffs</th>
+                  <th className="n hidden sm:table-cell">Playoffs</th>
                 </tr>
               </thead>
               <tbody>
@@ -68,7 +68,7 @@ export default function Standings() {
                         {team.rank}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap">
+                    <td className="max-w-[128px] truncate whitespace-nowrap sm:max-w-none">
                       {team.rank === 1 && <span className="mr-1.5 text-arc-green">★</span>}
                       {team.team}
                     </td>
@@ -76,13 +76,13 @@ export default function Standings() {
                       <ManagerTag id={team.manager} />
                     </td>
                     <td className="n">{record(team.wins, team.losses)}</td>
-                    <td className="n text-arc-ink-soft">
+                    <td className="n hidden text-arc-ink-soft sm:table-cell">
                       {pct(team.wins / Math.max(team.wins + team.losses, 1), 0)}
                     </td>
-                    <td className="n text-arc-ink-soft">{num(team.pointsFor, 0)}</td>
-                    <td className="n text-arc-ink-faint">{num(team.pointsAgainst, 0)}</td>
+                    <td className="n hidden text-arc-ink-soft sm:table-cell">{num(team.pointsFor, 0)}</td>
+                    <td className="n hidden text-arc-ink-faint md:table-cell">{num(team.pointsAgainst, 0)}</td>
                     <td className="n text-arc-green">{num(team.avgPointsFor)}</td>
-                    <td className="n text-arc-ink-faint">
+                    <td className="n hidden text-arc-ink-faint sm:table-cell">
                       {team.playoffWins + team.playoffLosses > 0
                         ? record(team.playoffWins, team.playoffLosses)
                         : '—'}

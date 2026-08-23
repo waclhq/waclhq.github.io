@@ -93,7 +93,8 @@ export default function Guide() {
               <B>Ledger</B> (and under <B>Finances → Dues</B>): everyone who has paid on the left,
               everyone who hasn't on the right. When somebody pays you, <B>tick the box next to
               their name</B> — they move across to the paid side and the league sees it. Ticking
-              it again undoes it, in case a payment bounces.
+              it again undoes it, in case a payment bounces. Once everyone has paid, the board
+              folds down to a single “all paid” line — tap it to reopen.
             </Step>
             <Step n={2}>
               Managers pay by tapping the green <B>PAY</B> button on their own row, which opens

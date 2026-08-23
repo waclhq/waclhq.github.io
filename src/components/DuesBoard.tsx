@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import PixelMugshot from './PixelMugshot'
-import { Panel } from './ui'
+import { Fold, Panel } from './ui'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { duesRows, venmoPayUrl, type DuesRow } from '../lib/dues'
@@ -101,16 +101,8 @@ export default function DuesBoard({ season }: { season: number }) {
     )
   }
 
-  return (
-    <Panel
-      title={`${season} dues`}
-      subtitle={
-        (unpaid.length
-          ? `${money(total)} outstanding across ${unpaid.length} manager${unpaid.length === 1 ? '' : 's'}.`
-          : 'Everyone has settled.') +
-        (commissioner ? ' Tick a box when someone pays — untick to undo.' : '')
-      }
-    >
+  const board = (
+    <>
       <div className="grid md:grid-cols-2">
         {/* Good people */}
         <div className="border-b border-arc-line md:border-r md:border-b-0">
@@ -212,6 +204,41 @@ export default function DuesBoard({ season }: { season: number }) {
         </div>
       </div>
       {error && <p className="px-4 py-3 text-[12px] text-[var(--color-arc-red)]">{error}</p>}
+    </>
+  )
+
+  // A solved board is a receipt, not a wall: when everyone has paid, the
+  // whole thing folds to its conclusion and opens on demand (unticking a
+  // bounced payment still lives one tap away).
+  if (rows.length > 0 && unpaid.length === 0) {
+    return (
+      <Fold
+        summary={
+          <>
+            <span className="label">{season} dues</span>
+            <span className="arcade text-[13px] text-arc-green">
+              ALL {paid.length} PAID
+            </span>
+            <span aria-hidden className="text-arc-green">
+              ✓
+            </span>
+          </>
+        }
+      >
+        {board}
+      </Fold>
+    )
+  }
+
+  return (
+    <Panel
+      title={`${season} dues`}
+      subtitle={
+        `${money(total)} outstanding across ${unpaid.length} manager${unpaid.length === 1 ? '' : 's'}.` +
+        (commissioner ? ' Tick a box when someone pays — untick to undo.' : '')
+      }
+    >
+      {board}
     </Panel>
   )
 }

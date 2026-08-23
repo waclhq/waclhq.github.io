@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import ChampionsWall from '../components/ChampionsWall'
 import TradeFlow from '../components/TradeFlow'
 import { ScoringChart } from '../components/charts'
-import { Panel, PageHeader, SegmentedControl } from '../components/ui'
+import { Panel, PageHeader, SectionNav, SegmentedControl } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { useTrades } from '../lib/derive'
 import { num, pct, record } from '../lib/format'
@@ -80,7 +80,22 @@ export default function Records() {
         }
       />
 
+      <SectionNav
+        sections={[
+          { id: 'scoring', label: 'Scoring' },
+          { id: 'titles', label: 'Titles' },
+          { id: 'winpct', label: 'Win %' },
+          { id: 'playoffs', label: 'Playoffs' },
+          { id: 'points', label: 'Points' },
+          { id: 'tradeflow', label: 'Trades' },
+          { id: 'champions', label: 'Champs' },
+          { id: 'seasons', label: 'Seasons' },
+          { id: 'games', label: 'Games' },
+        ]}
+      />
+
       <Panel
+        id="scoring"
         title="League scoring by season"
         subtitle="Average points per team per game. Kickers were removed in 2020, which moves the whole baseline — compare seasons against this line, not against each other."
         delay={60}
@@ -92,12 +107,18 @@ export default function Records() {
 
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
         <Board
+          id="titles"
           title="Titles"
           delay={100}
           rows={[...table].sort((a, b) => b.titles - a.titles || b.topThree - a.topThree)}
           managers={managers}
           columns={[
-            { header: 'Titles', render: (line) => line.titles },
+            {
+              header: 'Titles',
+              render: (line) => line.titles,
+              highlight: true,
+              value: (line) => line.titles,
+            },
             { header: '2nd', render: (line) => line.runnerUps },
             { header: '3rd', render: (line) => line.thirds },
             { header: 'Top 3', render: (line) => line.topThree },
@@ -105,17 +126,19 @@ export default function Records() {
         />
 
         <Board
+          id="winpct"
           title="Regular season win %"
           delay={140}
           rows={[...table].sort((a, b) => b.winPct - a.winPct)}
           managers={managers}
           columns={[
             { header: 'Record', render: (line) => record(line.wins, line.losses) },
-            { header: 'Win %', render: (line) => pct(line.winPct), highlight: true },
+            { header: 'Win %', render: (line) => pct(line.winPct), highlight: true, value: (line) => line.winPct },
           ]}
         />
 
         <Board
+          id="playoffs"
           title="Playoff appearances"
           delay={180}
           rows={[...table].sort((a, b) => b.playoffRate - a.playoffRate)}
@@ -123,7 +146,7 @@ export default function Records() {
           columns={[
             { header: 'Apps', render: (line) => line.playoffAppearances },
             { header: 'Seasons', render: (line) => line.seasonsPlayed },
-            { header: 'Rate', render: (line) => pct(line.playoffRate, 0), highlight: true },
+            { header: 'Rate', render: (line) => pct(line.playoffRate, 0), highlight: true, value: (line) => line.playoffRate },
           ]}
         />
 
@@ -133,12 +156,13 @@ export default function Records() {
           rows={[...table].sort((a, b) => b.playoffWins - a.playoffWins)}
           managers={managers}
           columns={[
-            { header: 'W', render: (line) => line.playoffWins, highlight: true },
+            { header: 'W', render: (line) => line.playoffWins, highlight: true, value: (line) => line.playoffWins },
             { header: 'L', render: (line) => line.playoffLosses },
           ]}
         />
 
         <Board
+          id="points"
           title="Points per game"
           delay={260}
           rows={[...table]
@@ -147,7 +171,7 @@ export default function Records() {
             }
           managers={managers}
           columns={[
-            { header: 'For', render: (line) => num(line.avgPointsFor, 2), highlight: true },
+            { header: 'For', render: (line) => num(line.avgPointsFor, 2), highlight: true, value: (line) => line.avgPointsFor ?? 0 },
             { header: 'Against', render: (line) => num(line.avgPointsAgainst, 2) },
           ]}
         />
@@ -169,6 +193,7 @@ export default function Records() {
 
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[1fr_1fr]">
         <Panel
+          id="tradeflow"
           title="trade flow"
           subtitle="Auction dollars exchanged between every pair of managers since the structured ledger began."
           delay={320}
@@ -179,6 +204,7 @@ export default function Records() {
         </Panel>
 
         <Panel
+          id="champions"
           title="champions"
           subtitle="Twenty-two seasons. Repeat winners grow with each title."
           delay={340}
@@ -191,6 +217,7 @@ export default function Records() {
 
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
         <Panel
+          id="seasons"
           title="Highest scoring seasons"
           subtitle="Points per game across a full regular season."
           delay={340}
@@ -198,8 +225,8 @@ export default function Records() {
           <table className="out">
             <tbody>
               {pointsFor.best.map((row, index) => (
-                <tr key={`${row.manager}-${row.year}`}>
-                  <td className="tnum w-8 text-arc-ink-faint">{index + 1}</td>
+                <tr key={`${row.manager}-${row.year}`} className={index === 0 ? 'lead' : undefined}>
+                  <RankCell index={index} />
                   <td>
                     <Link
                       to={`/managers/${row.manager}`}
@@ -220,8 +247,8 @@ export default function Records() {
           <table className="out">
             <tbody>
               {pointsFor.worst.map((row, index) => (
-                <tr key={`${row.manager}-${row.year}`}>
-                  <td className="tnum w-8 text-arc-ink-faint">{index + 1}</td>
+                <tr key={`${row.manager}-${row.year}`} className={index === 0 ? 'lead' : undefined}>
+                  <RankCell index={index} />
                   <td>
                     <Link
                       to={`/managers/${row.manager}`}
@@ -242,6 +269,7 @@ export default function Records() {
       {gameEra && (
         <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-2">
           <GameBoard
+            id="games"
             title="Highest single-game scores"
             subtitle={`${gameEraLabel} record book. * marks a playoff game.`}
             delay={400}
@@ -263,7 +291,44 @@ export default function Records() {
   )
 }
 
+/** Medal colours for the top three ranks; the field stays quiet. */
+function RankCell({ index }: { index: number }) {
+  const podium = ['pod-1', 'pod-2', 'pod-3'][index]
+  return <td className={`n tnum w-8 ${podium ?? 'text-arc-ink-faint'}`}>{index + 1}</td>
+}
+
+/**
+ * Ten seconds of scanning should say who is king: top five rows by default
+ * with the full field behind one tap, medals on the podium, and the panel's
+ * headline number drawn as a bar behind the cell so magnitude is seen, not
+ * computed.
+ */
+function useTopFive<T>(rows: T[]): { shown: T[]; toggle: React.ReactNode } {
+  const [all, setAll] = useState(false)
+  const shown = all ? rows : rows.slice(0, 5)
+  const toggle =
+    rows.length > 5 ? (
+      <button
+        type="button"
+        className="block w-full border-t border-arc-line px-4 py-2.5 text-left text-[12px] tracking-[0.08em] text-arc-ink-faint uppercase transition-colors hover:text-arc-green"
+        onClick={() => setAll((current) => !current)}
+      >
+        {all ? '× Top 5 only' : `+ Full table (${rows.length})`}
+      </button>
+    ) : null
+  return { shown, toggle }
+}
+
+/** Bar drawn behind a cell's number: right-aligned figures, bar from the right. */
+function cellBar(ratio: number, color = 'rgba(83, 211, 55, 0.16)'): React.CSSProperties {
+  const width = Math.max(0, Math.min(1, ratio)) * 100
+  return {
+    backgroundImage: `linear-gradient(to left, ${color} ${width}%, transparent ${width}%)`,
+  }
+}
+
 function GameBoard({
+  id,
   title,
   subtitle,
   rows,
@@ -271,6 +336,7 @@ function GameBoard({
   delay,
   tone,
 }: {
+  id?: string
   title: string
   subtitle: string
   rows: GameRecordEntry[]
@@ -278,8 +344,10 @@ function GameBoard({
   delay: number
   tone: 'up' | 'down'
 }) {
+  const { shown, toggle } = useTopFive(rows)
+  const most = Math.max(...rows.map((row) => row.points))
   return (
-    <Panel title={title} subtitle={subtitle} delay={delay}>
+    <Panel id={id} title={title} subtitle={subtitle} delay={delay}>
       <table className="out">
         <thead>
           <tr>
@@ -290,9 +358,9 @@ function GameBoard({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.manager}-${row.points}`}>
-              <td className="n text-arc-ink-faint">{index + 1}</td>
+          {shown.map((row, index) => (
+            <tr key={`${row.manager}-${row.points}`} className={index === 0 ? 'lead' : undefined}>
+              <RankCell index={index} />
               <td>
                 <Link
                   to={`/managers/${row.manager}`}
@@ -303,6 +371,10 @@ function GameBoard({
               </td>
               <td
                 className={`n ${tone === 'up' ? 'text-arc-green' : 'text-[var(--color-arc-red)]'}`}
+                style={cellBar(
+                  tone === 'up' ? row.points / most : 1 - row.points / most,
+                  tone === 'up' ? undefined : 'rgba(255, 82, 82, 0.14)',
+                )}
               >
                 {num(row.points, 2)}
               </td>
@@ -314,25 +386,37 @@ function GameBoard({
           ))}
         </tbody>
       </table>
+      {toggle}
     </Panel>
   )
 }
 
 function Board({
+  id,
   title,
   rows,
   columns,
   managers,
   delay,
 }: {
+  id?: string
   title: string
   rows: CareerLine[]
-  columns: { header: string; render: (line: CareerLine) => React.ReactNode; highlight?: boolean }[]
+  columns: {
+    header: string
+    render: (line: CareerLine) => React.ReactNode
+    highlight?: boolean
+    /** Numeric accessor for the bar behind the highlight column. */
+    value?: (line: CareerLine) => number
+  }[]
   managers: Manager[]
   delay: number
 }) {
+  const { shown, toggle } = useTopFive(rows)
+  const barColumn = columns.find((column) => column.highlight && column.value)
+  const most = barColumn ? Math.max(...rows.map((line) => barColumn.value!(line)), 0) : 0
   return (
-    <Panel title={title} delay={delay}>
+    <Panel id={id} title={title} delay={delay}>
       <table className="out">
         <thead>
           <tr>
@@ -346,9 +430,9 @@ function Board({
           </tr>
         </thead>
         <tbody>
-          {rows.map((line, index) => (
-            <tr key={line.manager}>
-              <td className="n text-arc-ink-faint">{index + 1}</td>
+          {shown.map((line, index) => (
+            <tr key={line.manager} className={index === 0 ? 'lead' : undefined}>
+              <RankCell index={index} />
               <td>
                 <Link
                   to={`/managers/${line.manager}`}
@@ -361,6 +445,11 @@ function Board({
                 <td
                   key={column.header}
                   className={`n ${column.highlight ? 'text-arc-green' : 'text-arc-ink-soft'}`}
+                  style={
+                    column === barColumn && most > 0
+                      ? cellBar(column.value!(line) / most)
+                      : undefined
+                  }
                 >
                   {column.render(line)}
                 </td>
@@ -369,6 +458,7 @@ function Board({
           ))}
         </tbody>
       </table>
+      {toggle}
     </Panel>
   )
 }

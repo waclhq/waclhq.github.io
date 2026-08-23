@@ -1,8 +1,63 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { animationsDisabled } from '../lib/motion'
 
+/**
+ * Horizontal scroll with a visible invitation. A wide table on a phone used
+ * to clip silently — the reader had no way to know the numbers continued.
+ * Now anything cut off gets an edge fade and a chevron pill that sits there
+ * until the reader has actually scrolled.
+ */
+function ScrollHint({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const track = useRef<HTMLDivElement>(null)
+  const [clipped, setClipped] = useState(false)
+  const [touched, setTouched] = useState(false)
+
+  useEffect(() => {
+    const el = track.current
+    if (!el) return
+    const check = () => setClipped(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
+    const onScroll = () => {
+      setTouched(true)
+      check()
+    }
+    check()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const watch = new ResizeObserver(check)
+    watch.observe(el)
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      watch.disconnect()
+    }
+  }, [])
+
+  return (
+    <div className="relative min-w-0">
+      <div ref={track} className={`min-w-0 overflow-x-auto ${className}`}>
+        {children}
+      </div>
+      {clipped && (
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-arc-panel to-transparent"
+          />
+          {!touched && (
+            <span
+              aria-hidden
+              className="arcade pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full border border-arc-line bg-arc-bg-deep/90 px-2 py-0.5 text-[10px] text-arc-ink-soft"
+            >
+              swipe ›
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 /** Framed block of terminal output. */
 export function Panel({
+  id,
   title,
   subtitle,
   action,
@@ -10,6 +65,7 @@ export function Panel({
   className = '',
   delay = 0,
 }: {
+  id?: string
   title?: string
   subtitle?: string
   action?: ReactNode
@@ -19,6 +75,7 @@ export function Panel({
 }) {
   return (
     <section
+      id={id}
       className={`win pop-in ${className}`}
       style={delay ? { animationDelay: `${delay}ms` } : undefined}
     >
@@ -35,7 +92,7 @@ export function Panel({
       )}
       {/* Tables inside panels scroll here rather than splitting thead/tbody
           into separate layout contexts, which desynced header columns. */}
-      <div className="min-w-0 overflow-x-auto">{children}</div>
+      <ScrollHint>{children}</ScrollHint>
     </section>
   )
 }
@@ -307,5 +364,102 @@ export function Sparkline({
 
 /** Horizontally scrollable wrapper for wide tables on small screens. */
 export function Scroller({ children }: { children: ReactNode }) {
-  return <div className="scroll-x">{children}</div>
+  return <ScrollHint className="scroll-x">{children}</ScrollHint>
+}
+
+/**
+ * Sticky rail of section chips for the long stat pages — fifteen screens of
+ * scroll needs doors, not a corridor. Chips jump to panel anchors; the one
+ * whose section is on screen stays lit.
+ */
+export function SectionNav({ sections }: { sections: { id: string; label: string }[] }) {
+  const [active, setActive] = useState<string | null>(null)
+
+  useEffect(() => {
+    const seen = new Map<string, boolean>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) seen.set(entry.target.id, entry.isIntersecting)
+        const current = sections.find((section) => seen.get(section.id))
+        if (current) setActive(current.id)
+      },
+      { rootMargin: '-120px 0px -55% 0px' },
+    )
+    for (const section of sections) {
+      const node = document.getElementById(section.id)
+      if (node) observer.observe(node)
+    }
+    return () => observer.disconnect()
+  }, [sections])
+
+  return (
+    <nav
+      aria-label="Sections"
+      className="section-rail sticky top-[56px] z-30 -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
+    >
+      <div className="scroll-x flex gap-1.5 py-2">
+        {sections.map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            onClick={(event) => {
+              event.preventDefault()
+              document.getElementById(section.id)?.scrollIntoView({
+                behavior: animationsDisabled() ? 'auto' : 'smooth',
+                block: 'start',
+              })
+            }}
+            className={`arcade shrink-0 rounded-full border px-3 py-1.5 text-[10px] whitespace-nowrap transition-colors ${
+              active === section.id
+                ? 'border-arc-green bg-arc-green text-[#06210a]'
+                : 'border-arc-line bg-arc-panel text-arc-ink-soft hover:border-arc-ink-faint hover:text-arc-ink'
+            }`}
+          >
+            {section.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
+/**
+ * A panel that has said everything it needs to in one line. Solved states
+ * (dues all paid, a finished season) collapse to their conclusion and open
+ * on demand, so the archive stops taxing every scroll past it.
+ */
+export function Fold({
+  summary,
+  children,
+  defaultOpen = false,
+  delay = 0,
+}: {
+  summary: ReactNode
+  children: ReactNode
+  defaultOpen?: boolean
+  delay?: number
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <section
+      className="win pop-in"
+      style={delay ? { animationDelay: `${delay}ms` } : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-arc-raised/40"
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-3">{summary}</span>
+        <span
+          aria-hidden
+          className={`shrink-0 text-[13px] text-arc-ink-faint transition-transform ${open ? 'rotate-90' : ''}`}
+        >
+          ›
+        </span>
+      </button>
+      {open && <div className="border-t border-arc-line">{children}</div>}
+    </section>
+  )
 }

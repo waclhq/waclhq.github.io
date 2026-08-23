@@ -129,7 +129,7 @@ export default function ManagerDetail() {
 
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Panel title="Season by season" delay={160}>
-          <div className="overflow-x-auto">
+          <div>
             <table className="out">
               <thead>
                 <tr>

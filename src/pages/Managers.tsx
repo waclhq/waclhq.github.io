@@ -34,16 +34,16 @@ export default function Managers() {
             <thead>
               <tr>
                 <th>Manager</th>
-                <th className="n">Sea</th>
+                <th className="n hidden sm:table-cell">Sea</th>
                 <th className="n">Record</th>
                 <th className="n">Win %</th>
                 <th className="n">Titles</th>
-                <th className="n">Top 3</th>
-                <th className="n">Playoffs</th>
-                <th className="n">Rate</th>
-                <th className="n">Avg PF</th>
-                <th className="n">Avg PA</th>
-                <th>Form</th>
+                <th className="n hidden md:table-cell">Top 3</th>
+                <th className="n hidden sm:table-cell">Playoffs</th>
+                <th className="n hidden md:table-cell">Rate</th>
+                <th className="n hidden lg:table-cell">Avg PF</th>
+                <th className="n hidden lg:table-cell">Avg PA</th>
+                <th className="hidden sm:table-cell">Form</th>
               </tr>
             </thead>
             <tbody>
@@ -59,7 +59,7 @@ export default function Managers() {
                         </span>
                       )}
                     </td>
-                    <td className="n text-arc-ink-faint">{line.seasonsPlayed}</td>
+                    <td className="n hidden text-arc-ink-faint sm:table-cell">{line.seasonsPlayed}</td>
                     <td className="n">{record(line.wins, line.losses)}</td>
                     <td className="n text-arc-green">{pct(line.winPct)}</td>
                     <td className="n">
@@ -72,14 +72,14 @@ export default function Managers() {
                         <span className="text-arc-ink-faint">·</span>
                       )}
                     </td>
-                    <td className="n text-arc-ink-soft">{line.topThree || '·'}</td>
-                    <td className="n text-arc-ink-soft">
+                    <td className="n hidden text-arc-ink-soft md:table-cell">{line.topThree || '·'}</td>
+                    <td className="n hidden text-arc-ink-soft sm:table-cell">
                       {line.playoffAppearances}/{line.seasonsPlayed}
                     </td>
-                    <td className="n text-arc-ink-faint">{pct(line.playoffRate, 0)}</td>
-                    <td className="n text-arc-ink-soft">{num(line.avgPointsFor)}</td>
-                    <td className="n text-arc-ink-faint">{num(line.avgPointsAgainst)}</td>
-                    <td title="Win % by season, oldest to newest">
+                    <td className="n hidden text-arc-ink-faint md:table-cell">{pct(line.playoffRate, 0)}</td>
+                    <td className="n hidden text-arc-ink-soft lg:table-cell">{num(line.avgPointsFor)}</td>
+                    <td className="n hidden text-arc-ink-faint lg:table-cell">{num(line.avgPointsAgainst)}</td>
+                    <td className="hidden sm:table-cell" title="Win % by season, oldest to newest">
                       <Sparkline
                         values={managerSeasons(seasons, line.manager)
                           .slice(0, 10)
