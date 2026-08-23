@@ -25,16 +25,16 @@ import { animationsDisabled } from '../lib/motion'
 /** CSS pixels per heat cell. Coarse on purpose — fire has no fine detail. */
 const CELL = 2
 /** Room for the flames to climb outside the card, in CSS pixels. */
-const MARGIN = { top: 56, side: 28, bottom: 32 }
+const MARGIN = { top: 56, side: 30, bottom: 26 }
 /** Simulation rate. Fire reads fine below 60 and halves the work. */
 const STEP_MS = 1000 / 36
 /** Heat lost per row climbed, at most. Lower burns taller. */
 const DECAY = 21
 /** Thickness of the burner band hugging the card, in cells. */
 const BURNER = 3
-/** Visible gap under the slip before its burner, in cells: fire needs somewhere
- *  to be seen before the card hides it. */
-const UNDER = 6
+/** Rows the bottom edge stays alight for below the slip. Fire rises, so the
+ *  underside can only show the border itself burning, guttering downward. */
+const UNDER = 5
 /**
  * A burner only lights where the travelling noise clears its gate, so stretches
  * of edge gutter out while others roar. The sides gate higher — a vertical edge
@@ -176,7 +176,7 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
           }
           // Outside the slip's own columns the plume leans away from it, the
           // way flame peels off a surface instead of climbing it in a stripe.
-          const outward = x < card.left ? -0.45 : x >= card.right ? 0.45 : 0
+          const outward = x < card.left ? -0.22 : x >= card.right ? 0.22 : 0
           const drift = Math.round(Math.random() * 1.3 - 0.65 + wind * 0.42 + outward)
           const target = x + drift
           if (target < 0 || target >= cols) continue
@@ -211,17 +211,28 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
         if (value > heat[at]) heat[at] = value
       }
 
+      // Every burner is anchored ON the slip's edge and fades outward from
+      // it, so the flame is plainly coming out of the border rather than
+      // floating alongside it. The hottest cell is always the edge itself.
       for (let x = card.left - 1; x <= card.right; x += 1) {
+        const top = hot(x * CELL * 0.5, GATE)
+        const bottom = hot(x * CELL * 0.5 + 40, GATE)
         for (let b = 0; b < BURNER; b += 1) {
-          // straddling the top edge, and a few cells under the bottom one
-          set(card.top - b, x, hot(x * CELL * 0.5, GATE))
-          set(card.bottom + UNDER + b, x, hot(x * CELL * 0.5 + 40, GATE))
+          set(card.top - b, x, (top * (1 - (b / BURNER) * 0.45)) | 0)
+        }
+        // The underside cannot show a rising flame — it would be behind the
+        // card — so it shows the edge alight instead, guttering downward.
+        for (let b = 0; b < UNDER; b += 1) {
+          set(card.bottom + b, x, (bottom * (1 - b / UNDER) ** 1.3) | 0)
         }
       }
-      for (let y = card.top; y < card.bottom + UNDER; y += 1) {
-        for (let b = 1; b <= BURNER; b += 1) {
-          set(y, card.left - b, hot(y * CELL * 0.43 + 90, SIDE_GATE))
-          set(y, card.right - 1 + b, hot(y * CELL * 0.43 + 150, SIDE_GATE))
+      for (let y = card.top; y < card.bottom + 2; y += 1) {
+        const left = hot(y * CELL * 0.43 + 90, SIDE_GATE)
+        const right = hot(y * CELL * 0.43 + 150, SIDE_GATE)
+        for (let b = 0; b < BURNER + 1; b += 1) {
+          const falloff = (1 - b / (BURNER + 1)) ** 1.2
+          set(y, card.left - b, (left * falloff) | 0)
+          set(y, card.right - 1 + b, (right * falloff) | 0)
         }
       }
     }

@@ -971,7 +971,7 @@
   .on-fire > .fire-rim {
     position: absolute;
     inset: -1.5px;
-    z-index: -1;
+    z-index: -2;
     border-radius: 14px;
     pointer-events: none;
     background: linear-gradient(150deg, #ff5252, #ff9f1a 45%, #ffc846 70%, #ff5252);
