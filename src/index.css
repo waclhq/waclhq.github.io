@@ -1089,6 +1089,51 @@
     transform-origin: 50% 0;
   }
 
+  /* Older live bets smoulder: the blaze of a fresh bet has banked down to
+     coals, a warm light breathing up from the card's bottom edge and catching
+     the lower portrait. Two out-of-phase loops with incommensurate periods so
+     it never reads as a metronome; opacity and transform only, so a board of
+     five costs nothing. Under reduced motion it holds as a still warm glow. */
+  .tile-coals {
+    position: absolute;
+    inset: 52% -6% -4% -6%;
+    pointer-events: none;
+    background: radial-gradient(
+      120% 95% at 50% 112%,
+      rgba(255, 82, 82, 0.32),
+      rgba(255, 159, 26, 0.13) 52%,
+      transparent 78%
+    );
+    opacity: 0.45;
+    animation:
+      coals-breathe 6.8s ease-in-out infinite,
+      coals-waver 2.9s ease-in-out infinite;
+  }
+  @keyframes coals-breathe {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    46% {
+      opacity: 0.8;
+    }
+    72% {
+      opacity: 0.5;
+    }
+  }
+  @keyframes coals-waver {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    35% {
+      transform: translateX(-2.5%);
+    }
+    70% {
+      transform: translateX(2%);
+    }
+  }
+
   /* Fresh money burns. A bet taken in the last two days is wreathed in a real
      fire — a heat grid simulated in FireFrame.tsx and painted at one cell per
      three pixels, so the browser's own upscale is what softens the flame. The
@@ -1123,6 +1168,7 @@
      which stamps data-motion="on" on the root. */
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-motion='on']) .unfold,
+    :root:not([data-motion='on']) .tile-coals,
     :root:not([data-motion='on']) .live-dot,
     :root:not([data-motion='on']) .pop-in,
     :root:not([data-motion='on']) .line-in,

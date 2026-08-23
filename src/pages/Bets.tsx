@@ -308,7 +308,7 @@ export default function Bets() {
    * their triangle in their own colour with their portrait in the corner,
    * the stake on a ribbon along the bottom. Tap to unfold the full slip.
    */
-  const BetTile = ({ bet }: { bet: Bet }) => {
+  const BetTile = ({ bet, coals = false }: { bet: Bet; coals?: boolean }) => {
     const [a, b] = [bet.proposer, bet.opponent]
     const [colorA, colorB] = [managerColor(a), managerColor(b)]
     const active = open === bet.id
@@ -359,6 +359,7 @@ export default function Bets() {
           <span className="tile-vs arcade" aria-hidden>
             VS
           </span>
+          {coals && <span className="tile-coals" aria-hidden />}
           <span className="tile-shine" aria-hidden />
         </span>
         <span className="tile-bar">
@@ -413,7 +414,8 @@ export default function Bets() {
                 <BetTile bet={bet} />
               </FireFrame>
             ) : (
-              <BetTile bet={bet} />
+              // Live but past the blaze: banked down to smouldering coals.
+              <BetTile bet={bet} coals={bet.status === 'live'} />
             )}
             {open === bet.id && (
               <div className="unfold col-span-full">
