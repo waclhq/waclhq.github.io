@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import ManagerTag from '../components/ManagerTag'
-import { Chip, Panel, PageHeader , SectionNav } from '../components/ui'
+import { Chip, Panel, PageHeader, SectionNav, useRevealed } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
@@ -148,7 +148,7 @@ export default function Lab() {
                   className="tnum block text-[16px] font-bold"
                   style={{ color: index === 0 ? 'var(--color-arc-yellow)' : 'var(--color-arc-ink)' }}
                 >
-                  {row.american}
+                  <Rattle text={row.american} delay={index * 55} />
                 </span>
                 <span className="text-[11px] text-arc-ink-faint">{pct(row.probability)}</span>
               </span>
@@ -636,5 +636,55 @@ function ContractTable({
         ))}
       </tbody>
     </table>
+  )
+}
+
+
+/**
+ * A departures-board figure: when first seen, the characters rattle through
+ * random digits and settle left to right, like the book updating its lines.
+ * Under reduced motion the value simply prints.
+ */
+function Rattle({ text, delay = 0 }: { text: string; delay?: number }) {
+  const host = useRef<HTMLSpanElement>(null)
+  const revealed = useRevealed(host)
+  const [shown, setShown] = useState(() => (animationsDisabled() ? text : ''))
+
+  useEffect(() => {
+    if (animationsDisabled()) {
+      setShown(text)
+      return
+    }
+    if (!revealed) return
+    const started = performance.now() + delay
+    let frame = 0
+    const tick = (now: number) => {
+      const elapsed = now - started
+      if (elapsed < 0) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      // each character locks in 70ms after the one before
+      const settled = Math.floor(elapsed / 70)
+      if (settled >= text.length) {
+        setShown(text)
+        return
+      }
+      let next = text.slice(0, settled)
+      for (let i = settled; i < text.length; i += 1) {
+        const ch = text[i]
+        next += /[0-9]/.test(ch) ? String((Math.random() * 10) | 0) : ch
+      }
+      setShown(next)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [revealed, text, delay])
+
+  return (
+    <span ref={host} className="tnum">
+      {shown || '\u00a0'}
+    </span>
   )
 }

@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import PixelMugshot from '../components/PixelMugshot'
-import { Chip, Panel, PageHeader, Scroller, Stat } from '../components/ui'
+import { Chip, Panel, PageHeader, Stat } from '../components/ui'
 import { Confetti } from '../components/effects'
+import BurnAway from '../components/BurnAway'
 import FireFrame from '../components/FireFrame'
 import { play } from '../lib/sfx'
 import { animationsDisabled } from '../lib/motion'
@@ -59,6 +60,10 @@ export default function Bets() {
   const [open, setOpen] = useState<string | null>(null)
   // Bumped on a settle so the confetti remounts and fires again.
   const [celebrate, setCelebrate] = useState(0)
+  // The execution in progress: whose half of which slip is burning away.
+  const [pyre, setPyre] = useState<{ betId: string; loser: ManagerId; winner: ManagerId } | null>(
+    null,
+  )
 
   useEffect(() => {
     void readBets().then(setFile)
@@ -141,6 +146,13 @@ export default function Bets() {
   const settle = async (bet: Bet, winner: ManagerId) => {
     setBusy(bet.id)
     setError(null)
+    if (!animationsDisabled()) {
+      setPyre({
+        betId: bet.id,
+        loser: winner === bet.proposer ? bet.opponent : bet.proposer,
+        winner,
+      })
+    }
     try {
       await save<BetResultsFile>(
         'bet-results.json',
@@ -155,6 +167,7 @@ export default function Bets() {
       play('roar')
       if (!animationsDisabled()) setCelebrate((n) => n + 1)
     } catch (cause) {
+      setPyre(null)
       setError(cause instanceof Error ? cause.message : 'Could not record the result.')
     } finally {
       setBusy(null)
@@ -312,6 +325,12 @@ export default function Bets() {
     const [a, b] = [bet.proposer, bet.opponent]
     const [colorA, colorB] = [managerColor(a), managerColor(b)]
     const active = open === bet.id
+    // Three or more settled bets between this pair is history the site can
+    // recognise on its own: the VS pill runs hot and throws sparks.
+    const pair = h2h.find(
+      (row) => (row.a === a && row.b === b) || (row.a === b && row.b === a),
+    )
+    const feud = pair && pair.aWins + pair.bWins >= 3 ? pair : null
     return (
       <button
         type="button"
@@ -356,7 +375,15 @@ export default function Bets() {
               <PixelMugshot seed={b} scale={3} />
             </span>
           </span>
-          <span className="tile-vs arcade" aria-hidden>
+          <span
+            className={`tile-vs arcade ${feud ? 'tile-vs-feud' : ''}`}
+            title={
+              feud
+                ? `Blood feud: ${managerName(managers, feud.a)} ${feud.aWins}–${feud.bWins} ${managerName(managers, feud.b)}`
+                : undefined
+            }
+            aria-hidden
+          >
             VS
           </span>
           {coals && <span className="tile-coals" aria-hidden />}
@@ -466,9 +493,18 @@ export default function Bets() {
           {halves.map((id, i) => (
             <div
               key={id}
-              className={`flex flex-1 items-center gap-2.5 p-3 ${i ? 'flex-row-reverse text-right' : ''}`}
-              style={{ opacity: lost(id) ? 0.45 : 1 }}
+              className={`relative flex flex-1 items-center gap-2.5 p-3 ${i ? 'flex-row-reverse text-right' : ''} ${
+                pyre?.betId === bet.id && pyre.winner === id ? 'win-flood' : ''
+              }`}
+              style={{
+                opacity: lost(id) ? 0.45 : 1,
+                ['--flood' as string]:
+                  pyre?.betId === bet.id && pyre.winner === id
+                    ? `${managerColor(id)}2e`
+                    : undefined,
+              }}
             >
+              {pyre?.betId === bet.id && pyre.loser === id && <BurnAway />}
               {face(id, 2)}
               <span className="min-w-0">
                 <span
@@ -757,53 +793,76 @@ export default function Bets() {
               title="settled"
               subtitle={
                 commissioner
-                  ? 'The record. Winners in green. Yours to correct — ✎ fixes the terms, the stake, or the wrong name called.'
-                  : 'The record. Winners in green.'
+                  ? 'The stubs you kept. ✎ fixes the terms, the stake, or the wrong name called.'
+                  : 'The stubs you kept — every settled bet, stamped by its winner.'
               }
             >
-              <Scroller>
-                <table className="out">
-                  <thead>
-                    <tr>
-                      <th>Bet</th>
-                      <th>Winner</th>
-                      <th>Loser</th>
-                      <th className="n">Stake</th>
-                      <th className="n">Settled</th>
-                      {commissioner && <th className="n">Fix</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {settled.map((bet) => (
-                      <tr key={bet.id}>
-                        <td className="max-w-[280px] truncate">{bet.terms}</td>
-                        <td className="text-arc-green">{managerName(managers, bet.winner!)}</td>
-                        <td className="text-arc-ink-faint">
-                          {managerName(managers, loserOf(bet)!)}
-                        </td>
-                        <td className="n">{stakeLabel(bet)}</td>
-                        <td className="n text-arc-ink-faint">
-                          {bet.settledAt ? shortDate(bet.settledAt) : '—'}
-                        </td>
-                        {commissioner && (
-                          <td className="n">
-                            <button
-                              type="button"
-                              className="px-1 text-[15px] leading-none text-arc-ink-faint hover:text-arc-green"
-                              disabled={busy === bet.id}
-                              onClick={() => setEditing(bet)}
-                              aria-label={`Edit or delete the bet: ${bet.terms}`}
-                              title="Edit or delete this bet"
-                            >
-                              ✎
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Scroller>
+              <div className="space-y-3.5 px-4 py-5 sm:px-5">
+                {settled.map((bet, index) => {
+                  const winner = bet.winner!
+                  const beaten = loserOf(bet)!
+                  const winnerColor = managerColor(winner)
+                  return (
+                    <div
+                      key={bet.id}
+                      className="stub"
+                      style={{
+                        ['--rot' as string]: `${((index % 3) - 1) * 0.45}deg`,
+                        ['--seam' as string]: '86px',
+                      }}
+                    >
+                      <span className="stub-notch top" aria-hidden />
+                      <span className="stub-notch bottom" aria-hidden />
+                      <div className="stub-stake w-[86px]">
+                        <span className="text-[9.5px] tracking-[0.14em] text-arc-ink-faint uppercase">
+                          {bet.stakeKind === 'cash' ? 'Stake' : 'Forfeit'}
+                        </span>
+                        <span
+                          className={`tnum text-[19px] leading-tight font-bold ${
+                            bet.stakeKind === 'cash'
+                              ? 'text-arc-green'
+                              : 'text-[15px] text-[var(--color-arc-orange)]'
+                          }`}
+                        >
+                          {bet.stakeKind === 'cash' ? `$${bet.stake}` : 'DARE'}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1 px-3 py-2.5">
+                        <p className="truncate text-[13.5px] text-arc-ink">{bet.terms}</p>
+                        <p className="mt-0.5 truncate text-[11.5px] text-arc-ink-faint">
+                          <b style={{ color: winnerColor }}>{managerName(managers, winner)}</b>
+                          {' beat '}
+                          {managerName(managers, beaten)}
+                          {bet.settledAt ? ` · ${shortDate(bet.settledAt)}` : ''}
+                          {bet.stakeKind === 'forfeit' && bet.forfeit ? ` · ${bet.forfeit}` : ''}
+                        </p>
+                      </div>
+                      <span
+                        className="stamp stamp-in"
+                        style={{
+                          color: winnerColor,
+                          ['--stamp-rot' as string]: `${-11 + (index % 3) * 4}deg`,
+                          ['--i' as string]: Math.min(index, 8),
+                        }}
+                      >
+                        {managerName(managers, winner)} ✓
+                      </span>
+                      {commissioner && (
+                        <button
+                          type="button"
+                          className="mr-2 self-center px-1 text-[15px] leading-none text-arc-ink-faint hover:text-arc-green"
+                          disabled={busy === bet.id}
+                          onClick={() => setEditing(bet)}
+                          aria-label={`Edit or delete the bet: ${bet.terms}`}
+                          title="Edit or delete this bet"
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </Panel>
           )}
 

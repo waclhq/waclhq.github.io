@@ -80,6 +80,27 @@
     /* Arena lights: an imperceptibly slow drift so the room breathes. */
     animation: arena-drift 46s ease-in-out infinite;
   }
+  /* Stadium hours. Dusk warms the amber; after 11pm the lights come down
+     and the neon reads hotter — the book at 1am looks like 1am. Colour only;
+     the drift animation above carries on untouched. */
+  :root[data-hours='dusk'] body::before {
+    background:
+      radial-gradient(95vmax 60vmax at 88% -14%, rgba(83, 211, 55, 0.1), transparent 55%),
+      radial-gradient(85vmax 55vmax at -8% 110%, rgba(255, 159, 26, 0.1), transparent 55%);
+  }
+  :root[data-hours='late'] body::before {
+    background:
+      radial-gradient(95vmax 60vmax at 88% -14%, rgba(83, 211, 55, 0.07), transparent 50%),
+      radial-gradient(85vmax 55vmax at -8% 110%, rgba(255, 120, 26, 0.11), transparent 55%),
+      radial-gradient(120vmax 80vmax at 50% 120%, rgba(4, 5, 8, 0.55), transparent 60%);
+  }
+  :root[data-hours='late'] body {
+    background-image: radial-gradient(rgba(255, 205, 150, 0.05) 1px, transparent 1px);
+  }
+  :root[data-hours='late'] .hero-num {
+    text-shadow: 0 0 38px rgba(83, 211, 55, 0.55);
+  }
+
   @keyframes arena-drift {
     0%,
     100% {
@@ -1194,6 +1215,143 @@
       box-shadow: 0 0 0 5px rgba(83, 211, 55, 0);
     }
   }
+  /* When the ruling lands, the winner's half of the slip floods with their
+     own colour while the loser's half burns. */
+  @keyframes win-flood {
+    0% {
+      background: transparent;
+    }
+    25%,
+    70% {
+      background: var(--flood, rgba(83, 211, 55, 0.16));
+    }
+    100% {
+      background: transparent;
+    }
+  }
+  .win-flood {
+    animation: win-flood 2.2s ease-out both;
+  }
+
+  /* ---- kept tickets ------------------------------------------------------
+     Settled bets as the stubs you kept: a perforated seam between the stake
+     and the story, a sawtooth tear along the bottom, and the winner's rubber
+     stamp pressed on slightly askew. */
+  .stub {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    background: linear-gradient(180deg, #1a2028, #161b22);
+    border: 1px solid var(--color-arc-line);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    transform: rotate(var(--rot, 0deg));
+  }
+  .stub::after {
+    /* the tear: a sawtooth strip that eats the bottom edge */
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: -1px;
+    left: -1px;
+    height: 7px;
+    background:
+      linear-gradient(-45deg, transparent 5px, #161b22 0) 0 0 / 14px 7px repeat-x,
+      linear-gradient(45deg, transparent 5px, #161b22 0) 7px 0 / 14px 7px repeat-x;
+  }
+  .stub-stake {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 78px;
+    padding: 12px 12px;
+    text-align: center;
+    border-right: 2px dashed rgba(103, 112, 127, 0.55);
+  }
+  /* punched notches where the perforation meets the edges */
+  .stub-notch {
+    position: absolute;
+    left: var(--seam, 78px);
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: var(--color-arc-panel);
+    border: 1px solid var(--color-arc-line);
+    transform: translateX(-50%);
+  }
+  .stub-notch.top {
+    top: -8px;
+  }
+  .stub-notch.bottom {
+    bottom: -8px;
+  }
+  .stamp {
+    align-self: center;
+    flex-shrink: 0;
+    margin-right: 12px;
+    padding: 3px 9px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 3px double currentColor;
+    border-radius: 4px;
+    transform: rotate(var(--stamp-rot, -8deg));
+    opacity: 0.92;
+  }
+  .stamp-in {
+    animation: stamp-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+  }
+  @keyframes stamp-in {
+    from {
+      opacity: 0;
+      transform: rotate(var(--stamp-rot, -8deg)) scale(1.6);
+    }
+    60% {
+      opacity: 1;
+      transform: rotate(var(--stamp-rot, -8deg)) scale(0.94);
+    }
+  }
+
+  /* ---- blood feud ---------------------------------------------------------
+     Two managers with real history: the VS pill runs hot and throws sparks. */
+  .tile-vs-feud {
+    border-color: var(--color-arc-orange);
+    color: var(--color-arc-orange);
+  }
+  .tile-vs-feud::before,
+  .tile-vs-feud::after {
+    content: '✦';
+    position: absolute;
+    font-size: 8px;
+    color: var(--color-arc-yellow);
+    animation: spark-flick 1.1s steps(2) infinite;
+  }
+  .tile-vs-feud::before {
+    top: -7px;
+    right: -5px;
+  }
+  .tile-vs-feud::after {
+    bottom: -8px;
+    left: -4px;
+    color: var(--color-arc-orange);
+    animation-duration: 0.9s;
+    animation-delay: 0.35s;
+  }
+  @keyframes spark-flick {
+    0%,
+    100% {
+      opacity: 0;
+      transform: scale(0.6) rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15) rotate(38deg);
+    }
+  }
+
   /* ---- the menu, choreographed ------------------------------------------
      One continuous gesture: the scrim breathes in, the sheet springs up with
      real travel and a hint of overshoot, the tiles are dealt in sequence with
@@ -1363,6 +1521,10 @@
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-motion='on']) .unfold,
     :root:not([data-motion='on']) .sheet-up,
+    :root:not([data-motion='on']) .stamp-in,
+    :root:not([data-motion='on']) .win-flood,
+    :root:not([data-motion='on']) .tile-vs-feud::before,
+    :root:not([data-motion='on']) .tile-vs-feud::after,
     :root:not([data-motion='on']) .menu-scrim,
     :root:not([data-motion='on']) .menu-tile,
     :root:not([data-motion='on']) .menu-tile-bar,

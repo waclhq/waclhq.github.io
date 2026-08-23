@@ -272,6 +272,28 @@ function playNote(context: AudioContext, out: AudioNode, note: Note, when: numbe
  * Transport: lookahead scheduler with a seamless loop
  * ------------------------------------------------------------------ */
 
+/**
+ * Notes scheduled into the near future, kept so the UI can dance to them.
+ * meterLevels() folds them into three band levels (bass / lead / high) that
+ * decay over ~350ms after each onset — enough for equalizer bars to bounce
+ * in time with what is actually sounding.
+ */
+const liveNotes: { t: number; pitch: number; vel: number }[] = []
+
+export function meterLevels(): [number, number, number] {
+  if (!ctx || timer === null) return [0, 0, 0]
+  const now = ctx.currentTime
+  const bands: [number, number, number] = [0, 0, 0]
+  for (const note of liveNotes) {
+    const age = now - note.t
+    if (age < 0 || age > 0.35) continue
+    const level = (1 - age / 0.35) * (0.4 + 0.6 * note.vel)
+    const band = note.pitch < 48 ? 0 : note.pitch < 66 ? 1 : 2
+    if (level > bands[band]) bands[band] = level
+  }
+  return bands
+}
+
 async function loadPiece(): Promise<Piece> {
   if (piece) return piece
   const response = await fetch(`${import.meta.env.BASE_URL}media/wacl-theme.mid`)
@@ -326,6 +348,8 @@ export async function start(): Promise<void> {
       const when = startAt + loop * theme.length + note.t
       if (when > horizon) break
       playNote(ctx, master, note, when)
+      liveNotes.push({ t: when, pitch: note.pitch, vel: note.vel })
+      if (liveNotes.length > 240) liveNotes.splice(0, 120)
       scheduled += 1
       index += 1
     }

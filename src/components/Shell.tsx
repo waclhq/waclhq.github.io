@@ -11,7 +11,7 @@ import CommissionerPanel from './CommissionerPanel'
 import { ReplayWipe } from './effects'
 import { animationsDisabled, motionForcedOn, setMotionForcedOn, systemPrefersReduced } from '../lib/motion'
 import { play, setSfxOn, sfxOn } from '../lib/sfx'
-import { musicOn, setMusicOn } from '../lib/music'
+import { meterLevels, musicOn, setMusicOn } from '../lib/music'
 
 // iPhones and iPads mute web audio while the ring/silent switch is silent —
 // worth a nudge right next to the music toggle, but only where it applies.
@@ -39,6 +39,43 @@ const NAV = [
 
 /** The four destinations that earn a permanent thumb-reach slot. */
 const TABS = ['/', '/bets', '/standings', '/records']
+
+/**
+ * Three equalizer bars that dance to the theme actually playing — the UI
+ * listening to its own music. rAF-driven off meterLevels(); renders flat
+ * bars when the transport is idle and never runs under reduced motion.
+ */
+function MusicBars() {
+  const bars = useRef<(HTMLSpanElement | null)[]>([])
+  useEffect(() => {
+    if (animationsDisabled()) return
+    let frame = 0
+    const tick = () => {
+      const levels = meterLevels()
+      for (let i = 0; i < 3; i += 1) {
+        const bar = bars.current[i]
+        if (bar) bar.style.transform = `scaleY(${(0.22 + levels[i] * 0.78).toFixed(3)})`
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  return (
+    <span className="flex h-[13px] items-end gap-[2px]" aria-hidden>
+      {[0, 1, 2].map((band) => (
+        <span
+          key={band}
+          ref={(node) => {
+            bars.current[band] = node
+          }}
+          className="w-[3px] rounded-sm bg-current"
+          style={{ height: '100%', transform: 'scaleY(0.22)', transformOrigin: 'bottom' }}
+        />
+      ))}
+    </span>
+  )
+}
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())
@@ -82,7 +119,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         title="The WACL Theme — original league music, 90-second loop"
         aria-pressed={music}
       >
-        ♪ {music ? 'ON' : 'OFF'}
+        {music ? <MusicBars /> : '♪'} {music ? 'ON' : 'OFF'}
       </button>
       {music && IS_IOS && (
         <span className="max-w-[76px] text-[9px] leading-tight text-arc-yellow">
@@ -118,6 +155,20 @@ export default function Shell({ children }: { children: ReactNode }) {
       setMenuClosing(false)
     }, 230)
   }
+
+  // The room keeps stadium hours: daytime graphite, warmer at dusk, and the
+  // low-lit book after 11pm. Re-stamped every ten minutes so a long session
+  // drifts with the evening.
+  useEffect(() => {
+    const stamp = () => {
+      const hour = new Date().getHours()
+      const mode = hour >= 23 || hour < 6 ? 'late' : hour >= 17 ? 'dusk' : 'day'
+      document.documentElement.setAttribute('data-hours', mode)
+    }
+    stamp()
+    const timer = window.setInterval(stamp, 10 * 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
