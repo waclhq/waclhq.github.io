@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import PixelMugshot from '../components/PixelMugshot'
 import { Chip, Panel, PageHeader, Scroller, Stat } from '../components/ui'
 import { Confetti } from '../components/effects'
@@ -55,6 +55,8 @@ export default function Bets() {
   const [composing, setComposing] = useState(false)
   // The bet the commissioner is correcting, if any.
   const [editing, setEditing] = useState<Bet | null>(null)
+  // Which tile on the board is unfolded into a full slip.
+  const [open, setOpen] = useState<string | null>(null)
   // Bumped on a settle so the confetti remounts and fires again.
   const [celebrate, setCelebrate] = useState(0)
 
@@ -268,7 +270,7 @@ export default function Bets() {
   const EditButton = ({ bet }: { bet: Bet }) => (
     <button
       type="button"
-      className="btn ml-auto min-h-[34px] px-2.5 py-1"
+      className="btn min-h-[34px] px-2.5 py-1"
       disabled={busy === bet.id}
       onClick={() => setEditing(bet)}
       aria-label={`Edit or delete the bet: ${bet.terms}`}
@@ -277,6 +279,162 @@ export default function Bets() {
       ✎
     </button>
   )
+
+  /**
+   * Pointer-tracked 3D tilt with a foil catch-light, holo-card style. Vars
+   * feed the CSS transform; reduced motion leaves the card flat.
+   */
+  const tiltHandlers = {
+    onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
+      if (animationsDisabled()) return
+      const el = event.currentTarget
+      const box = el.getBoundingClientRect()
+      const px = (event.clientX - box.left) / box.width - 0.5
+      const py = (event.clientY - box.top) / box.height - 0.5
+      el.style.setProperty('--ty', `${(px * 9).toFixed(2)}deg`)
+      el.style.setProperty('--tx', `${(-py * 7).toFixed(2)}deg`)
+      el.style.setProperty('--gx', `${((px + 0.5) * 100).toFixed(1)}%`)
+      el.style.setProperty('--gy', `${((py + 0.5) * 100).toFixed(1)}%`)
+    },
+    onPointerLeave: (event: React.PointerEvent<HTMLElement>) => {
+      const el = event.currentTarget
+      el.style.removeProperty('--ty')
+      el.style.removeProperty('--tx')
+    },
+  }
+
+  /**
+   * A matchup slab: square card split on the diagonal, each manager holding
+   * their triangle in their own colour with their portrait in the corner,
+   * the stake on a ribbon along the bottom. Tap to unfold the full slip.
+   */
+  const BetTile = ({ bet }: { bet: Bet }) => {
+    const [a, b] = [bet.proposer, bet.opponent]
+    const [colorA, colorB] = [managerColor(a), managerColor(b)]
+    const active = open === bet.id
+    return (
+      <button
+        type="button"
+        className="bet-tile"
+        style={
+          active
+            ? { borderColor: colorA, boxShadow: `0 12px 30px rgba(0,0,0,.5), 0 0 16px ${colorB}44` }
+            : undefined
+        }
+        aria-expanded={active}
+        aria-label={`${managerName(managers, a)} versus ${managerName(managers, b)}, ${stakeLabel(bet)} — details`}
+        onClick={() => setOpen(active ? null : bet.id)}
+        {...tiltHandlers}
+      >
+        <span className="flex h-[3px]">
+          <span className="flex-1" style={{ background: colorA }} />
+          <span className="flex-1" style={{ background: colorB }} />
+        </span>
+        <span className="tile-face">
+          <span className="tile-half tile-half-a" style={{ ['--half' as string]: `${colorA}2e` }} />
+          <span className="tile-half tile-half-b" style={{ ['--half' as string]: `${colorB}2e` }} />
+          <span className="tile-seam" aria-hidden />
+          <span className="absolute top-[7%] left-[5%] flex w-[38%] flex-col items-start gap-1">
+            <span className="tile-mug w-full overflow-hidden rounded-md border border-arc-line">
+              <PixelMugshot seed={a} scale={3} />
+            </span>
+            <span
+              className="arcade max-w-full truncate text-[11px] uppercase"
+              style={{ color: colorA }}
+            >
+              {managerName(managers, a)}
+            </span>
+          </span>
+          <span className="absolute right-[5%] bottom-[6%] flex w-[38%] flex-col items-end gap-1">
+            <span
+              className="arcade max-w-full truncate text-[11px] uppercase"
+              style={{ color: colorB }}
+            >
+              {managerName(managers, b)}
+            </span>
+            <span className="tile-mug w-full overflow-hidden rounded-md border border-arc-line">
+              <PixelMugshot seed={b} scale={3} />
+            </span>
+          </span>
+          <span className="tile-vs arcade" aria-hidden>
+            VS
+          </span>
+          <span className="tile-shine" aria-hidden />
+        </span>
+        <span className="tile-bar">
+          <span
+            className={`tnum min-w-0 flex-1 truncate leading-tight font-semibold ${
+              bet.stakeKind === 'cash'
+                ? 'text-[15px] text-arc-green'
+                : 'text-[12px] text-[var(--color-arc-orange)]'
+            }`}
+          >
+            {stakeLabel(bet)}
+          </span>
+          {bet.status === 'live' ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-[10px] tracking-[0.14em] whitespace-nowrap text-arc-green uppercase">
+              <span className="live-dot" aria-hidden />
+              Live
+            </span>
+          ) : (
+            <span className="text-[10px] tracking-[0.14em] text-[var(--color-arc-orange)] uppercase">
+              Open
+            </span>
+          )}
+        </span>
+      </button>
+    )
+  }
+
+  /**
+   * The checkerboard. Tiles flow in a dense grid; the open one unfolds the
+   * full slip across the next row, app-store style. Fresh live bets burn and
+   * are dealt first, so the fire sits on the top row where it has headroom.
+   */
+  const BetBoard = ({
+    bets,
+    actions,
+  }: {
+    bets: Bet[]
+    actions: (bet: Bet) => React.ReactNode
+  }) => {
+    const burning = (bet: Bet) => bet.status === 'live' && isNewBet(bet) && !animationsDisabled()
+    const dealt = [...bets].sort((x, y) => Number(burning(y)) - Number(burning(x)))
+    return (
+      <div
+        className={`grid grid-cols-2 px-5 sm:grid-cols-3 xl:grid-cols-4 ${
+          dealt.some(burning) ? 'gap-8 pt-11 pb-8' : 'gap-3 py-5'
+        }`}
+      >
+        {dealt.map((bet) => (
+          <Fragment key={bet.id}>
+            {burning(bet) ? (
+              <FireFrame>
+                <BetTile bet={bet} />
+              </FireFrame>
+            ) : (
+              <BetTile bet={bet} />
+            )}
+            {open === bet.id && (
+              <div className="unfold col-span-full">
+                <Slip bet={bet}>
+                  {actions(bet)}
+                  <button
+                    type="button"
+                    className="ml-auto px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
+                    onClick={() => setOpen(null)}
+                    aria-label="Collapse"
+                  >
+                    ×
+                  </button>
+                </Slip>
+              </div>
+            )}
+          </Fragment>
+        ))}
+      </div>
+    )
+  }
 
   const face = (id: ManagerId, size = 2) => (
     <span className="shrink-0 overflow-hidden rounded-md border border-arc-line">
@@ -353,9 +511,7 @@ export default function Bets() {
       </div>
     )
 
-    // Fresh money burns: a bet taken in the last two days rides in a wreath
-    // of flame, which is how you find this week's action in a stack of slips.
-    return bet.status === 'live' && isNewBet(bet) ? <FireFrame>{card}</FireFrame> : card
+    return card
   }
 
   return (
@@ -521,36 +677,38 @@ export default function Bets() {
                 : 'Nothing pending. Propose one.'
             }
           >
-            <div className="grid gap-3 px-5 py-5 lg:grid-cols-2">
-              {proposed.map((bet) => (
-                <Slip key={bet.id} bet={bet}>
-                  <Chip tone="flag">Awaiting {managerName(managers, bet.opponent)}</Chip>
-                  {unlocked && (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-primary min-h-[34px] px-3 py-1"
-                        disabled={busy === bet.id}
-                        onClick={() => void accept(bet)}
-                      >
-                        {busy === bet.id ? 'Saving…' : "I'm in"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn min-h-[34px] px-3 py-1"
-                        disabled={busy === bet.id}
-                        onClick={() => void drop(bet)}
-                      >
-                        Withdraw
-                      </button>
-                    </>
-                  )}
-                </Slip>
-              ))}
-              {proposed.length === 0 && (
-                <p className="text-[13px] text-arc-ink-faint italic">No open proposals.</p>
-              )}
-            </div>
+            {proposed.length === 0 ? (
+              <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">No open proposals.</p>
+            ) : (
+              <BetBoard
+                bets={proposed}
+                actions={(bet) => (
+                  <>
+                    <Chip tone="flag">Awaiting {managerName(managers, bet.opponent)}</Chip>
+                    {unlocked && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-primary min-h-[34px] px-3 py-1"
+                          disabled={busy === bet.id}
+                          onClick={() => void accept(bet)}
+                        >
+                          {busy === bet.id ? 'Saving…' : "I'm in"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn min-h-[34px] px-3 py-1"
+                          disabled={busy === bet.id}
+                          onClick={() => void drop(bet)}
+                        >
+                          Withdraw
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              />
+            )}
           </Panel>
 
           <Panel
@@ -559,42 +717,37 @@ export default function Bets() {
               commissioner ? 'Tap a winner when it resolves.' : 'The commissioner calls these.'
             }`}
           >
-            {/* A burning slip needs air around it, or the panel clips its
-                flames off flat. Only pay for the room when something is
-                actually alight. */}
-            <div
-              className={`grid px-5 lg:grid-cols-2 ${
-                live.some(isNewBet) && !animationsDisabled()
-                  ? 'gap-9 pt-11 pb-8'
-                  : 'gap-3 py-5'
-              }`}
-            >
-              {live.map((bet) => (
-                <Slip key={bet.id} bet={bet}>
-                  <Chip tone="up">Live</Chip>
-                  {commissioner && (
-                    <>
-                      <span className="text-[12px] text-arc-ink-faint">Winner:</span>
-                      {[bet.proposer, bet.opponent].map((id) => (
-                        <button
-                          key={id}
-                          type="button"
-                          className="btn min-h-[34px] px-3 py-1"
-                          disabled={busy === bet.id}
-                          onClick={() => void settle(bet, id)}
-                        >
-                          {managerName(managers, id)}
-                        </button>
-                      ))}
-                      <EditButton bet={bet} />
-                    </>
-                  )}
-                </Slip>
-              ))}
-              {live.length === 0 && (
-                <p className="text-[13px] text-arc-ink-faint italic">Nothing riding right now.</p>
-              )}
-            </div>
+            {live.length === 0 ? (
+              <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">
+                Nothing riding right now.
+              </p>
+            ) : (
+              <BetBoard
+                bets={live}
+                actions={(bet) => (
+                  <>
+                    <Chip tone="up">Live</Chip>
+                    {commissioner && (
+                      <>
+                        <span className="text-[12px] text-arc-ink-faint">Winner:</span>
+                        {[bet.proposer, bet.opponent].map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className="btn min-h-[34px] px-3 py-1"
+                            disabled={busy === bet.id}
+                            onClick={() => void settle(bet, id)}
+                          >
+                            {managerName(managers, id)}
+                          </button>
+                        ))}
+                        <EditButton bet={bet} />
+                      </>
+                    )}
+                  </>
+                )}
+              />
+            )}
           </Panel>
 
           {settled.length > 0 && (

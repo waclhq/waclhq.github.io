@@ -128,9 +128,10 @@ export default function Guide() {
               impossible to miss. The fire dies down on its own after two days.
             </Step>
             <Step n={2}>
-              When a bet resolves, find it under <B>Live action</B> and <B>tap the name of the
-              winner</B>. That is the ruling — it moves the bet down to <B>Settled</B> and puts
-              the money on the tab.
+              Bets show as small matchup cards — the two faces, the stake, a LIVE light.{' '}
+              <B>Tap a card to open it.</B> When a bet resolves, open its card and <B>tap the
+              name of the winner</B>. That is the ruling — it moves the bet down to{' '}
+              <B>Settled</B> and puts the money on the tab.
             </Step>
             <Step n={3}>
               Called the wrong name, or the terms have a typo? Press <B>✎</B> — on the live bet,

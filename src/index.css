@@ -948,6 +948,147 @@
     animation: redzone 1.4s steps(1) infinite;
   }
 
+  /* ---- the bet board ---------------------------------------------------
+     Compact matchup slabs: a checkerboard of square cards, each split on the
+     diagonal between the two managers, tilting in 3D under the pointer with
+     a foil shine like a holographic trading card. Tapping one unfolds the
+     full slip beneath its row. */
+  .bet-tile {
+    position: relative;
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: linear-gradient(180deg, #161b22, var(--color-arc-panel));
+    border: 1px solid var(--color-arc-line);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transform: perspective(720px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg))
+      translateZ(var(--tz, 0px));
+    transform-style: preserve-3d;
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      box-shadow 0.16s ease;
+    box-shadow: var(--shadow-hard-sm);
+  }
+  .bet-tile:hover {
+    --tz: 10px;
+    border-color: var(--color-arc-ink-faint);
+    box-shadow: var(--shadow-hard);
+  }
+  .bet-tile:active {
+    --tz: -4px;
+  }
+  .tile-face {
+    position: relative;
+    display: block;
+    aspect-ratio: 6 / 5;
+    overflow: hidden;
+  }
+  /* Each manager owns a triangle, washed from their corner in their colour. */
+  .tile-half {
+    position: absolute;
+    inset: 0;
+  }
+  .tile-half-a {
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+    background: radial-gradient(130% 130% at 0% 0%, var(--half) 0%, transparent 58%);
+  }
+  .tile-half-b {
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    background: radial-gradient(130% 130% at 100% 100%, var(--half) 0%, transparent 58%);
+  }
+  .tile-seam {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      transparent calc(50% - 1px),
+      rgba(238, 241, 246, 0.22) 50%,
+      transparent calc(50% + 1px)
+    );
+  }
+  .tile-vs {
+    /* Riding the diagonal seam (x + y = 100%), pushed toward its bottom-left
+       end — the one stretch of the tile neither portrait nor name reaches. */
+    position: absolute;
+    top: 69%;
+    left: 31%;
+    transform: translate(-50%, -50%);
+    padding: 1px 7px;
+    font-size: 10px;
+    border-radius: 999px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg);
+    color: var(--color-arc-ink-faint);
+  }
+  /* Foil catch-light that follows the pointer. */
+  .tile-shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: radial-gradient(
+      240px circle at var(--gx, 50%) var(--gy, 40%),
+      rgba(255, 255, 255, 0.16),
+      rgba(255, 255, 255, 0.05) 38%,
+      transparent 62%
+    );
+  }
+  .bet-tile:hover .tile-shine {
+    opacity: 1;
+  }
+  .tile-mug img,
+  .tile-mug canvas {
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+  }
+  .tile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-top: 1px solid var(--color-arc-line);
+    background: rgba(7, 9, 12, 0.55);
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--color-arc-green);
+    animation: live-dot 1.6s ease-in-out infinite;
+  }
+  @keyframes live-dot {
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(83, 211, 55, 0.5);
+    }
+    50% {
+      opacity: 0.55;
+      box-shadow: 0 0 0 5px rgba(83, 211, 55, 0);
+    }
+  }
+  /* The full slip unfolds beneath the tile's row, hinged at its top edge. */
+  @keyframes unfold {
+    from {
+      opacity: 0;
+      transform: perspective(900px) rotateX(-12deg) scale(0.97) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: perspective(900px) rotateX(0deg) scale(1) translateY(0);
+    }
+  }
+  .unfold {
+    animation: unfold 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    transform-origin: 50% 0;
+  }
+
   /* Fresh money burns. A bet taken in the last two days is wreathed in a real
      fire — a heat grid simulated in FireFrame.tsx and painted at one cell per
      three pixels, so the browser's own upscale is what softens the flame. The
@@ -981,6 +1122,8 @@
   /* Reduced motion is honoured unless the user flips the in-app FX switch,
      which stamps data-motion="on" on the root. */
   @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion='on']) .unfold,
+    :root:not([data-motion='on']) .live-dot,
     :root:not([data-motion='on']) .pop-in,
     :root:not([data-motion='on']) .line-in,
     :root:not([data-motion='on']) .rise-in,
