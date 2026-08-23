@@ -37,17 +37,18 @@ export default function Guide() {
         <Panel title="1 · signing in" subtitle="One password. That's the entire login system.">
           <ol className="space-y-3 px-5 py-5">
             <Step n={1}>
-              On a phone: tap <B>Menu</B> (top right), then <B>Commissioner sign-in</B> at the
-              bottom. On a computer: click the <B>sign-in button at the bottom of the left
-              sidebar</B>.
+              On a phone: tap <B>More</B> (bottom right), then <B>Commissioner sign-in</B> at
+              the bottom of the sheet. On a computer: click the <B>sign-in button at the bottom
+              of the left sidebar</B>.
             </Step>
             <Step n={2}>
               Type the commissioner password and press <B>Unlock</B>. You get the password from
               whoever runs the site — not from this page.
             </Step>
             <Step n={3}>
-              That's it. The bottom bar now shows <B>2 CREDITS</B> instead of 1, and editing
-              buttons appear across the site. Each device remembers until you sign out.
+              That's it. Editing buttons appear across the site — on a computer the bottom bar
+              shows <B>2 CREDITS</B> instead of 1, and on a phone the More sheet shows{' '}
+              <B>COMMISH ✓</B>. Each device remembers until you sign out.
             </Step>
           </ol>
         </Panel>

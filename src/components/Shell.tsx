@@ -22,20 +22,23 @@ const IS_IOS =
 
 // Each destination owns a colour, so the nav reads as a row of cabinet buttons.
 const NAV = [
-  { to: '/', label: 'Ledger', color: 'var(--color-arc-blue)', end: true },
-  { to: '/trades', label: 'Trades', color: 'var(--color-arc-red)' },
-  { to: '/keepers', label: 'Keepers', color: 'var(--color-arc-lime)' },
-  { to: '/draft', label: 'Draft', color: 'var(--color-arc-green)' },
-  { to: '/finances', label: 'Finances', color: 'var(--color-arc-orange)' },
-  { to: '/bets', label: 'The Book', color: 'var(--color-arc-pink)' },
-  { to: '/standings', label: 'Standings', color: 'var(--color-arc-purple)' },
-  { to: '/managers', label: 'Managers', color: 'var(--color-arc-cyan)' },
-  { to: '/records', label: 'Records', color: 'var(--color-arc-pink)' },
-  { to: '/lab', label: 'The Lab', color: 'var(--color-arc-navy)' },
-  { to: '/almanac', label: 'Almanac', color: 'var(--color-arc-brown)' },
-  { to: '/rules', label: 'Rules', color: 'var(--color-arc-teal)' },
-  { to: '/guide', label: 'Manual', color: 'var(--color-arc-yellow)' },
+  { to: '/', label: 'Ledger', color: 'var(--color-arc-blue)', end: true, hint: 'The desk' },
+  { to: '/trades', label: 'Trades', color: 'var(--color-arc-red)', hint: 'Queue & history' },
+  { to: '/keepers', label: 'Keepers', color: 'var(--color-arc-lime)', hint: 'Contracts by team' },
+  { to: '/draft', label: 'Draft', color: 'var(--color-arc-green)', hint: 'Budgets & war room' },
+  { to: '/finances', label: 'Finances', color: 'var(--color-arc-orange)', hint: 'Dues & cash' },
+  { to: '/bets', label: 'The Book', color: 'var(--color-arc-pink)', hint: 'Side bets, live' },
+  { to: '/standings', label: 'Standings', color: 'var(--color-arc-purple)', hint: 'Final tables' },
+  { to: '/managers', label: 'Managers', color: 'var(--color-arc-cyan)', hint: 'Career records' },
+  { to: '/records', label: 'Records', color: 'var(--color-arc-pink)', hint: 'The leaderboards' },
+  { to: '/lab', label: 'The Lab', color: 'var(--color-arc-navy)', hint: 'Stats & roasts' },
+  { to: '/almanac', label: 'Almanac', color: 'var(--color-arc-brown)', hint: 'Year by year' },
+  { to: '/rules', label: 'Rules', color: 'var(--color-arc-teal)', hint: 'The constitution' },
+  { to: '/guide', label: 'Manual', color: 'var(--color-arc-yellow)', hint: 'Commissioner how-to' },
 ]
+
+/** The four destinations that earn a permanent thumb-reach slot. */
+const TABS = ['/', '/bets', '/standings', '/records']
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())
@@ -196,7 +199,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="min-h-dvh pb-10 lg:grid lg:grid-cols-[228px_1fr]">
+    <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10">
       <HelmetField enabled={!animationsDisabled()} />
       {/* Mobile top bar */}
       <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 py-2 lg:hidden">
@@ -218,40 +221,193 @@ export default function Shell({ children }: { children: ReactNode }) {
           >
             Find
           </button>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            className="btn min-h-[36px] px-2.5 py-1"
-            aria-expanded={menuOpen}
-            aria-label="Menu"
-          >
-            {menuOpen ? 'X' : 'Menu'}
-            {pending.length > 0 && !menuOpen && (
-              <span className="text-arc-red">·{pending.length}</span>
-            )}
-          </button>
         </div>
       </div>
 
-      {/* Mobile full-screen menu */}
+      {/* Mobile sheet: the whole map in the thumb zone, every destination in
+          its own colour with a one-line scent. */}
       {menuOpen && (
-        <div className="fixed inset-0 top-[53px] z-40 overflow-y-auto bg-arc-bg lg:hidden">
-          <div className="px-4 py-5">
-            <div className="label mb-3">Select</div>
-            {navList}
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-arc-bg-deep/80 backdrop-blur-sm lg:hidden"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMenuOpen(false)
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+        >
+          <div className="sheet-up max-h-[82dvh] overflow-y-auto rounded-t-2xl border-t-[3px] border-x border-arc-line bg-arc-bg pb-[env(safe-area-inset-bottom)]">
+            <div className="sticky top-0 flex items-center justify-between border-b border-arc-line bg-arc-bg px-4 py-3">
+              <span className="label">Everything</span>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="px-1 text-[20px] leading-none text-arc-ink-faint"
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-3 py-3">
+              {NAV.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className="block no-underline"
+                  onClick={() => {
+                    play('blip')
+                    setMenuOpen(false)
+                  }}
+                >
+                  {({ isActive }) => (
+                    <span
+                      className="flex min-h-[58px] flex-col justify-center rounded-lg border border-arc-line px-3 py-2"
+                      style={{
+                        background: isActive ? item.color : 'var(--color-arc-panel)',
+                        boxShadow: `inset 3px 0 0 ${item.color}`,
+                      }}
+                    >
+                      <span
+                        className="arcade flex items-center gap-2 text-[14px]"
+                        style={{ color: isActive ? 'var(--color-arc-panel)' : 'var(--color-arc-ink)' }}
+                      >
+                        {item.label}
+                        {item.label === 'Trades' && pending.length > 0 && (
+                          <span
+                            className="pulse flex h-4 min-w-[18px] items-center justify-center px-1 text-[10px]"
+                            style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-ink)' }}
+                          >
+                            {pending.length}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="text-[10.5px] leading-tight"
+                        style={{
+                          color: isActive ? 'rgba(7, 9, 12, 0.75)' : 'var(--color-arc-ink-faint)',
+                        }}
+                      >
+                        {item.hint}
+                      </span>
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 border-t border-arc-line px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !sfx
+                  setSfxOn(next)
+                  setSfx(next)
+                  if (next) play('coin')
+                }}
+                className="arcade border-2 border-arc-line px-2 py-1 text-[11px] transition-colors"
+                style={{
+                  background: sfx ? 'var(--color-arc-cyan)' : 'transparent',
+                  color: sfx ? '#04120b' : 'var(--color-arc-ink-faint)',
+                }}
+              >
+                SFX {sfx ? 'ON' : 'OFF'}
+              </button>
+              {reducedByOS && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !fxOn
+                    setMotionForcedOn(next)
+                    setFxOn(next)
+                  }}
+                  className="arcade border-2 border-arc-line px-2 py-1 text-[11px] transition-colors"
+                  style={{
+                    background: fxOn ? 'var(--color-arc-green)' : 'transparent',
+                    color: fxOn ? '#04120b' : 'var(--color-arc-orange)',
+                  }}
+                >
+                  FX {fxOn ? 'ON' : 'OFF'}
+                </button>
+              )}
+              <span className="arcade ml-auto text-[10px] text-arc-ink-faint">
+                {data?.league.currentSeason} · EST. 2004
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setMenuOpen(false)
                 setPanelOpen(true)
               }}
-              className="btn mt-5 w-full"
+              className="arcade flex min-h-[48px] w-full items-center gap-2 border-t border-arc-line px-4 py-3 text-left text-[11px]"
             >
-              {commissioner ? '● Commissioner — signed in' : '○ Commissioner sign-in'}
+              <span
+                aria-hidden
+                className="inline-block h-2.5 w-2.5 border-2 border-arc-line"
+                style={{
+                  background: commissioner ? 'var(--color-arc-lime)' : 'var(--color-arc-ink-faint)',
+                }}
+              />
+              {commissioner ? 'COMMISH ✓ SIGNED IN' : 'COMMISSIONER SIGN-IN'}
             </button>
           </div>
         </div>
       )}
+
+      {/* Mobile tab bar: the core four in thumb reach, the map behind More. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t-[3px] border-arc-line bg-arc-bg-deep pb-[env(safe-area-inset-bottom)] lg:hidden"
+        aria-label="Primary"
+      >
+        {TABS.map((to) => {
+          const item = NAV.find((candidate) => candidate.to === to)!
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={item.end}
+              className="min-w-0 flex-1 no-underline"
+              onClick={() => play('blip')}
+            >
+              {({ isActive }) => (
+                <span className="relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1">
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-3 top-0 h-[3px]"
+                    style={{ background: isActive ? item.color : 'transparent' }}
+                  />
+                  <span
+                    className="arcade truncate text-[10px] tracking-[0.08em] uppercase"
+                    style={{ color: isActive ? item.color : 'var(--color-arc-ink-soft)' }}
+                  >
+                    {item.label === 'The Book' ? 'Book' : item.label}
+                  </span>
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="relative min-w-0 flex-1"
+          aria-expanded={menuOpen}
+          aria-label="All pages"
+        >
+          <span className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1">
+            <span className="arcade text-[10px] tracking-[0.08em] text-arc-ink-soft uppercase">
+              More
+            </span>
+            {pending.length > 0 && (
+              <span
+                aria-hidden
+                className="pulse absolute top-2 right-[26%] h-2 w-2 rounded-full"
+                style={{ background: 'var(--color-arc-red)' }}
+              />
+            )}
+          </span>
+        </button>
+      </nav>
 
       {/* Desktop sidebar */}
       <aside className="hidden border-r-[3px] border-arc-line bg-arc-bg-deep lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
@@ -298,7 +454,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Credits bar, bottom of the cabinet */}
-      <footer className="arcade fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t-[3px] border-arc-line bg-arc-bg-deep px-3 py-2 text-[11px] text-arc-ink-soft">
+      <footer className="arcade fixed inset-x-0 bottom-0 z-30 hidden items-center lg:flex justify-between gap-3 border-t-[3px] border-arc-line bg-arc-bg-deep px-3 py-2 text-[11px] text-arc-ink-soft">
         <span className="flex min-w-0 items-center gap-2.5">
           <span style={{ color: 'var(--color-arc-yellow)' }}>
             {commissioner ? '2 CREDITS' : '1 CREDIT'}

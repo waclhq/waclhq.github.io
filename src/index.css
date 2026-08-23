@@ -1194,6 +1194,21 @@
       box-shadow: 0 0 0 5px rgba(83, 211, 55, 0);
     }
   }
+  /* The mobile sheet rises from the thumb zone. */
+  @keyframes sheet-up {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .sheet-up {
+    animation: sheet-up 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
   /* The full slip unfolds beneath the tile's row, hinged at its top edge. */
   @keyframes unfold {
     from {
@@ -1289,6 +1304,7 @@
      which stamps data-motion="on" on the root. */
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-motion='on']) .unfold,
+    :root:not([data-motion='on']) .sheet-up,
     :root:not([data-motion='on']) .spark-in,
     :root:not([data-motion='on']) .on-air::after,
     :root:not([data-motion='on']) .glint::after,
