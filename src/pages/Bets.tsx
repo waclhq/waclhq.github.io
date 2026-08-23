@@ -415,6 +415,58 @@ export default function Bets() {
   }
 
   /**
+   * The opened window. The grid row grows downward (0fr to 1fr) while the
+   * slip unfolds from its top hinge in perspective; once the growth settles,
+   * overflow opens so the border effects can breathe past the edges. Fresh
+   * bets burn; standing bets get breathing coals inside a rim of the two
+   * managers' colours orbiting the card.
+   */
+  const Detail = ({ bet, children }: { bet: Bet; children: React.ReactNode }) => {
+    const still = animationsDisabled()
+    const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>(still ? 'open' : 'closed')
+    useEffect(() => {
+      if (still) return
+      const frame = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setPhase('opening')),
+      )
+      return () => cancelAnimationFrame(frame)
+    }, [still])
+
+    const burning = bet.status === 'live' && isNewBet(bet) && !still
+    const slip = <Slip bet={bet}>{children}</Slip>
+
+    return (
+      <div
+        className={`col-span-full slip-reveal ${phase !== 'closed' ? 'is-open' : ''} ${
+          phase === 'open' ? 'is-settled' : ''
+        }`}
+        onTransitionEnd={(event) => {
+          if (event.propertyName === 'grid-template-rows') setPhase('open')
+        }}
+      >
+        <div className="slip-reveal-inner">
+          <div className={`slip-unfold ${burning ? 'pt-10 pb-5' : ''}`}>
+            {burning ? (
+              <FireFrame>{slip}</FireFrame>
+            ) : (
+              <span
+                className="energy-rim"
+                style={{
+                  ['--ca' as string]: managerColor(bet.proposer),
+                  ['--cb' as string]: managerColor(bet.opponent),
+                }}
+              >
+                {slip}
+                {bet.status === 'live' && <span className="tile-coals" aria-hidden />}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /**
    * The checkerboard. Tiles flow in a dense grid; the open one unfolds the
    * full slip across the next row, app-store style. Fresh live bets burn and
    * are dealt first, so the fire sits on the top row where it has headroom.
@@ -445,19 +497,17 @@ export default function Bets() {
               <BetTile bet={bet} coals={bet.status === 'live'} />
             )}
             {open === bet.id && (
-              <div className="unfold col-span-full">
-                <Slip bet={bet}>
-                  {actions(bet)}
-                  <button
-                    type="button"
-                    className="ml-auto px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
-                    onClick={() => setOpen(null)}
-                    aria-label="Collapse"
-                  >
-                    ×
-                  </button>
-                </Slip>
-              </div>
+              <Detail bet={bet}>
+                {actions(bet)}
+                <button
+                  type="button"
+                  className="ml-auto px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
+                  onClick={() => setOpen(null)}
+                  aria-label="Collapse"
+                >
+                  ×
+                </button>
+              </Detail>
             )}
           </Fragment>
         ))}
