@@ -202,7 +202,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10">
       <HelmetField enabled={!animationsDisabled()} />
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 py-2 lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 lg:hidden">
         <div className="flex min-w-0 items-center gap-3" onClick={onLogoTap}>
           <div className="relative -my-1 shrink-0">
             <Crest size={38} glow={false} />

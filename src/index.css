@@ -688,7 +688,7 @@
 
   /* Anchored panels land clear of the sticky bars. */
   section[id] {
-    scroll-margin-top: 116px;
+    scroll-margin-top: calc(116px + env(safe-area-inset-top, 0px));
   }
   .section-rail {
     background: color-mix(in srgb, var(--color-arc-bg) 88%, transparent);

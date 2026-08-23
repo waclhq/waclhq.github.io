@@ -461,7 +461,7 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
   return (
     <nav
       aria-label="Sections"
-      className="section-rail sticky top-[56px] z-30 -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
+      className="section-rail sticky top-[calc(env(safe-area-inset-top,0px)+56px)] z-30 -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
     >
       <div className="scroll-x flex gap-1.5 py-2">
         {sections.map((section) => (
