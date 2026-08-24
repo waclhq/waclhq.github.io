@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>WACL — backdrop auditions, loud round</title>
+<title>WACL — backdrop auditions, ripple round</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -37,14 +37,16 @@
 <body>
 
 <div class="bar">
-  <button data-fx="nebula" class="on">Nebula Flow</button>
+  <button data-fx="ripple" class="on">Aurora Ripple</button>
+  <button data-fx="nebula">Nebula Flow</button>
   <button data-fx="constellation">Constellation XL</button>
   <button data-fx="warp">Warp Field</button>
   <button data-fx="flood">Floodlights</button>
   <button data-fx="comet">Big Play Comet</button>
 </div>
 
-<canvas class="fx on" id="nebula"></canvas>
+<canvas class="fx on" id="ripple"></canvas>
+<canvas class="fx" id="nebula"></canvas>
 <canvas class="fx" id="constellation"></canvas>
 <canvas class="fx" id="warp"></canvas>
 <canvas class="fx" id="flood"></canvas>
@@ -69,7 +71,7 @@ document.querySelectorAll('canvas.fx').forEach(c => {
   layers[c.id] = c;
   c.ctx = c.getContext('2d');
 });
-let current = 'nebula';
+let current = 'ripple';
 function sizeAll() {
   for (const id in layers) { layers[id].width = innerWidth; layers[id].height = innerHeight; }
 }
@@ -87,6 +89,90 @@ document.querySelectorAll('.bar button').forEach(btn => {
 const GREEN = [83,211,55], AMBER = [255,182,54], TEAL = [43,217,210], BLUE = [90,131,255], PINK = [255,111,179];
 const MANAGERS = ['#5a83ff','#ff5f52','#8be356','#b07cff','#ffa92e','#3fe0f5',
                   '#ff6fb3','#2bd9d2','#6b7dff','#2ad68a','#c98d5f','#ffd84d'];
+
+
+/* ============ AURORA RIPPLE — rain falling on a pond of colour ============ */
+{
+  const cv = layers.ripple, ctx = cv.ctx;
+  const blobs = [
+    { c: GREEN, r: 0.52, s1: 0.00014, s2: 0.00010, p: 0 },
+    { c: AMBER, r: 0.46, s1: 0.00011, s2: 0.00016, p: 2 },
+    { c: TEAL,  r: 0.48, s1: 0.00018, s2: 0.00008, p: 4 },
+  ];
+  let ripples = [], nextDrop = 800;
+
+  function drop(t) {
+    const x = Math.random() * cv.width;
+    const y = Math.random() * cv.height;
+    const hue = [GREEN, AMBER, TEAL][(Math.random() * 3) | 0];
+    const big = Math.random() < 0.18;                  // occasional heavy drop
+    const max = (big ? 260 : 150) + Math.random() * 60;
+    // three rings per drop, staggered like real water
+    for (let k = 0; k < 3; k++) {
+      ripples.push({ x, y, hue, born: t + k * 260, max: max * (1 - k * 0.22), k });
+    }
+    ripples.push({ x, y, hue, born: t, max: 0, splash: true }); // impact bloom
+    if (ripples.length > 90) ripples = ripples.slice(-90);
+  }
+
+  (function tick(t) {
+    requestAnimationFrame(tick);
+    if (current !== 'ripple') return;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+
+    // the pond: aurora fields, a notch brighter than the shipped backdrop
+    ctx.globalCompositeOperation = 'lighter';
+    for (const b of blobs) {
+      const x = cv.width  * (0.5 + 0.4 * Math.sin(t * b.s1 + b.p));
+      const y = cv.height * (0.5 + 0.4 * Math.cos(t * b.s2 + b.p * 1.7));
+      const r = Math.max(cv.width, cv.height) * b.r;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${b.c},0.22)`);
+      g.addColorStop(0.55, `rgba(${b.c},0.09)`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, cv.width, cv.height);
+    }
+
+    if (t > nextDrop) {
+      drop(t);
+      nextDrop = t + 700 + Math.random() * 1900;
+    }
+
+    for (const r of ripples) {
+      const age = (t - r.born) / 2600;                 // 2.6s ripple life
+      if (age < 0 || age > 1) continue;
+
+      if (r.splash) {                                   // impact: quick bloom
+        if (age > 0.14) continue;
+        const a = (1 - age / 0.14) * 0.5;
+        const g = ctx.createRadialGradient(r.x, r.y, 0, r.x, r.y, 22);
+        g.addColorStop(0, `rgba(${r.hue},${a})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(r.x, r.y, 22, 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
+
+      // ease-out expansion: water moves fast, then settles
+      const ease = 1 - Math.pow(1 - age, 2.2);
+      const radius = r.max * ease;
+      const fade = (1 - age) * (r.k === 0 ? 0.5 : 0.3);
+
+      // crest catches the light...
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(${r.hue},${fade})`;
+      ctx.lineWidth = Math.max(0.6, 3.2 * (1 - age));
+      ctx.beginPath(); ctx.arc(r.x, r.y, radius, 0, Math.PI * 2); ctx.stroke();
+      // ...and the trough just inside dips dark, which is what reads as water
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = `rgba(0,0,0,${fade * 0.55})`;
+      ctx.lineWidth = Math.max(0.6, 4.5 * (1 - age));
+      ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(0, radius - 5), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  })(0);
+}
 
 /* ============ NEBULA FLOW — saturated colour weather, clearly moving ============ */
 {
