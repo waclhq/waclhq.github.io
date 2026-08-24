@@ -340,6 +340,42 @@
     }
   }
 
+  /* Aurora backdrop: three colour fields drifting on minutes-long cycles.
+     With animations off they simply hold still as ambient glow. */
+  .aurora-blob {
+    position: absolute;
+    width: 55vmax;
+    height: 55vmax;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.11;
+  }
+  .aurora-a {
+    background: var(--color-arc-green);
+    animation: aurora-a 37s ease-in-out infinite alternate;
+  }
+  .aurora-b {
+    background: var(--color-arc-yellow);
+    animation: aurora-b 47s ease-in-out infinite alternate;
+  }
+  .aurora-c {
+    background: var(--color-arc-teal);
+    opacity: 0.07;
+    animation: aurora-c 53s ease-in-out infinite alternate;
+  }
+  @keyframes aurora-a {
+    from { top: -25%; left: -20%; }
+    to { top: 15%; left: 45%; }
+  }
+  @keyframes aurora-b {
+    from { bottom: -30%; right: -15%; }
+    to { bottom: 10%; right: 50%; }
+  }
+  @keyframes aurora-c {
+    from { top: 55%; left: 60%; }
+    to { top: 10%; left: -10%; }
+  }
+
   /* Header rule: a row of LED dots with a wave rolling through it. Each dot
      shares one pulse animation; staggered delays turn the pulse into a crest
      that travels left to right, endlessly. */
@@ -1606,6 +1642,9 @@
     :root:not([data-motion='on']) .type-in,
     :root:not([data-motion='on']) .pulse,
     :root:not([data-motion='on']) .marquee,
+    :root:not([data-motion='on']) .aurora-a,
+    :root:not([data-motion='on']) .aurora-b,
+    :root:not([data-motion='on']) .aurora-c,
     :root:not([data-motion='on']) .grow-x,
     :root:not([data-motion='on']) .hover-wiggle:hover,
     :root:not([data-motion='on']) .confetti,
