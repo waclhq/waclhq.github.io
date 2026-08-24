@@ -157,7 +157,7 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgba(11,14,18,0.55) 0%, rgba(11,14,18,0.22) 32%, rgba(11,14,18,0.30) 70%, rgba(11,14,18,0.44) 100%)',
+            'linear-gradient(180deg, rgba(11,14,18,0.60) 0%, rgba(11,14,18,0.30) 32%, rgba(11,14,18,0.36) 70%, rgba(11,14,18,0.48) 100%)',
         }}
       />
     </div>

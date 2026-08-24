@@ -58,6 +58,12 @@
     background-size: 6px 6px;
     color: var(--color-arc-ink);
     font-family: var(--font-body);
+    /* The liquid-glass backdrop puts light behind un-paneled text, so every
+       glyph carries a dark halo. Inherited everywhere; imperceptible on
+       opaque panels, decisive over the bright veins. */
+    text-shadow:
+      0 1px 3px rgba(7, 9, 12, 0.9),
+      0 0 12px rgba(7, 9, 12, 0.55);
     font-size: 14.5px;
     font-weight: 400;
     line-height: 1.55;
