@@ -102,7 +102,11 @@ const MANAGERS = ['#5a83ff','#ff5f52','#8be356','#b07cff','#ffa92e','#3fe0f5',
   // dark instead of killing every audition that initialises after it
   try { if (gl) {
     const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform vec2 R; uniform float T;
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p){
@@ -176,7 +180,12 @@ void main(){
       gl.uniform1f(uT, t / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     })(0);
-  } } catch (err) { console.error('liquid glass failed:', err); }
+  } else { throw new Error('WebGL unavailable'); } } catch (err) {
+    console.error('liquid glass failed:', err);
+    const btn = document.querySelector('[data-fx="glass"]');
+    if (btn) { btn.disabled = true; btn.style.opacity = 0.4; btn.textContent = 'GLASS (NO GL)'; }
+    if (current === 'glass') document.querySelector('[data-fx="ripple"]')?.click();
+  }
 }
 
 /* ============ AURORA RIPPLE — rain falling on a pond of colour ============ */
