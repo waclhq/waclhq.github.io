@@ -62,8 +62,8 @@ void main(){
             + teal  * exp(-3.8 * distance(uv, c3));
 
   vec3 col = vec3(0.043, 0.055, 0.071);            // charcoal floor
-  col += base * (0.22 + 1.05 * vein + speck);       // veins carry the light
-  col += vein * base * base * 0.6;                  // hot cores where colour pools
+  col += base * (0.14 + 0.55 * vein + speck * 0.6); // veins carry the light, dimmed
+  col += vein * base * base * 0.25;                 // hot cores kept below text-level
   gl_FragColor = vec4(col, 1.0);
 }`
 
