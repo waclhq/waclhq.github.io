@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>WACL — backdrop auditions, ripple round</title>
+<title>WACL — backdrop auditions, liquid glass</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -37,7 +37,8 @@
 <body>
 
 <div class="bar">
-  <button data-fx="ripple" class="on">Aurora Ripple</button>
+  <button data-fx="glass" class="on">Liquid Glass</button>
+  <button data-fx="ripple">Aurora Ripple</button>
   <button data-fx="nebula">Nebula Flow</button>
   <button data-fx="constellation">Constellation XL</button>
   <button data-fx="warp">Warp Field</button>
@@ -45,7 +46,8 @@
   <button data-fx="comet">Big Play Comet</button>
 </div>
 
-<canvas class="fx on" id="ripple"></canvas>
+<canvas class="fx on" id="glass"></canvas>
+<canvas class="fx" id="ripple"></canvas>
 <canvas class="fx" id="nebula"></canvas>
 <canvas class="fx" id="constellation"></canvas>
 <canvas class="fx" id="warp"></canvas>
@@ -69,9 +71,9 @@
 const layers = {};
 document.querySelectorAll('canvas.fx').forEach(c => {
   layers[c.id] = c;
-  c.ctx = c.getContext('2d');
+  if (c.id !== 'glass') c.ctx = c.getContext('2d');
 });
-let current = 'ripple';
+let current = 'glass';
 function sizeAll() {
   for (const id in layers) { layers[id].width = innerWidth; layers[id].height = innerHeight; }
 }
@@ -90,6 +92,92 @@ const GREEN = [83,211,55], AMBER = [255,182,54], TEAL = [43,217,210], BLUE = [90
 const MANAGERS = ['#5a83ff','#ff5f52','#8be356','#b07cff','#ffa92e','#3fe0f5',
                   '#ff6fb3','#2bd9d2','#6b7dff','#2ad68a','#c98d5f','#ffd84d'];
 
+
+
+/* ============ LIQUID GLASS — caustics: light through a rippled surface ============ */
+{
+  const cv = layers.glass;
+  const gl = cv.getContext('webgl', { antialias: false });
+  // try/catch so a shader compile failure on some GPU leaves this one layer
+  // dark instead of killing every audition that initialises after it
+  try { if (gl) {
+    const FS = `
+precision mediump float;
+uniform vec2 R; uniform float T;
+float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h(i), h(i + vec2(1, 0)), f.x),
+             mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
+}
+float fbm(vec2 p){
+  float v = 0.0, a = 0.5;
+  for (int k = 0; k < 5; k++) { v += a * n(p); p = p * 2.03 + 7.7; a *= 0.5; }
+  return v;
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / R;
+  vec2 p = uv * vec2(R.x / R.y, 1.0) * 3.2;
+  float t = T * 0.055;
+
+  // domain warp: the water surface itself, slowly kneading
+  vec2 q = vec2(fbm(p + t), fbm(p - t * 0.8 + 5.2));
+  float v = fbm((p + 1.5 * q) * 2.1 + t * 0.4);
+
+  // fold the field into sharp light veins - the caustic signature
+  float vein = pow(1.0 - abs(2.0 * fract(v * 2.4) - 1.0), 3.2);
+  float speck = pow(1.0 - abs(2.0 * fract(v * 7.0) - 1.0), 6.0) * 0.5;
+
+  // aurora colour centres drifting beneath the surface
+  vec3 green = vec3(0.33, 0.83, 0.22);
+  vec3 amber = vec3(1.00, 0.71, 0.21);
+  vec3 teal  = vec3(0.17, 0.85, 0.82);
+  vec2 c1 = vec2(0.5 + 0.4 * sin(T * 0.10), 0.5 + 0.4 * cos(T * 0.13));
+  vec2 c2 = vec2(0.5 + 0.4 * cos(T * 0.07 + 2.0), 0.5 + 0.4 * sin(T * 0.09 + 2.0));
+  vec2 c3 = vec2(0.5 + 0.4 * sin(T * 0.05 + 4.0), 0.5 + 0.4 * cos(T * 0.06 + 4.0));
+  vec3 base = green * exp(-3.2 * distance(uv, c1))
+            + amber * exp(-3.4 * distance(uv, c2))
+            + teal  * exp(-3.8 * distance(uv, c3));
+
+  vec3 col = vec3(0.043, 0.055, 0.071);            // charcoal floor
+  col += base * (0.22 + 1.05 * vein + speck);       // veins carry the light
+  col += vein * base * base * 0.6;                  // hot cores where colour is dense
+  gl_FragColor = vec4(col, 1.0);
+}`;
+    const VS = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+    function shader(type, src) {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      return sh;
+    }
+    const prog = gl.createProgram();
+    gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS));
+    gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const uR = gl.getUniformLocation(prog, 'R');
+    const uT = gl.getUniformLocation(prog, 'T');
+
+    (function tick(t) {
+      requestAnimationFrame(tick);
+      if (current !== 'glass') return;
+      // render at 2/3 resolution - caustics are soft, and this keeps phones cool
+      const w = Math.floor(innerWidth * 0.66), hgt = Math.floor(innerHeight * 0.66);
+      if (cv.width !== w || cv.height !== hgt) { cv.width = w; cv.height = hgt; }
+      gl.viewport(0, 0, w, hgt);
+      gl.uniform2f(uR, w, hgt);
+      gl.uniform1f(uT, t / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    })(0);
+  } } catch (err) { console.error('liquid glass failed:', err); }
+}
 
 /* ============ AURORA RIPPLE — rain falling on a pond of colour ============ */
 {
