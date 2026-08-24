@@ -13,16 +13,21 @@ import { useEffect, useRef } from 'react'
 
 const GLYPHS = '0123456789+−$·:'
 const COL_SPACING = 44
-const ROW = 18
-const FRAME_MS = 50 // ~20fps — rain doesn't need more
+const ROW = 20
+const FRAME_MS = 90 // ~11fps — the rain is weather, not a game
 
 interface Column {
   x: number
-  y: number
+  /** Head position in whole rows — glyphs sit in fixed cells; the lit window slides. */
+  head: number
+  /** Rows per frame; < 1 so a step lands every few frames. */
   speed: number
+  progress: number
   live: boolean
   trail: number
   amber: boolean
+  /** The glyph living in each row cell. Stable — mutates rarely, not per frame. */
+  cells: string[]
 }
 
 export default function Backdrop({ enabled }: { enabled: boolean }) {
@@ -35,18 +40,23 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    const glyph = () => GLYPHS[(Math.random() * GLYPHS.length) | 0]
     let columns: Column[] = []
+    let totalRows = 0
     const size = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
+      totalRows = Math.ceil(window.innerHeight / ROW) + 2
       columns = Array.from({ length: Math.ceil(window.innerWidth / COL_SPACING) }, (_, i) => ({
         x: i * COL_SPACING + 12,
-        y: Math.random() * window.innerHeight,
-        speed: 0.35 + Math.random() * 0.75,
+        head: (Math.random() * totalRows) | 0,
+        speed: 0.18 + Math.random() * 0.22,
+        progress: 0,
         // Most columns idle at any moment — the rain reads as weather, not wall.
         live: Math.random() < 0.4,
-        trail: 4 + ((Math.random() * 7) | 0),
+        trail: 5 + ((Math.random() * 8) | 0),
         amber: Math.random() < 0.1,
+        cells: Array.from({ length: totalRows }, glyph),
       }))
     }
     size()
@@ -59,29 +69,37 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       if (time - last < FRAME_MS) return
       last = time
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.font = '700 14px "IBM Plex Mono", monospace'
+      ctx.font = '700 15px "IBM Plex Mono", monospace'
       for (const col of columns) {
         if (!col.live) {
-          if (Math.random() < 0.0015) col.live = true
+          if (Math.random() < 0.004) col.live = true
           continue
         }
-        col.y += col.speed * 8
-        if (col.y - col.trail * ROW > canvas.height) {
-          col.y = -ROW
+        // The head advances a whole row every few frames; glyphs never slide.
+        col.progress += col.speed
+        if (col.progress >= 1) {
+          col.progress -= 1
+          col.head += 1
+          col.cells[col.head % totalRows] = glyph()
+        }
+        // One digit in the trail flickers occasionally — a tick, not a boil.
+        if (Math.random() < 0.06) {
+          const k = (Math.random() * col.trail) | 0
+          col.cells[(col.head - k + totalRows * 4) % totalRows] = glyph()
+        }
+        if (col.head - col.trail > totalRows) {
+          col.head = -1
           col.live = Math.random() < 0.6
           col.amber = Math.random() < 0.1
         }
         for (let k = 0; k < col.trail; k++) {
-          // Production alpha: half the audition brightness. Texture, not show.
-          const alpha = (1 - k / col.trail) * 0.16
+          const row = col.head - k
+          if (row < 0 || row >= totalRows) continue
+          const alpha = (1 - k / col.trail) * (k === 0 ? 0.42 : 0.28)
           ctx.fillStyle = col.amber
             ? `rgba(255,182,54,${alpha})`
             : `rgba(83,211,55,${alpha})`
-          ctx.fillText(
-            GLYPHS[(Math.random() * GLYPHS.length) | 0],
-            col.x,
-            col.y - k * ROW,
-          )
+          ctx.fillText(col.cells[row % totalRows], col.x, row * ROW)
         }
       }
     }
