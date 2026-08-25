@@ -15258,11 +15258,6 @@
       ],
       "keepers": [
         {
-          "player": "Bo Nix",
-          "salary": 1,
-          "contractYear": "C"
-        },
-        {
           "player": "Jaxon Smith-Njigba",
           "salary": 8,
           "contractYear": "C"
@@ -15276,9 +15271,14 @@
           "player": "Brock Bowers",
           "salary": 16,
           "contractYear": "C"
+        },
+        {
+          "player": "Cam Skattebo",
+          "salary": 2,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": -29,
+      "keeperSalary": 30,
       "cashTraded": -60,
       "draftBudget": 111
     },
