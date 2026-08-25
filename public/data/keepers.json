@@ -15147,11 +15147,6 @@
       ],
       "keepers": [
         {
-          "player": "Malik Nabers",
-          "salary": 32,
-          "contractYear": "C"
-        },
-        {
           "player": "Sam LaPorta",
           "salary": 1,
           "contractYear": "D"
@@ -15165,9 +15160,14 @@
           "player": "Bijan Robinson",
           "salary": 70,
           "contractYear": "D"
+        },
+        {
+          "player": "Tetairoa McMillan",
+          "salary": 33,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 104,
+      "keeperSalary": 105,
       "cashTraded": 30,
       "draftBudget": 190
     },
