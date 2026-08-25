@@ -15848,12 +15848,12 @@
           "contractYear": "B"
         },
         {
-          "player": "Juwan Johnson",
-          "salary": 5,
-          "contractYear": "B"
+          "player": "Chuba Hubbard",
+          "salary": 4,
+          "contractYear": "C"
         }
       ],
-      "keeperSalary": 68,
+      "keeperSalary": 67,
       "cashTraded": 32,
       "draftBudget": 166
     },
