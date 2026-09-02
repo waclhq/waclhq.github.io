@@ -3,13 +3,13 @@
 A single-page options desk for a book that pays if the AI trade busts. Two desks:
 
 - **First-order: the complex.** Puts on NVDA, SMH, AVGO, TSM, MU, ORCL and the rest, priced on a skew-calibrated Black-Scholes surface and ranked by payoff per premium dollar at the drawdown you choose.
-- **Second-order: low-vol channels.** Instruments with implied vol under 20 that an AI bust reaches only through financing, power demand, rates and FX: HYG, BKLN, AEP, XLI, AMLP puts and TLT, FXY calls. Each leg carries its transmission chain, its beta to the complex, its kill switch, and a vol and skew fitted to live quotes on the same day. The chart benchmarks the book against the same premium in SMH puts.
+- **Second-order: low-vol channels.** Instruments with implied vol under 20 that an AI bust reaches only through financing, power demand, rates and FX: HYG, XLF, XLI, AEP, BKLN puts and IEF, TLT, FXY calls. Each leg carries its transmission chain, its beta to the complex, its kill switch, and a vol and skew fitted to live quotes on the same day. Legs an adversarial research pass killed (AMLP, ET, ARCC) stay in the basket at zero weight with the reason. The chart benchmarks the book against the same premium in SMH puts.
 
 Every input is editable and persists in the browser. Contracts are floored to whole numbers so the budget is never exceeded.
 
 ## Data
 
-Seeded from IBKR pulls on 2026-09-02: spot, 30-day implied vol, 52-week IV percentile and 30-day realized vol for 70 names (the live vol screen at the bottom of the page). First-desk skew and term structure were fitted to SMH and NVDA December 2026 put mids. Second-desk legs were each fitted to their own December 2026 or January 2027 chain.
+Seeded from IBKR pulls on 2026-09-02: spot, 30-day implied vol, 52-week IV percentile and 30-day realized vol for 70 names (the live vol screen at the bottom of the page). First-desk skew and term structure were fitted to SMH and NVDA December 2026 put mids. Second-desk legs were each fitted to their own December 2026, January 2027 or March 2027 chain. Betas and kill switches went through a 25-agent research pass: eight idea lenses, one skeptic per candidate, two book-builders and a synthesizer.
 
 Two findings from that calibration are built into the page: the listed private-credit lenders (ARCC, BXSL) price their puts at 28 to 32 vol despite a headline 30-day figure near 15, so they fail the under-20 test and sit at zero weight; and bond-ETF puts carry a fat smile that a linear skew misses, so those legs use their fitted parameters rather than the default.
 
