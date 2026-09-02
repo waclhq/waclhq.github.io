@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0b0e12" />
+<title>AI Complex Put Desk</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0e12; --surface: #13171d; --surface-2: #1a1f27; --line: #262c36; --line-2: #333b47;
+    --ink: #e8ebef; --ink-2: #aab2be; --ink-3: #6f7986;
+    --green: #21d07a; --green-dim: rgba(33,208,122,.14); --amber: #f5b83d; --amber-dim: rgba(245,184,61,.14);
+    --red: #ff5d5d; --red-dim: rgba(255,93,93,.14); --blue: #5aa9ff; --blue-dim: rgba(90,169,255,.14);
+    --display: 'Barlow Condensed', Impact, 'Arial Narrow', sans-serif; --body: Inter, system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; font-variant-numeric: tabular-nums; }
+  a { color: var(--green); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 44px; letter-spacing: .01em; margin: 0; line-height: 1; }
+  h1 span { color: var(--green); }
+  h2 { font-family: var(--display); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 22px; margin: 0 0 4px; letter-spacing: .02em; }
+  h3 { font-family: var(--display); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 16px; margin: 14px 0 4px; letter-spacing: .03em; color: var(--ink-2); }
+  .sub { color: var(--ink-2); margin: 6px 0 0; max-width: 820px; line-height: 1.5; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-top: 18px; }
+  .panel .sub { margin-bottom: 14px; font-size: 13px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  label.f { display: block; font-size: 12px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+  input[type=number], input[type=text], select { width: 100%; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; padding: 8px 10px; font: inherit; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--green); }
+  input:focus, select:focus { outline: 2px solid var(--green); outline-offset: 0; border-color: transparent; }
+  .val { font-family: var(--mono); color: var(--ink); font-size: 13px; }
+  .hint { color: var(--ink-3); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; }
+  .kpi .v { font-family: var(--display); font-style: italic; font-weight: 700; font-size: 30px; line-height: 1.1; margin-top: 4px; }
+  .kpi .v.g { color: var(--green); } .kpi .v.a { color: var(--amber); } .kpi .v.r { color: var(--red); }
+  .kpi .s { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+  table.out { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.out th, table.out td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  table.out th { color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+  table.out th:first-child, table.out td:first-child { text-align: left; }
+  table.out td.l { text-align: left; }
+  table.out td.wrap { white-space: normal; min-width: 260px; max-width: 520px; color: var(--ink-2); font-size: 12px; line-height: 1.4; }
+  table.out tr.pick td { background: var(--green-dim); }
+  table.out tr.dim td { color: var(--ink-3); }
+  table.out input[type=number] { width: 78px; padding: 4px 6px; text-align: right; }
+  table.out input[type=text] { width: 70px; padding: 4px 6px; text-transform: uppercase; }
+  table.out select { width: auto; padding: 4px 6px; }
+  .scroll { overflow-x: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .pill.g { background: var(--green-dim); color: var(--green); } .pill.a { background: var(--amber-dim); color: var(--amber); } .pill.r { background: var(--red-dim); color: var(--red); } .pill.b { background: var(--blue-dim); color: var(--blue); } .pill.n { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line-2); }
+  button { font: inherit; font-weight: 600; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+  button:hover { border-color: var(--green); }
+  button.primary { background: var(--green); color: #06110b; border-color: var(--green); }
+  button.small { padding: 4px 8px; font-size: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .note { background: var(--amber-dim); border: 1px solid rgba(245,184,61,.35); border-radius: 8px; padding: 12px 14px; color: var(--ink); line-height: 1.5; margin-top: 14px; }
+  .note b { color: var(--amber); }
+  .danger { background: var(--red-dim); border-color: rgba(255,93,93,.35); } .danger b { color: var(--red); }
+  .info { background: var(--blue-dim); border-color: rgba(90,169,255,.35); } .info b { color: var(--blue); }
+  svg text { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+  .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+  .muted { color: var(--ink-3); }
+  .mono { font-family: var(--mono); }
+  details summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+  ol, ul { line-height: 1.6; color: var(--ink-2); }
+  .desks { display: flex; gap: 0; margin-top: 18px; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; width: fit-content; }
+  .desks button { border: 0; border-radius: 0; padding: 10px 18px; background: var(--surface); color: var(--ink-2); font-family: var(--display); font-style: italic; text-transform: uppercase; font-size: 18px; letter-spacing: .03em; }
+  .desks button.on { background: var(--green); color: #06110b; }
+  .chain { display: grid; grid-template-columns: 40px 1fr; gap: 8px 12px; margin: 10px 0; }
+  .chain .n { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 26px; color: var(--green); line-height: 1; padding-top: 2px; }
+  .chain .n.o2 { color: var(--amber); } .chain .n.o3 { color: var(--blue); }
+  .chain .t { color: var(--ink-2); line-height: 1.5; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .chain .t b { color: var(--ink); }
+  .thesis { font-size: 15px; line-height: 1.6; color: var(--ink); max-width: 900px; }
+  .thesis b { color: var(--green); }
+  .bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; width: 120px; display: inline-block; vertical-align: middle; }
+  .bar i { display: block; height: 100%; background: var(--green); }
+  .bar i.hi { background: var(--red); }
+  @media (max-width: 700px) { h1 { font-size: 34px; } .wrap { padding: 16px 12px 60px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI Complex <span>Put Desk</span></h1>
+    <p class="sub">A sizing and structure picker for an options book that pays if the AI trade busts. Two desks: the first-order basket (puts on the complex itself), and the second-order desk (instruments with implied vol under 20 that are tied to an AI bust only through financing, power, rates, and FX). Every structure is priced on a skew-calibrated Black-Scholes surface and ranked by payoff per premium dollar at the drawdown you pick. Every number is editable. Nothing here is a live quote or trade advice.</p>
+    <div class="desks" id="desks"><button data-desk="first">First-order: the complex</button><button data-desk="second">Second-order: low-vol channels</button></div>
+  </header>
+
+  <section class="panel" id="thesisPanel" hidden>
+    <h2>The trade: short the financing, not the chips</h2>
+    <div class="thesis" id="thesisText"></div>
+    <h3>Transmission chain</h3>
+    <div class="chain" id="chainList"></div>
+    <div class="grid g2" style="margin-top:14px">
+      <div><h3>Why nobody has this on</h3><ul id="whyList"></ul></div>
+      <div><h3>What kills it</h3><ul id="killList"></ul></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Budget &amp; scenario</h2>
+    <p class="sub">The scenario is a move in the "AI complex" factor. Each name moves by its beta times that factor; a negative beta means the instrument rises in the bust (calls are used there). Ranking is payoff at expiry divided by premium paid.</p>
+    <div class="grid g4">
+      <div>
+        <label class="f">Premium budget <span class="val" id="budgetVal"></span></label>
+        <input type="range" id="budget" min="100000" max="2000000" step="25000" value="750000" />
+        <div class="hint">You said 500k to 1,000k. Slider runs 100k to 2M.</div>
+      </div>
+      <div>
+        <label class="f">Target drawdown in the complex <span class="val" id="targetVal"></span></label>
+        <input type="range" id="target" min="-60" max="-10" step="1" value="-30" />
+        <div class="hint">The move you are paying to be right about. Payoff is scored here.</div>
+      </div>
+      <div>
+        <label class="f">Expiry</label>
+        <select id="expiry"></select>
+        <div class="hint" id="expiryHint"></div>
+      </div>
+      <div>
+        <label class="f">Scoring</label>
+        <select id="scoring">
+          <option value="target">Payoff at target only</option>
+          <option value="blend" selected>Blend: 40% at 2/3x, 40% at target, 20% at 1.5x</option>
+        </select>
+        <div class="hint">Target-only pins short strikes right at the target and pays little if the crash stops short. Blend is the expected multiple across a shallower, on-target, and overshoot crash.</div>
+      </div>
+    </div>
+    <details style="margin-top:14px">
+      <summary>Pricing model inputs</summary>
+      <div class="grid g4" style="margin-top:12px">
+        <div><label class="f">Risk-free rate %</label><input type="number" id="rate" value="4.0" step="0.1" /></div>
+        <div><label class="f">Skew slope (vol pts per unit log-moneyness)</label><input type="number" id="skew" value="-0.28" step="0.01" /><div class="hint">Calibrated from live SMH and NVDA Dec-26 put mids on 2 Sep 2026: SMH about -0.30, NVDA about -0.24. Scaled by sqrt(107 / days) so longer dates are flatter. Each row carries a skew multiplier; bond and FX ETFs use a much flatter smile.</div></div>
+        <div><label class="f">Term-structure exponent</label><input type="number" id="term" value="0.08" step="0.01" /><div class="hint">ATM IV at T = IV30 x (days / 30) ^ exponent. Live fit was 0.05 (SMH) to 0.12 (NVDA).</div></div>
+        <div><label class="f">Allow 1x2 ratio spreads</label><select id="ratio"><option value="0" selected>No (bounded risk only)</option><option value="1">Yes (naked short tail)</option></select><div class="hint">Ratios are the cheapest way to own a specific window, and they lose money in a real crash. Off by default.</div></div>
+        <div><label class="f">Max weight per name %</label><input type="number" id="maxw" value="30" step="5" min="5" max="100" /></div>
+        <div><label class="f">Min moneyness %</label><input type="number" id="minm" value="60" step="5" min="30" max="95" /><div class="hint">Deepest put strike considered, as a % of spot. Calls mirror this above spot.</div></div>
+        <div><label class="f">Max moneyness %</label><input type="number" id="maxm" value="95" step="5" min="50" max="100" /></div>
+        <div><label class="f">Min premium per contract $</label><input type="number" id="minprem" value="0.40" step="0.1" /><div class="hint">Filters out lottery tickets where the bid-ask is the whole trade. Low-vol ETFs price in cents, so this is lowered automatically on the second-order desk.</div></div>
+        <div><label class="f">Max implied vol % (0 = off)</label><input type="number" id="maxiv" value="0" step="1" min="0" /><div class="hint">Excludes any name whose IV30 is above this. The second-order desk defaults to 20.</div></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2 id="basketTitle">Basket</h2>
+    <p class="sub" id="basketSub"></p>
+    <div class="row" style="margin-bottom:10px">
+      <button id="autow">Auto-weight by efficiency</button>
+      <button id="eqw">Equal weight</button>
+      <button id="etfw" data-first-only>ETFs only</button>
+      <button id="addrow">+ Add name</button>
+      <button id="reset">Reset to snapshot</button>
+      <span class="muted" id="wsum"></span>
+    </div>
+    <div class="scroll"><table class="out" id="basket">
+      <thead><tr>
+        <th>Ticker</th><th>Type</th><th>Dir</th><th>Spot</th><th>IV30 %</th><th>IV pct 52w</th><th>RV30 %</th><th>Beta</th><th>Haircut %</th><th>Weight %</th><th>Best structure</th><th>Multiple @ target</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="ivnote"></div>
+  </section>
+
+  <section class="panel">
+    <h2>The plan</h2>
+    <p class="sub" id="plansub"></p>
+    <div class="kpis" id="kpis"></div>
+    <div class="scroll" style="margin-top:14px"><table class="out" id="plan">
+      <thead><tr><th>Name</th><th>Structure</th><th>Strikes</th><th>Debit / contract</th><th>Contracts</th><th>Premium</th><th>Payoff @ target</th><th>Multiple</th><th>Max payoff</th><th>Breakeven move</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="scroll" style="margin-top:14px"><table class="out" id="scen">
+      <thead><tr><th>Complex move</th><th>-10%</th><th>-20%</th><th>-30%</th><th>-40%</th><th>-50%</th><th>-60%</th><th>Flat</th><th>+10%</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="chart" style="margin-top:14px"></div>
+    <div class="legend"><span><i style="background:var(--green)"></i>Plan (best structure per name)</span><span><i style="background:var(--amber)"></i>Same budget, outright options only</span><span><i style="background:var(--blue)"></i>Same budget, spreads only</span><span><i style="background:var(--ink-3)"></i>Same budget, SMH puts only (first-order benchmark)</span></div>
+    <div id="warnings"></div>
+  </section>
+
+  <section class="panel" id="legsPanel" hidden>
+    <h2>Leg by leg</h2>
+    <p class="sub">Each leg's mechanism, the order of effect, and the kill switch. Betas are consensus estimates from the research pass; the refutation notes say where they are soft.</p>
+    <div class="scroll"><table class="out" id="legs">
+      <thead><tr><th>Leg</th><th>Order</th><th>Channel</th><th>Vol used</th><th>Beta</th><th>Mechanism</th><th>Kill switch</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Leaderboard</h2>
+    <p class="sub">Top four structures per name, every name with weight above zero, ranked by score. This is where "most cost effective" comes from. Multiple = payoff at expiry per dollar of premium, after the bid-ask haircut.</p>
+    <div class="scroll"><table class="out" id="board">
+      <thead><tr><th>#</th><th>Name</th><th>Structure</th><th>Strikes</th><th>Moneyness</th><th>Debit</th><th>IV used</th><th>Multiple @ 2/3x</th><th>Multiple @ target</th><th>Multiple @ 1.5x</th><th>Score</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" id="screenPanel">
+    <h2>Live vol screen</h2>
+    <p class="sub">Seventy candidates pulled from IBKR on 2 Sep 2026, sorted by 30-day implied vol. The red line is 20. Bars show where spot sits in its 52-week range. "Add" drops a row into the current desk with a placeholder beta of 0.3 (put) for you to set.</p>
+    <div class="scroll"><table class="out" id="screen">
+      <thead><tr><th>Ticker</th><th>Name</th><th>Spot</th><th>IV30 %</th><th>IV pct 52w</th><th>RV30 %</th><th>52w range</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>How to read this</h2>
+    <ul>
+      <li><b>Where the edge is.</b> Spreads beat outright options on payoff-per-dollar in almost every case because you sell back the most expensive part of the skew. The cost is a capped payoff, which the blend scoring penalizes. Outright options win when you think the crash overshoots your target, or when the instrument's vol is so low that the option is already nearly free.</li>
+      <li><b>First-order vs second-order.</b> The first desk buys puts where the beta is high and the vol is 30 to 70. The second desk buys options where the vol is 5 to 18 and the beta is 0.2 to 0.6. Per dollar of premium the second desk wins on convexity if the transmission works, and loses everything if the bust stays contained to equities. The SMH-puts benchmark line on the chart is the honest comparison.</li>
+      <li><b>Vol is not high right now.</b> On the snapshot date the 52-week IV percentile for NVDA, SMH, AMD, TSM, ARM, CRWV, and MSFT was in the bottom quartile. AVGO, ORCL, and META were above the median. Low IV percentile argues for outright puts and longer dates over spreads, because you are buying vol cheap.</li>
+      <li><b>Model, not market.</b> Prices come from a skew-adjusted Black-Scholes surface calibrated to a handful of live quotes. Expect real mids to differ by 10 to 20 percent, more on illiquid names and on far-OTM strikes of low-vol ETFs, where the smile is fatter than any linear skew. Before trading, pull the actual chain.</li>
+      <li><b>Sizing.</b> Premium is the max loss on every bounded structure here. Plan for it to go to zero. Contracts are floored to whole numbers, so the budget is never exceeded.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Snapshot: IBKR pulls on 2026-09-02 (intraday). ----------
+const SNAPSHOT_DATE = '2026-09-02';
+// ticker, type, spot, iv30, ivPct52, rv30, beta, haircut%, weight%
+const SEED_FIRST = [
+  ['SMH',  'ETF', 540.98, 32.5, 25, 42.8, 1.00, 3, 20],
+  ['SOXX', 'ETF', 493.95, 37.4, 39, 50.7, 1.00, 4, 5],
+  ['QQQ',  'ETF', 703.93, 18.1, 27, 19.1, 0.55, 1, 0],
+  ['NVDA', 'Single', 216.75, 31.7, 1, 39.4, 1.10, 1, 15],
+  ['AMD',  'Single', 454.40, 47.6, 14, 67.0, 1.40, 2, 8],
+  ['AVGO', 'Single', 368.53, 50.4, 67, 41.1, 1.10, 2, 8],
+  ['TSM',  'Single', 408.95, 31.3, 4, 40.5, 0.90, 2, 8],
+  ['MU',   'Single', 920.54, 61.3, 21, 81.6, 1.30, 3, 6],
+  ['ORCL', 'Single', 139.34, 67.1, 78, 54.1, 1.10, 3, 5],
+  ['MSFT', 'Single', 497.07, 24.4, 25, 44.0, 0.60, 1, 5],
+  ['META', 'Single', 574.80, 35.0, 56, 48.4, 0.70, 2, 5],
+  ['PLTR', 'Single', 176.54, 45.3, 13, 65.7, 1.30, 2, 5],
+  ['VRT',  'Single', 252.31, 53.0, 10, 77.8, 1.40, 4, 3],
+  ['ARM',  'Single', 230.00, 58.8, 43, 90.9, 1.40, 5, 3],
+  ['CRWV', 'Single', 80.00, 69.2, 2, 102.2, 1.80, 6, 2],
+  ['SMCI', 'Single', 36.87, 70.3, 36, 89.6, 1.60, 6, 2],
+].map(r => ({ t: r[0], type: r[1], spot: r[2], iv: r[3], ivp: r[4], rv: r[5], beta: r[6], hc: r[7], w: r[8], dir: 'put', sk: 1 }));
+
+// Second-order desk. dir: put or call. beta: expected move / complex move (negative = rises in the bust).
+// sk: skew multiplier (bond and FX smiles are far flatter than equity skew). order: 2nd or 3rd order effect.
+const SEED_SECOND = [
+  { t: "HYG", name: "iShares High Yield Corporate Bond", type: "ETF", spot: 79.06, iv: 7.8, ivp: 88, rv: 3.6, beta: 0.3, hc: 2, w: 22, dir: "put", cal: "Fit to Dec-26 70 to 78 puts: OTM puts imply 10 to 14 vol", sk: 1.4, order: 2, channel: "Credit",
+    why: "HYG sits at a 52-week high with spreads near cycle tights, while 2025-26 high-yield issuance was dominated by neocloud and data-center borrowers (CoreWeave, Applied Digital, GPU-backed ABS). A capex bust reprices that paper first and drags the index. In 2020 and 2022 HYG fell 18 to 22 percent; in Q4 2018, 6 percent.",
+    kill: "Fed cuts fast enough that duration offsets spread widening, or HY issuers have termed out maturities past 2028 and the default cycle arrives after expiry." },
+  { t: "TLT", name: "iShares 20+ Year Treasury", type: "ETF", spot: 81.95, iv: 7.2, ivp: 63, rv: 9.7, beta: -0.4, hc: 1, w: 20, dir: "call", cal: "Fit to Dec-26 84 to 100 calls: OTM calls imply 10 to 17 vol", sk: -1.6, order: 3, channel: "Rates",
+    why: "AI capex is roughly 1.5 points of GDP investment growth plus the wealth effect behind consumption. Remove it and the 2027 Fed path reprices about 100bp lower. TLT is at a 52-week low with 20-year yields near cycle highs, so the call is struck where the market least expects to go.",
+    kill: "Term-premium or fiscal worries dominate (the 2025 pattern) and stocks and long bonds fall together. Inflation re-accelerates. Size this leg down if breakevens are rising into expiry." },
+  { t: "AEP", name: "American Electric Power", type: "Single", spot: 122.96, iv: 19.4, ivp: 35, rv: 20.8, beta: 0.5, hc: 3, w: 15, dir: "put", cal: "Fit to Dec-26 95 to 120 puts. ATM implies 22 vol on this tenor; borderline", sk: 0.9, order: 2, channel: "Power",
+    why: "The most data-center-levered regulated utility: about 24 GW of signed large-load commitments underpin a $70B capex plan and a raised 7 to 9 percent EPS growth rate. If hyperscalers freeze campus commitments, the load forecast, the rate-base growth and the premium multiple go at once. Vistra has already fallen 37 percent; AEP has not repriced and its options trade at 19.7 vol.",
+    kill: "Utilities trade as bond proxies and falling rates lift the sector enough to offset the growth de-rating. Signed contracts carry take-or-pay protection that holds the forecast through expiry." },
+  { t: "ARCC", name: "Ares Capital", type: "Single", spot: 19.99, iv: 24.2, ivp: 8, rv: 14.8, beta: 0.5, hc: 3, w: 0, dir: "put", cal: "Dec-26 16 to 19 puts imply 28 to 30 vol. Fails the cap", sk: 0.55, order: 3, channel: "Private credit",
+    why: "The obvious private-credit short, and the market knows it: ARCC's December puts price at 28 to 30 vol against a headline 30-day figure of 15.5. Kept here at zero weight to show the trap. BXSL is the same story at 30 vol.",
+    kill: "Not a vol-under-20 trade at any tenor with two-sided quotes." },
+  { t: "XLI", name: "Industrial Select Sector", type: "ETF", spot: 172.95, iv: 16.2, ivp: 43, rv: 16.2, beta: 0.45, hc: 2, w: 13, dir: "put", cal: "Fit to Dec-26 140 to 165 puts", sk: 1.2, order: 2, channel: "Build-out",
+    why: "Data-center construction is the largest single driver of US non-residential construction. Switchgear, transformers, turbines, cooling and gensets (Eaton, GE Vernova, Emerson, Hubbell, Caterpillar) sit inside XLI at 17.6 vol while the single names trade at 35 to 50.",
+    kill: "Defense, aerospace and rail carry the index and XLI's beta to the complex stays under 0.3. Use a spread, not an outright put." },
+  { t: "FXY", name: "Invesco Japanese Yen", type: "ETF", spot: 57.2, iv: 6.2, ivp: 36, rv: 8.7, beta: -0.3, hc: 2, w: 10, dir: "call", cal: "Fit to Dec-26 58 to 63 calls. Thin: open interest 5 to 3,000", sk: -1.85, order: 3, channel: "FX carry",
+    why: "The yen is the funding currency of the global AI trade. The August 2024 unwind took FXY up 12 percent in three weeks when Nvidia wobbled. It is now at a 52-week low with 8.4 vol: the cheapest crash convexity on the screen.",
+    kill: "The Bank of Japan stays on hold and US rates do not fall; the carry position is smaller than in 2024 and the unwind is shallow." },
+  { t: "AMLP", name: "Alerian MLP", type: "ETF", spot: 55.86, iv: 13.0, ivp: 27, rv: 13.9, beta: 0.3, hc: 3, w: 10, dir: "put", cal: "Fit to Jan-27 50 and 52 puts. Thin, one-sided quotes beyond", sk: 2.0, order: 2, channel: "Gas-to-power",
+    why: "Midstream re-rated 30 percent on the 'natural gas is the AI fuel' story: Transco expansions, Permian-to-Gulf pipes, behind-the-meter generation. AMLP is at a 52-week high at 11.5 vol. Cancel the campuses and the incremental 5 to 8 Bcf/d never shows up.",
+    kill: "LNG export demand carries the volumes regardless, and MLP cash flows are contracted; the ETF grinds rather than gaps." },
+  { t: "UUP", name: "Invesco US Dollar Index", type: "ETF", spot: 28.21, iv: 8.5, ivp: 85, rv: 4.5, beta: 0.2, hc: 2, w: 0, dir: "put", cal: "Not calibrated; options are thin", sk: 0.3, order: 3, channel: "FX flows",
+    why: "Foreigners own a record share of US equities, concentrated in the AI names; an American-centric bust reverses the inflow (the April 2025 pattern, when the dollar fell with stocks). UUP is at a 52-week high. Optional: direction is contested because risk-off usually bids the dollar.",
+    kill: "Classic risk-off: the dollar strengthens in the crash and the put expires worthless." },
+  { t: "BKLN", name: "Invesco Senior Loan", type: "ETF", spot: 20.55, iv: 9.0, ivp: 48, rv: 2.0, beta: 0.25, hc: 3, w: 10, dir: "put", cal: "Fit to Jan-27 20 put (10.6 vol). Only the ATM strike is quoted two-sided", sk: 0.6, order: 3, channel: "Leveraged loans",
+    why: "The loan index is the paper behind private-equity-owned software and the data-center borrowers that banks syndicated. Realized vol is 2 percent, the at-the-money put implies 10.6, and BKLN fell 20 percent in three weeks in 2020 and 8 percent in 2022. This is the listed way into the private-credit channel: the BDCs themselves (ARCC, BXSL) price their puts at 28 to 32 vol, so the market has already found them.",
+    kill: "Loans are floating-rate and senior; a slow bust with orderly cuts leaves the index within a point of par. Only the at-the-money strike is liquid, so this is an outright put, not a spread." },
+  { t: "XLU", name: "Utilities Select Sector", type: "ETF", spot: 42.55, iv: 15.8, ivp: 32, rv: 16.8, beta: 0.35, hc: 3, w: 0, dir: "put", cal: "Fit to Dec-26 40 and 42 puts", sk: 0.6, order: 2, channel: "Power",
+    why: "Sector version of the AEP leg with lower vol and lower beta; the IPPs inside it (Vistra, Constellation) already broke. Optional substitute if AEP options are too thin.",
+    kill: "Same as AEP: bond-proxy bid on falling rates offsets the growth de-rating." },
+  { t: "ET", name: "Energy Transfer", type: "Single", spot: 21.45, iv: 18.2, ivp: 36, rv: 17.7, beta: 0.4, hc: 4, w: 0, dir: "put", cal: "Not calibrated", sk: 0.7, order: 2, channel: "Gas-to-power",
+    why: "Single-name version of the AMLP leg: Cloudburst and other direct data-center gas supply deals in Texas anchor a gas-to-power backlog. At a 52-week high. Optional; AMLP is cheaper in vol.",
+    kill: "Contracted volumes and LNG demand carry cash flows regardless of the data-center backlog." },
+  { t: "PFF", name: "iShares Preferred & Income", type: "ETF", spot: 30.1, iv: 17.4, ivp: 76, rv: 7.0, beta: 0.25, hc: 3, w: 0, dir: "put", cal: "Jan-27 26 put at 21 vol, one-sided quotes. Illiquid", sk: 0.35, order: 3, channel: "Bank capital",
+    why: "Junior bank capital reprices on capital-markets fee loss and data-center construction provisions. Optional; overlaps with HYG.",
+    kill: "Bank capital is strong; preferreds trade on rates more than on credit and rally with cuts." },
+];
+const THESIS = {
+ "thesis": "The AI build-out flipped from cash-funded to debt-funded in 2025 and 2026: record hyperscaler bond deals, CoreWeave-style high yield, GPU-backed ABS, private-credit vehicles for campuses, and regulated utilities raising $70B capex plans against signed data-center load. Equity vol on the chips is 30 to 70. Vol on the paper and the plumbing that fund the chips is 6 to 18. <b>An AI bust does not stay in equities. It becomes a credit event, a power-demand miss, a rate cut, and a carry unwind, in that order.</b> This book buys the second and third steps of that chain where the option market is pricing a quiet year: high-yield credit, the leveraged-loan index, the most data-center-levered utility, the industrial build-out, the pipelines, and on the other side long Treasuries and the yen. Every leg's vol and skew is fitted to live quotes pulled the same day, and the one channel the market has already found is left out: the listed private-credit lenders price their puts at 30 vol. Per dollar of premium it is several times more convex than SMH puts if the transmission works, and it is worth zero if the bust stays contained to Nvidia's multiple. The chart below compares it against the same budget in SMH puts.",
+ "chain": [
+  [
+   1,
+   "<b>Hyperscalers cut 2027 capex guides 20 to 30 percent.</b> NVDA, SMH, AVGO and MU fall 30 percent. This is the leg the first desk owns, at 30 to 70 vol."
+  ],
+  [
+   2,
+   "<b>Credit:</b> neocloud and data-center high-yield paper gaps wider and HYG breaks from a 52-week high. <b>Power:</b> signed large-load commitments stall, AEP's 24 GW book and the utility growth premium de-rate. <b>Build-out:</b> transformer, switchgear, turbine and cooling orders inside XLI roll over. <b>Gas:</b> the 'AI fuel' volumes behind AMLP's re-rating never arrive."
+  ],
+  [
+   3,
+   "<b>Loans:</b> the leveraged-loan index that funded software buyouts and the syndicated data-center borrowers marks down (BKLN); the BDCs that hold the rest are already priced for it. <b>Rates:</b> 1.5 points of GDP investment growth disappears, the Fed path reprices 100bp lower, TLT rallies from a 52-week low. <b>FX:</b> the yen carry that funded the trade unwinds (FXY), the August 2024 sequence."
+  ]
+ ],
+ "why": [
+  "The instruments are boring on purpose. Nobody screens HYG, AMLP or the yen for an AI short, so their vol has not been bid. A 1.5-sigma option on a 6-vol ETF costs a rounding error.",
+  "The bust has already started in the leveraged corners (Blue Owl down 36 percent, Vistra down 37 percent, Oracle down 60 percent from their highs) while the index-level paper (HYG, AMLP, the dollar) sits at 52-week highs. The book is long the catch-up.",
+  "It includes calls. TLT and FXY pay in the same scenario as the puts, from cheaper vol, with no cap, and they diversify the timing risk if the equity leg overshoots before credit cracks.",
+  "The betas are small, 0.25 to 0.5, but the vol is a fifth of the chips'. Payoff per dollar is what matters, not payoff per contract. And the screen is honest about its own trap: wherever the market has already found the channel (BDC puts at 30 vol, Vistra at 41) the leg is excluded."
+ ],
+ "kill": [
+  "The bust stays an equity de-rating: capex is cut slowly, spreads grind rather than gap, and the HYG, AMLP and XLI puts decay to zero.",
+  "Stagflation. Rates rise with the selloff (the 2022 pattern), which kills the TLT leg and hurts the utilities from the wrong side.",
+  "Timing. Loan marks and utility load forecasts move with quarterly reporting and year-end capital plans, so the third-order legs want March 2027 or later, not December.",
+  "Liquidity. HYG, TLT and XLI options are deep. FXY, AEP, AMLP and BKLN are not: work them over days, keep BKLN at the money, and expect the far-OTM strikes on the bond ETFs to trade at a fatter smile than any model."
+ ]
+};
+
+// Live vol screen, 2026-09-02. ticker, name, spot, iv30, ivpct52, rv30, hi52, lo52
+const SCREEN = [
+  { t: "LQD", name: "iShares IG Corporate Bond", spot: 105.22, iv: 6.4, ivp: 65, rv: 5.7, hi52: 109.38, lo52: 104.77 },
+  { t: "VCLT", name: "Vanguard Long-Term Corporate", spot: 71.37, iv: 8.6, ivp: 73, rv: 8.4, hi52: 75.77, lo52: 71.02 },
+  { t: "HYG", name: "iShares High Yield", spot: 79.06, iv: 5.9, ivp: 88, rv: 3.6, hi52: 79.97, lo52: 76.13 },
+  { t: "BKLN", name: "Invesco Senior Loan", spot: 20.55, iv: 9.8, ivp: 48, rv: 2.0, hi52: 20.61, lo52: 19.59 },
+  { t: "JAAA", name: "Janus AAA CLO", spot: 50.53, iv: 3.1, ivp: 6, rv: 1.2, hi52: 50.71, lo52: 48.39 },
+  { t: "AGG", name: "iShares US Aggregate Bond", spot: 96.77, iv: 4.5, ivp: 63, rv: 3.9, hi52: 99.44, lo52: 95.42 },
+  { t: "TLT", name: "iShares 20+ Year Treasury", spot: 81.95, iv: 10.8, ivp: 63, rv: 9.7, hi52: 88.83, lo52: 81.17 },
+  { t: "IEF", name: "iShares 7-10 Year Treasury", spot: 92.1, iv: 5.4, ivp: 52, rv: 4.8, hi52: 96.14, lo52: 92.01 },
+  { t: "TIP", name: "iShares TIPS", spot: 106.81, iv: 4.9, ivp: 43, rv: 3.9, hi52: 109.14, lo52: 106.48 },
+  { t: "MUB", name: "iShares National Muni", spot: 104.33, iv: 4.7, ivp: 65, rv: 3.9, hi52: 107.29, lo52: 100.99 },
+  { t: "EMB", name: "iShares USD EM Bond", spot: 94.09, iv: 9.0, ivp: 64, rv: 5.1, hi52: 96.05, lo52: 89.14 },
+  { t: "PFF", name: "iShares Preferred", spot: 30.1, iv: 10.1, ivp: 76, rv: 7.0, hi52: 31.36, lo52: 29.15 },
+  { t: "UUP", name: "Invesco US Dollar Index", spot: 28.21, iv: 8.5, ivp: 85, rv: 4.5, hi52: 28.6, lo52: 26.4 },
+  { t: "FXY", name: "Invesco Japanese Yen", spot: 57.2, iv: 8.4, ivp: 36, rv: 8.7, hi52: 63.25, lo52: 55.97 },
+  { t: "GLD", name: "SPDR Gold", spot: 396.5, iv: 22.9, ivp: 49, rv: 24.3, hi52: 509.66, lo52: 325.35 },
+  { t: "XLU", name: "Utilities Select Sector", spot: 42.55, iv: 15.6, ivp: 32, rv: 16.8, hi52: 47.7, lo52: 40.29 },
+  { t: "VPU", name: "Vanguard Utilities", spot: 184.24, iv: 17.4, ivp: 59, rv: 14.9, hi52: 205.81, lo52: 174.88 },
+  { t: "NEE", name: "NextEra Energy", spot: 83.11, iv: 20.5, ivp: 5, rv: 20.1, hi52: 98.04, lo52: 67.81 },
+  { t: "DUK", name: "Duke Energy", spot: 120.39, iv: 18.0, ivp: 52, rv: 18.8, hi52: 133.13, lo52: 111.95 },
+  { t: "AMLP", name: "Alerian MLP", spot: 55.86, iv: 11.5, ivp: 27, rv: 13.9, hi52: 55.96, lo52: 42.01 },
+  { t: "KMI", name: "Kinder Morgan", spot: 32.16, iv: 22.6, ivp: 36, rv: 27.1, hi52: 34.81, lo52: 24.97 },
+  { t: "WMB", name: "Williams Cos", spot: 75.58, iv: 28.1, ivp: 71, rv: 29.0, hi52: 80.06, lo52: 54.76 },
+  { t: "ETN", name: "Eaton", spot: 390.0, iv: 37.1, ivp: 56, rv: 48.1, hi52: 478.0, lo52: 310.12 },
+  { t: "XLI", name: "Industrial Select Sector", spot: 172.95, iv: 17.6, ivp: 43, rv: 16.2, hi52: 188.18, lo52: 146.23 },
+  { t: "DLR", name: "Digital Realty", spot: 183.27, iv: 26.4, ivp: 16, rv: 36.9, hi52: 208.02, lo52: 145.4 },
+  { t: "EQIX", name: "Equinix", spot: 1027.59, iv: 29.8, ivp: 71, rv: 36.4, hi52: 1123.99, lo52: 713.18 },
+  { t: "VNQ", name: "Vanguard Real Estate", spot: 96.3, iv: 14.0, ivp: 18, rv: 12.7, hi52: 101.8, lo52: 86.13 },
+  { t: "XLRE", name: "Real Estate Select Sector", spot: 43.93, iv: 13.8, ivp: 22, rv: 13.7, hi52: 46.45, lo52: 39.47 },
+  { t: "BXSL", name: "Blackstone Secured Lending", spot: 24.7, iv: 16.2, ivp: 6, rv: 16.7, hi52: 27.13, lo52: 22.47 },
+  { t: "ARCC", name: "Ares Capital", spot: 19.99, iv: 15.5, ivp: 8, rv: 14.8, hi52: 20.96, lo52: 17.4 },
+  { t: "OBDC", name: "Blue Owl Capital Corp", spot: 11.37, iv: 24.9, ivp: 27, rv: 22.1, hi52: 12.82, lo52: 10.06 },
+  { t: "FSK", name: "FS KKR Capital", spot: 12.27, iv: 27.4, ivp: 26, rv: 30.1, hi52: 15.96, lo52: 9.58 },
+  { t: "BIZD", name: "VanEck BDC Income", spot: 13.35, iv: 22.4, ivp: 57, rv: 15.6, hi52: 14.69, lo52: 11.86 },
+  { t: "OWL", name: "Blue Owl Capital Inc", spot: 11.6, iv: 43.0, ivp: 24, rv: 40.9, hi52: 18.21, lo52: 7.77 },
+  { t: "BX", name: "Blackstone", spot: 136.66, iv: 36.0, ivp: 44, rv: 31.7, hi52: 184.56, lo52: 100.78 },
+  { t: "KKR", name: "KKR", spot: 106.41, iv: 37.6, ivp: 31, rv: 34.6, hi52: 151.25, lo52: 82.54 },
+  { t: "BXMT", name: "Blackstone Mortgage Trust", spot: 13.81, iv: 28.7, ivp: 100, rv: 29.4, hi52: 20.42, lo52: 13.61 },
+  { t: "KREF", name: "KKR Real Estate Finance", spot: 7.45, iv: 31.6, ivp: 27, rv: 36.6, hi52: 9.06, lo52: 5.42 },
+  { t: "XLF", name: "Financial Select Sector", spot: 57.36, iv: 14.9, ivp: 21, rv: 11.9, hi52: 58.41, lo52: 47.67 },
+  { t: "JPM", name: "JPMorgan", spot: 355.5, iv: 20.9, ivp: 11, rv: 17.6, hi52: 366.5, lo52: 277.68 },
+  { t: "KRE", name: "SPDR Regional Banking", spot: 72.62, iv: 22.8, ivp: 12, rv: 15.2, hi52: 78.34, lo52: 56.88 },
+  { t: "SPY", name: "SPDR S&P 500", spot: 761.19, iv: 12.8, ivp: 28, rv: 10.7, hi52: 779.37, lo52: 629.29 },
+  { t: "RSP", name: "Invesco S&P 500 Equal Weight", spot: 217.78, iv: 13.9, ivp: 55, rv: 9.4, hi52: 223.43, lo52: 180.62 },
+  { t: "DIA", name: "SPDR Dow Jones", spot: 528.35, iv: 12.2, ivp: 20, rv: 12.1, hi52: 546.75, lo52: 444.09 },
+  { t: "IWM", name: "iShares Russell 2000", spot: 290.69, iv: 18.1, ivp: 12, rv: 13.6, hi52: 305.18, lo52: 227.72 },
+  { t: "QQQ", name: "Invesco QQQ", spot: 703.93, iv: 18.1, ivp: 27, rv: 19.1, hi52: 748.65, lo52: 555.6 },
+  { t: "VTV", name: "Vanguard Value", spot: 223.96, iv: 10.8, ivp: 26, rv: 8.2, hi52: 228.54, lo52: 178.0 },
+  { t: "USMV", name: "iShares MSCI USA Min Vol", spot: 101.12, iv: 11.3, ivp: 60, rv: 8.6, hi52: 102.21, lo52: 91.02 },
+  { t: "SPLV", name: "Invesco S&P 500 Low Vol", spot: 74.54, iv: 16.0, ivp: 90, rv: 11.7, hi52: 78.82, lo52: 68.48 },
+  { t: "XLP", name: "Consumer Staples Select", spot: 85.25, iv: 15.6, ivp: 62, rv: 18.4, hi52: 89.64, lo52: 74.14 },
+  { t: "XLY", name: "Consumer Discretionary Select", spot: 114.59, iv: 19.5, ivp: 32, rv: 19.3, hi52: 124.77, lo52: 105.2 },
+  { t: "EFA", name: "iShares MSCI EAFE", spot: 106.49, iv: 13.5, ivp: 42, rv: 12.6, hi52: 108.89, lo52: 88.76 },
+  { t: "EFAV", name: "iShares EAFE Min Vol", spot: 93.84, iv: 13.7, ivp: 58, rv: 10.1, hi52: 95.12, lo52: 82.27 },
+  { t: "EWJ", name: "iShares MSCI Japan", spot: 94.4, iv: 20.7, ivp: 46, rv: 18.9, hi52: 98.78, lo52: 74.73 },
+  { t: "EWT", name: "iShares MSCI Taiwan", spot: 108.21, iv: 31.5, ivp: 58, rv: 34.7, hi52: 112.76, lo52: 58.57 },
+  { t: "EWY", name: "iShares MSCI South Korea", spot: 175.43, iv: 44.0, ivp: 44, rv: 58.0, hi52: 220.89, lo52: 72.58 },
+  { t: "IBM", name: "IBM", spot: 231.05, iv: 31.2, ivp: 26, rv: 34.4, hi52: 332.41, lo52: 199.19 },
+  { t: "ACN", name: "Accenture", spot: 186.7, iv: 51.2, ivp: 83, rv: 51.4, hi52: 288.6, lo52: 118.15 },
+  { t: "CSCO", name: "Cisco", spot: 109.65, iv: 28.8, ivp: 44, rv: 41.3, hi52: 130.37, lo52: 65.02 },
+  { t: "ADP", name: "ADP", spot: 283.49, iv: 26.7, ivp: 46, rv: 31.2, hi52: 296.8, lo52: 188.16 },
+  { t: "VRSK", name: "Verisk", spot: 194.35, iv: 32.5, ivp: 43, rv: 44.8, hi52: 272.13, lo52: 155.94 },
+  { t: "AEP", name: "American Electric Power", spot: 122.96, iv: 19.7, ivp: 35, rv: 20.8, hi52: 140.58, lo52: 103.29 },
+  { t: "PPL", name: "PPL Corp", spot: 34.47, iv: 19.7, ivp: 54, rv: 20.1, hi52: 40.1, lo52: 32.92 },
+  { t: "D", name: "Dominion Energy", spot: 65.88, iv: 20.3, ivp: 40, rv: 18.7, hi52: 72.98, lo52: 55.27 },
+  { t: "SO", name: "Southern Co", spot: 88.3, iv: 18.6, ivp: 43, rv: 19.5, hi52: 99.26, lo52: 82.46 },
+  { t: "ED", name: "Consolidated Edison", spot: 107.7, iv: 18.0, ivp: 30, rv: 18.6, hi52: 115.27, lo52: 92.93 },
+  { t: "ET", name: "Energy Transfer", spot: 21.45, iv: 18.2, ivp: 36, rv: 17.7, hi52: 21.77, lo52: 15.35 },
+  { t: "PLD", name: "Prologis", spot: 139.68, iv: 22.8, ivp: 34, rv: 19.8, hi52: 153.2, lo52: 107.86 },
+  { t: "BLK", name: "BlackRock", spot: 1128.1, iv: 24.1, ivp: 26, rv: 20.5, hi52: 1205.36, lo52: 917.52 },
+  { t: "VST", name: "Vistra", spot: 137.5, iv: 41.1, ivp: 2, rv: 41.1, hi52: 219.13, lo52: 132.67 },
+];
+
+const EXPIRIES = [
+  ['2026-10-16', 'Oct 16 2026 (monthly)'],
+  ['2026-11-20', 'Nov 20 2026 (monthly)'],
+  ['2026-12-18', 'Dec 18 2026 (quarterly)'],
+  ['2027-01-15', 'Jan 15 2027 (LEAPS roll)'],
+  ['2027-03-19', 'Mar 19 2027 (quarterly)'],
+  ['2027-06-17', 'Jun 17 2027 (quarterly)'],
+  ['2027-09-17', 'Sep 17 2027'],
+  ['2027-12-17', 'Dec 17 2027'],
+  ['2028-01-21', 'Jan 21 2028 (LEAPS)'],
+];
+const TODAY = new Date(SNAPSHOT_DATE + 'T16:00:00Z');
+const DESKS = {
+  first: { title: 'Basket', sub: 'Seeded from IBKR snapshots on 2 Sep 2026. Spot, 30-day implied vol, 52-week IV percentile, and 30-day realized vol are live pulls. Beta to the complex, bid-ask haircut, and weight are my estimates and are the fields to argue with. Weight 0 excludes a name. "Auto-weight" sets weights by efficiency with the per-name cap.', seed: SEED_FIRST, maxiv: 0, minprem: 0.40 },
+  second: { title: 'Second-order basket', sub: 'Instruments with implied vol under 20 that an AI bust reaches only through financing, power demand, rates, or FX. Dir = put or call. Beta is the expected move per unit of complex drawdown after adversarial review; negative beta means the instrument rises in the bust and is played with calls. Spot and vol are live IBKR pulls from 2 Sep 2026.', seed: SEED_SECOND, maxiv: 20, minprem: 0.05 },
+};
+
+// ---------- Math ----------
+function N(x) { // standard normal CDF
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x >= 0 ? 1 - p : p;
+}
+function bsPut(S, K, T, r, v) {
+  if (T <= 0) return Math.max(K - S, 0);
+  const sq = v * Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r + v * v / 2) * T) / sq;
+  const d2 = d1 - sq;
+  return K * Math.exp(-r * T) * N(-d2) - S * N(-d1);
+}
+function bsCall(S, K, T, r, v) {
+  if (T <= 0) return Math.max(S - K, 0);
+  const sq = v * Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r + v * v / 2) * T) / sq;
+  const d2 = d1 - sq;
+  return S * N(d1) - K * Math.exp(-r * T) * N(d2);
+}
+const fmt$ = n => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+const fmt$k = n => { const a = Math.abs(n); const s = n < 0 ? '-' : ''; return a >= 1e6 ? s + '$' + (a / 1e6).toFixed(2) + 'M' : a >= 1e3 ? s + '$' + Math.round(a / 1e3) + 'k' : s + '$' + Math.round(a); };
+const fmtX = n => (isFinite(n) ? n.toFixed(2) + 'x' : '—');
+const pct = n => (n * 100).toFixed(0) + '%';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------- State ----------
+let desk = 'first';
+let rowsBy = { first: [], second: [] };
+const rows = () => rowsBy[desk];
+const LS = 'aiputs.v2';
+const clone = a => a.map(r => ({ ...r }));
+function load() {
+  rowsBy = { first: clone(SEED_FIRST), second: clone(SEED_SECOND) };
+  try {
+    const s = JSON.parse(localStorage.getItem(LS));
+    if (s && s.rowsBy) {
+      if (s.rowsBy.first && s.rowsBy.first.length) rowsBy.first = s.rowsBy.first;
+      if (s.rowsBy.second && s.rowsBy.second.length) rowsBy.second = s.rowsBy.second;
+      if (s.desk === 'first' || s.desk === 'second') desk = s.desk;
+      return s;
+    }
+  } catch (e) {}
+  return null;
+}
+function save() {
+  try { localStorage.setItem(LS, JSON.stringify({ desk, rowsBy, ctl: readCtl() })); } catch (e) {}
+}
+const $ = id => document.getElementById(id);
+function readCtl() {
+  return { budget: +$('budget').value, target: +$('target').value / 100, expiry: $('expiry').value, scoring: $('scoring').value,
+    rate: +$('rate').value / 100, skew: +$('skew').value, term: +$('term').value, ratio: $('ratio').value === '1',
+    maxw: +$('maxw').value / 100, minm: +$('minm').value / 100, maxm: +$('maxm').value / 100, minprem: +$('minprem').value, maxiv: +$('maxiv').value };
+}
+
+// ---------- Surface ----------
+function daysTo(exp) { return Math.max(1, Math.round((new Date(exp + 'T20:00:00Z') - TODAY) / 86400000)); }
+function ivAt(row, K, days, ctl) {
+  const atm = (row.iv / 100) * Math.pow(days / 30, ctl.term);
+  const slope = ctl.skew * Math.sqrt(107 / days) * (row.sk == null ? 1 : row.sk);
+  const lm = Math.log(K / row.spot);
+  // Put wing rises with the skew slope; call wing gets a gentle smile so far-OTM calls are not underpriced.
+  const wing = lm < 0 ? 0.15 * lm * lm * (row.sk == null ? 1 : row.sk) : 0.10 * lm * lm;
+  return Math.max(0.03, atm + slope * lm + wing);
+}
+function optMid(row, K, days, ctl) {
+  const v = ivAt(row, K, days, ctl), T = days / 365;
+  return row.dir === 'call' ? bsCall(row.spot, K, T, ctl.rate, v) : bsPut(row.spot, K, T, ctl.rate, v);
+}
+function strikeStep(spot) { return spot >= 400 ? 10 : spot >= 100 ? 5 : spot >= 20 ? 1 : 0.5; } // matches listed increments on the names here
+function strikeGrid(row, ctl, days) {
+  const step = strikeStep(row.spot);
+  const ks = [];
+  // Never list strikes beyond 4 sigma of the row's own vol at this expiry: they are unquoted in practice.
+  const sig = (row.iv / 100) * Math.sqrt((days || 107) / 365);
+  const stepM = sig < 0.06 ? 0.025 : 0.05; // finer moneyness grid for low-vol instruments
+  if (row.dir === 'call') {
+    const top = Math.min(2 - ctl.minm, 1 + 4 * sig);
+    for (let m = 2 - ctl.maxm; m <= top + 1e-9; m += stepM) ks.push(Math.round(row.spot * m / step) * step);
+    return [...new Set(ks)].filter(k => k > row.spot);
+  }
+  const floor = Math.max(ctl.minm, 1 - 4 * sig);
+  for (let m = ctl.maxm; m >= floor - 1e-9; m -= stepM) ks.push(Math.round(row.spot * m / step) * step);
+  return [...new Set(ks)].filter(k => k > 0 && k < row.spot);
+}
+
+// ---------- Structures ----------
+// Each structure: { kind, legs:[{K, q}], debit (per share, after haircut), payoff(S_T), maxPayoff, label, unbounded }
+function buildStructures(row, days, ctl) {
+  const ks = strikeGrid(row, ctl, days);
+  const h = row.hc / 100;
+  const buy = K => optMid(row, K, days, ctl) * (1 + h / 2);
+  const sell = K => optMid(row, K, days, ctl) * (1 - h / 2);
+  const isCall = row.dir === 'call';
+  const intr = K => isCall ? (S => Math.max(S - K, 0)) : (S => Math.max(K - S, 0));
+  const sfx = isCall ? 'C' : 'P';
+  const out = [];
+  for (const K of ks) {
+    const d = buy(K);
+    if (d < ctl.minprem) continue;
+    const f = intr(K);
+    out.push({ kind: isCall ? 'Call' : 'Put', legs: [{ K, q: 1 }], debit: d, iv: ivAt(row, K, days, ctl), maxPayoff: isCall ? Infinity : K, unbounded: false,
+      payoff: f, label: K.toFixed(K % 1 ? 1 : 0) + sfx });
+  }
+  for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
+    const K1 = ks[i], K2 = ks[j]; // K1 nearer the money, K2 further out (below for puts, above for calls)
+    const sigW = (row.iv / 100) * Math.sqrt(days / 365);
+    if (Math.abs(K1 - K2) / row.spot < Math.min(0.099, 2 * sigW) - 1e-9) continue; // wide enough to matter
+    const shortV = sell(K2), longV = buy(K1);
+    if (shortV < 0.08 * longV) continue; // degenerate: the short leg is worthless, this is the outright
+    const d = longV - shortV;
+    if (d < ctl.minprem) continue;
+    const f1 = intr(K1), f2 = intr(K2);
+    const lab = K1.toFixed(K1 % 1 ? 1 : 0) + '/' + K2.toFixed(K2 % 1 ? 1 : 0) + sfx;
+    out.push({ kind: isCall ? 'Call spread' : 'Put spread', legs: [{ K: K1, q: 1 }, { K: K2, q: -1 }], debit: d, iv: ivAt(row, K1, days, ctl), maxPayoff: Math.abs(K1 - K2), unbounded: false,
+      payoff: S => f1(S) - f2(S), label: lab });
+    if (ctl.ratio) {
+      const dr = buy(K1) - 2 * sell(K2);
+      if (dr < ctl.minprem) continue;
+      out.push({ kind: '1x2 ratio', legs: [{ K: K1, q: 1 }, { K: K2, q: -2 }], debit: dr, iv: ivAt(row, K1, days, ctl), maxPayoff: Math.abs(K1 - K2), unbounded: true,
+        payoff: S => f1(S) - 2 * f2(S), label: lab + ' 1x2' });
+    }
+  }
+  return out;
+}
+function nameMove(row, factor) { return Math.max(-0.95, Math.min(3, row.beta * factor)); }
+function scoreStructure(st, row, ctl) {
+  const mult = f => st.payoff(row.spot * (1 + nameMove(row, f))) / st.debit;
+  const m23 = mult(ctl.target * 2 / 3), m1 = mult(ctl.target), m15 = mult(ctl.target * 1.5);
+  // Blend = expected multiple under a discrete crash distribution: 40% it stops at 2/3 of target, 40% it hits target, 20% it overshoots to 1.5x.
+  const score = m1 <= 0 ? 0 : ctl.scoring === 'target' ? m1 : 0.4 * m23 + 0.4 * m1 + 0.2 * m15;
+  return { m23, m1, m15, score };
+}
+
+// ---------- Compute ----------
+function eligible(r, ctl) { return r.w > 0 && r.spot > 0 && r.iv > 0 && !(ctl.maxiv > 0 && r.iv > ctl.maxiv); }
+function compute(ctl) {
+  const days = daysTo(ctl.expiry);
+  const active = rows().filter(r => eligible(r, ctl));
+  const wsum = active.reduce((a, r) => a + r.w, 0) || 1;
+  const board = [];
+  const perName = [];
+  for (const row of active) {
+    const sts = buildStructures(row, days, ctl);
+    let best = null, bestOut = null, bestSpread = null;
+    for (const st of sts) {
+      const sc = scoreStructure(st, row, ctl);
+      Object.assign(st, sc, { row });
+      board.push(st);
+      if (st.m1 > 0 && (!best || st.score > best.score)) best = st;
+      if ((st.kind === 'Put' || st.kind === 'Call') && st.m1 > 0 && (!bestOut || st.score > bestOut.score)) bestOut = st;
+      if ((st.kind === 'Put spread' || st.kind === 'Call spread') && st.m1 > 0 && (!bestSpread || st.score > bestSpread.score)) bestSpread = st;
+    }
+    perName.push({ row, best, bestOut, bestSpread, w: Math.min(row.w / wsum, ctl.maxw) });
+  }
+  board.sort((a, b) => b.score - a.score);
+  // Normalize weights after cap so the budget is fully used.
+  const cw = perName.reduce((a, p) => a + p.w, 0) || 1;
+  perName.forEach(p => p.w = p.w / cw);
+  const plan = allocate(perName, p => p.best, ctl.budget);
+  const altOut = allocate(perName, p => p.bestOut, ctl.budget);
+  const altSpread = allocate(perName, p => p.bestSpread, ctl.budget);
+  const smhRow = rowsBy.first.find(r => r.t === 'SMH') || SEED_FIRST[0];
+  let altSMH = null;
+  if (smhRow) {
+    const sr = { ...smhRow, dir: 'put' };
+    const sts = buildStructures(sr, days, { ...ctl, minprem: 0.4 }).filter(s => s.kind === 'Put');
+    let b = null; for (const st of sts) { const sc = scoreStructure(st, sr, ctl); Object.assign(st, sc, { row: sr }); if (st.m1 > 0 && (!b || st.score > b.score)) b = st; }
+    if (b) altSMH = allocate([{ row: sr, best: b, w: 1 }], p => p.best, ctl.budget);
+  }
+  return { days, board, perName, plan, altOut, altSpread, altSMH, ctl };
+}
+function allocate(perName, pick, budget) {
+  const lines = [];
+  for (const p of perName) {
+    const st = pick(p); if (!st) continue;
+    const alloc = budget * p.w;
+    const n = Math.floor(alloc / (st.debit * 100));
+    if (n <= 0) continue;
+    lines.push({ row: p.row, st, n, premium: n * st.debit * 100 });
+  }
+  const premium = lines.reduce((a, l) => a + l.premium, 0);
+  const pnl = f => lines.reduce((a, l) => a + l.n * 100 * l.st.payoff(l.row.spot * (1 + nameMove(l.row, f))), 0) - premium;
+  return { lines, premium, pnl };
+}
+function breakeven(pnl) { // most shallow factor move at which pnl >= 0, searched from 0 down to -95%
+  let lo = -0.95, hi = 0;
+  if (pnl(lo) < 0) return null;
+  if (pnl(hi) >= 0) return 0;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (pnl(m) >= 0) lo = m; else hi = m; }
+  return lo;
+}
+
+// ---------- Render ----------
+function renderBasket(res) {
+  const d = DESKS[desk];
+  $('basketTitle').textContent = d.title; $('basketSub').textContent = d.sub;
+  $('etfw').hidden = desk !== 'first';
+  const tb = $('basket').querySelector('tbody');
+  tb.innerHTML = '';
+  rows().forEach((r, i) => {
+    const pn = res.perName.find(p => p.row === r);
+    const tr = document.createElement('tr');
+    const excluded = r.w > 0 && !eligible(r, res.ctl);
+    if (pn && pn.best) tr.className = 'pick'; else if (excluded) tr.className = 'dim';
+    const ivpClass = r.ivp >= 60 ? 'a' : r.ivp <= 25 ? 'g' : 'n';
+    tr.innerHTML = `
+      <td class="l"><input type="text" data-i="${i}" data-k="t" value="${esc(r.t)}" /></td>
+      <td class="l"><select data-i="${i}" data-k="type"><option ${r.type === 'ETF' ? 'selected' : ''}>ETF</option><option ${r.type === 'Single' ? 'selected' : ''}>Single</option></select></td>
+      <td class="l"><select data-i="${i}" data-k="dir"><option value="put" ${r.dir !== 'call' ? 'selected' : ''}>Put</option><option value="call" ${r.dir === 'call' ? 'selected' : ''}>Call</option></select></td>
+      <td><input type="number" step="0.01" data-i="${i}" data-k="spot" value="${r.spot}" /></td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="iv" value="${r.iv}" />${excluded ? ' <span class="pill r">IV cap</span>' : ''}</td>
+      <td><span class="pill ${ivpClass}">${r.ivp}</span></td>
+      <td class="muted">${r.rv}</td>
+      <td><input type="number" step="0.05" data-i="${i}" data-k="beta" value="${r.beta}" /></td>
+      <td><input type="number" step="0.5" data-i="${i}" data-k="hc" value="${r.hc}" /></td>
+      <td><input type="number" step="1" min="0" data-i="${i}" data-k="w" value="${r.w}" /></td>
+      <td class="l">${pn && pn.best ? `<span class="mono">${pn.best.kind} ${pn.best.label}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${pn && pn.best ? fmtX(pn.best.m1) : '—'}</td>
+      <td><button class="small" data-del="${i}">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  const ws = rows().reduce((a, r) => a + (+r.w || 0), 0);
+  $('wsum').textContent = `weights sum to ${ws}% (normalized automatically)`;
+  if (desk === 'first') {
+    const low = rows().filter(r => r.w > 0 && r.ivp <= 25).map(r => r.t);
+    const high = rows().filter(r => r.w > 0 && r.ivp >= 60).map(r => r.t);
+    $('ivnote').innerHTML = `<div class="note"><b>Vol check.</b> Bottom-quartile 52-week IV percentile: ${low.join(', ') || 'none'}. Above median: ${high.join(', ') || 'none'}. Cheap vol favors owning outright puts and longer dates; rich vol favors spreads. As of ${SNAPSHOT_DATE}, most of this basket is closer to cheap than expensive.</div>`;
+  } else {
+    const over = rows().filter(r => r.w > 0 && res.ctl.maxiv > 0 && r.iv > res.ctl.maxiv).map(r => r.t);
+    $('ivnote').innerHTML = `<div class="note info"><b>Vol cap ${res.ctl.maxiv || 'off'}.</b> ${over.length ? 'Excluded for IV above the cap: ' + over.join(', ') + '.' : 'Every weighted name is under the cap.'} Low IV cuts both ways: the option is cheap, and the model's linear skew understates the price of far-OTM strikes on bond and FX ETFs. Pull the real chain before sizing; a 20 to 30 percent premium miss on these legs is normal.</div>`;
+  }
+}
+function renderPlan(res) {
+  const { plan, ctl } = res;
+  const be = breakeven(plan.pnl);
+  const atT = plan.pnl(ctl.target);
+  const mult = plan.premium > 0 ? (atT + plan.premium) / plan.premium : 0;
+  $('plansub').textContent = `${plan.lines.length} lines, ${res.days} days to ${ctl.expiry}, complex target ${pct(ctl.target)}. Best-scoring bounded structure per name, sized by weight, contracts floored so the budget is never exceeded.`;
+  const kp = [
+    ['Premium deployed', fmt$k(plan.premium), 'g', `of ${fmt$k(ctl.budget)} budget, max loss`],
+    ['P&L at target', fmt$k(atT), atT > 0 ? 'g' : 'r', `complex ${pct(ctl.target)} at expiry`],
+    ['Multiple at target', fmtX(mult), mult >= 3 ? 'g' : mult >= 1.5 ? 'a' : 'r', 'payoff / premium'],
+    ['Breakeven move', be === null ? 'none' : pct(be), be !== null && be > ctl.target * 0.5 ? 'g' : 'a', 'complex move needed at expiry'],
+    ['P&L at 1.5x target', fmt$k(plan.pnl(ctl.target * 1.5)), 'g', `complex ${pct(ctl.target * 1.5)}`],
+    ['P&L flat', fmt$k(plan.pnl(0)), 'r', 'all premium decays'],
+  ];
+  if (res.altSMH) { const s = res.altSMH.pnl(ctl.target); kp.push(['SMH puts, same budget', fmt$k(s), s > atT ? 'a' : 'n', 'first-order benchmark at target']); }
+  $('kpis').innerHTML = kp.map(k => `<div class="kpi"><div class="l">${k[0]}</div><div class="v ${k[2]}">${k[1]}</div><div class="s">${k[3]}</div></div>`).join('');
+  const tb = $('plan').querySelector('tbody'); tb.innerHTML = '';
+  for (const l of plan.lines) {
+    const sT = l.row.spot * (1 + nameMove(l.row, ctl.target));
+    const pay = l.n * 100 * l.st.payoff(sT);
+    const beN = (() => { // name-level breakeven as factor move
+      const f = breakeven(m => l.n * 100 * l.st.payoff(l.row.spot * (1 + nameMove(l.row, m))) - l.premium); return f === null ? '—' : pct(f);
+    })();
+    const maxp = l.st.unbounded ? '<span class="pill r">open tail</span>' : !isFinite(l.st.maxPayoff) ? '<span class="pill g">uncapped</span>' : fmt$k(l.n * 100 * l.st.maxPayoff);
+    tb.innerHTML += `<tr><td>${esc(l.row.t)}</td><td class="l">${l.st.kind}</td><td class="mono">${l.st.label}</td><td>$${l.st.debit.toFixed(2)}</td><td>${l.n.toLocaleString()}</td><td>${fmt$(l.premium)}</td><td>${fmt$(pay)}</td><td>${fmtX(pay / l.premium)}</td><td>${maxp}</td><td>${beN}</td></tr>`;
+  }
+  tb.innerHTML += `<tr><td><b>Total</b></td><td></td><td></td><td></td><td>${plan.lines.reduce((a, l) => a + l.n, 0).toLocaleString()}</td><td><b>${fmt$(plan.premium)}</b></td><td><b>${fmt$(atT + plan.premium)}</b></td><td><b>${fmtX(mult)}</b></td><td></td><td>${be === null ? '—' : pct(be)}</td></tr>`;
+  const moves = [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, 0, 0.1];
+  const st = $('scen').querySelector('tbody'); st.innerHTML = '';
+  const rowsOut = [['Plan', plan], ['Outright options only', res.altOut], ['Spreads only', res.altSpread], ['SMH puts only', res.altSMH]];
+  for (const [name, a] of rowsOut) {
+    if (!a) continue;
+    st.innerHTML += `<tr><td class="l">${name} <span class="muted">(${fmt$k(a.premium)})</span></td>${moves.map(m => { const v = a.pnl(m); return `<td style="color:${v >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt$k(v)}</td>`; }).join('')}</tr>`;
+  }
+  renderChart(res);
+  const w = [];
+  const conc = plan.lines.map(l => l.premium / plan.premium).sort((a, b) => b - a);
+  if (conc[0] > 0.4) w.push(`<b>Concentration.</b> ${pct(conc[0])} of premium is in one name. A single print can decide the trade.`);
+  if (plan.lines.some(l => l.st.unbounded)) w.push(`<b>Open tail.</b> The plan includes 1x2 ratio spreads. Beyond the short strike the position loses money faster the further the name moves, which is the exact scenario you are paying for. Treat this as a bet on a specific window, not a crash hedge.`);
+  if (res.days < 60) w.push(`<b>Short dated.</b> ${res.days} days is a theta furnace. A quarterly expiry roughly halves the decay per day for the same strike.`);
+  if (plan.premium < ctl.budget * 0.9) w.push(`<b>Under-deployed.</b> Contract rounding left ${fmt$k(ctl.budget - plan.premium)} unspent. Raise weights on cheaper contracts or nudge the budget.`);
+  if (desk === 'second' && res.altSMH && res.altSMH.pnl(ctl.target) > atT) w.push(`<b>Benchmark wins at target.</b> Plain SMH puts pay more at ${pct(ctl.target)} than this book. The second-order book earns its keep only if the transmission is at least as strong as the betas assume, or if the bust overshoots. Check the 1.5x column.`);
+  $('warnings').innerHTML = w.map(x => `<div class="note ${x.startsWith('<b>Open') ? 'danger' : ''}">${x}</div>`).join('');
+}
+function renderBoard(res) {
+  const tb = $('board').querySelector('tbody'); tb.innerHTML = '';
+  const seen = {}; const shown = res.board.filter(s => s.score > 0 && (seen[s.row.t] = (seen[s.row.t] || 0) + 1) <= 4).slice(0, 48);
+  shown.forEach((s, i) => {
+    tb.innerHTML += `<tr><td>${i + 1}</td><td class="l">${esc(s.row.t)}</td><td class="l">${s.kind}${s.unbounded ? ' <span class="pill r">tail</span>' : ''}</td><td class="mono">${s.label}</td><td>${pct(s.legs[0].K / s.row.spot)}</td><td>$${s.debit.toFixed(2)}</td><td>${(s.iv * 100).toFixed(0)}%</td><td>${fmtX(s.m23)}</td><td>${fmtX(s.m1)}</td><td>${fmtX(s.m15)}</td><td><b>${s.score.toFixed(2)}</b></td></tr>`;
+  });
+}
+function renderChart(res) {
+  const W = 960, H = 340, padL = 70, padR = 20, padT = 16, padB = 36;
+  const xs = []; for (let m = -0.6; m <= 0.1001; m += 0.01) xs.push(+m.toFixed(3));
+  const series = [['plan', res.plan, 'var(--green)', 3], ['out', res.altOut, 'var(--amber)', 2], ['spr', res.altSpread, 'var(--blue)', 2], ['smh', res.altSMH, 'var(--ink-3)', 2]].filter(s => s[1]);
+  let ymin = 0, ymax = 0;
+  for (const s of series) for (const x of xs) { const v = s[1].pnl(x); ymin = Math.min(ymin, v); ymax = Math.max(ymax, v); }
+  ymax = Math.max(ymax, 1); ymin = Math.min(ymin, -1);
+  const X = m => padL + (m + 0.6) / 0.7 * (W - padL - padR);
+  const Y = v => padT + (ymax - v) / (ymax - ymin) * (H - padT - padB);
+  let g = '';
+  const yt = 5; for (let i = 0; i <= yt; i++) { const v = ymin + (ymax - ymin) * i / yt; g += `<line x1="${padL}" x2="${W - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" /><text x="${padL - 6}" y="${Y(v) + 4}" text-anchor="end">${fmt$k(v)}</text>`; }
+  for (let m = -0.6; m <= 0.1001; m += 0.1) { const mm = +m.toFixed(2); g += `<text x="${X(mm)}" y="${H - 12}" text-anchor="middle">${pct(mm)}</text>`; }
+  g += `<line x1="${padL}" x2="${W - padR}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--ink-3)" stroke-dasharray="3 3" />`;
+  g += `<line x1="${X(res.ctl.target)}" x2="${X(res.ctl.target)}" y1="${padT}" y2="${H - padB}" stroke="var(--amber)" stroke-dasharray="4 4" /><text x="${X(res.ctl.target) + 4}" y="${padT + 12}" style="fill:var(--amber)">target</text>`;
+  for (const s of series) {
+    const d = xs.map((x, i) => (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(s[1].pnl(x)).toFixed(1)).join(' ');
+    g += `<path d="${d}" fill="none" stroke="${s[2]}" stroke-width="${s[3]}" />`;
+  }
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%">${g}</svg>`;
+}
+function renderThesis(res) {
+  const on = desk === 'second' && THESIS;
+  $('thesisPanel').hidden = !on; $('legsPanel').hidden = !on;
+  if (!on) return;
+  $('thesisText').innerHTML = THESIS.thesis;
+  $('chainList').innerHTML = THESIS.chain.map(c => `<div class="n ${c[0] === 2 ? 'o2' : c[0] === 3 ? 'o3' : ''}">${c[0]}°</div><div class="t">${c[1]}</div>`).join('');
+  $('whyList').innerHTML = THESIS.why.map(x => `<li>${x}</li>`).join('');
+  $('killList').innerHTML = THESIS.kill.map(x => `<li>${x}</li>`).join('');
+  const tb = $('legs').querySelector('tbody'); tb.innerHTML = '';
+  for (const r of rows()) {
+    if (!r.why) continue;
+    const pn = res.perName.find(p => p.row === r);
+    tb.innerHTML += `<tr class="${pn && pn.best ? '' : 'dim'}"><td><b>${esc(r.t)}</b> <span class="pill ${r.dir === 'call' ? 'b' : 'n'}">${r.dir}</span><div class="muted" style="font-size:11px;white-space:normal;max-width:160px">${esc(r.name || '')}</div></td><td><span class="pill ${r.order === 3 ? 'b' : 'a'}">${r.order || 2}°</span></td><td class="l">${esc(r.channel || '')}</td><td>${r.iv}%${r.cal ? `<div class="muted" style="font-size:11px;white-space:normal;max-width:150px">${esc(r.cal)}</div>` : ''}</td><td>${r.beta}</td><td class="wrap">${esc(r.why)}</td><td class="wrap">${esc(r.kill || '')}</td></tr>`;
+  }
+}
+function renderScreen() {
+  const tb = $('screen').querySelector('tbody'); if (tb.dataset.done) return; tb.dataset.done = '1';
+  const have = new Set([...rowsBy.first, ...rowsBy.second].map(r => r.t));
+  const sorted = [...SCREEN].sort((a, b) => a.iv - b.iv);
+  let html = '', lineDrawn = false;
+  for (const s of sorted) {
+    if (!lineDrawn && s.iv >= 20) { html += `<tr><td colspan="8" style="border-top:2px solid var(--red);padding:2px 8px;color:var(--red);font-size:11px;text-transform:uppercase;letter-spacing:.06em">implied vol 20 and above</td></tr>`; lineDrawn = true; }
+    const pos = s.hi52 > s.lo52 ? (s.spot - s.lo52) / (s.hi52 - s.lo52) : 0.5;
+    html += `<tr class="${s.iv >= 20 ? 'dim' : ''}"><td><b>${esc(s.t)}</b></td><td class="l muted">${esc(s.name)}</td><td>${s.spot}</td><td><b>${s.iv.toFixed(1)}</b></td><td><span class="pill ${s.ivp >= 60 ? 'a' : s.ivp <= 25 ? 'g' : 'n'}">${s.ivp}</span></td><td class="muted">${s.rv}</td><td><span class="bar"><i class="${pos > 0.85 ? 'hi' : ''}" style="width:${Math.round(pos * 100)}%"></i></span> <span class="muted" style="font-size:11px">${s.lo52} to ${s.hi52}</span></td><td>${have.has(s.t) ? '<span class="pill g">in basket</span>' : `<button class="small" data-add="${esc(s.t)}">Add</button>`}</td></tr>`;
+  }
+  tb.innerHTML = html;
+}
+
+// ---------- Wiring ----------
+function update() {
+  const ctl = readCtl();
+  $('budgetVal').textContent = fmt$k(ctl.budget);
+  $('targetVal').textContent = pct(ctl.target);
+  $('expiryHint').textContent = `${daysTo(ctl.expiry)} days from the ${SNAPSHOT_DATE} snapshot.`;
+  document.querySelectorAll('#desks button').forEach(b => b.classList.toggle('on', b.dataset.desk === desk));
+  const res = compute(ctl);
+  renderThesis(res); renderBasket(res); renderPlan(res); renderBoard(res); renderScreen();
+  save();
+  window.__res = res;
+}
+function setDesk(d) {
+  if (d === desk) return;
+  desk = d;
+  $('maxiv').value = DESKS[d].maxiv; $('minprem').value = DESKS[d].minprem;
+  update();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function init() {
+  const sel = $('expiry');
+  for (const [v, l] of EXPIRIES) { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); }
+  sel.value = '2026-12-18';
+  const saved = load();
+  $('maxiv').value = DESKS[desk].maxiv; $('minprem').value = DESKS[desk].minprem;
+  if (saved && saved.ctl) {
+    const c = saved.ctl;
+    $('budget').value = c.budget; $('target').value = Math.round(c.target * 100); if (EXPIRIES.some(e => e[0] === c.expiry)) sel.value = c.expiry;
+    $('scoring').value = c.scoring; $('rate').value = (c.rate * 100).toFixed(1); $('skew').value = c.skew; $('term').value = c.term; $('ratio').value = c.ratio ? '1' : '0';
+    $('maxw').value = Math.round(c.maxw * 100); $('minm').value = Math.round(c.minm * 100); $('maxm').value = Math.round(c.maxm * 100);
+    if (c.minprem != null) $('minprem').value = c.minprem; if (c.maxiv != null) $('maxiv').value = c.maxiv;
+  }
+  for (const id of ['budget', 'target', 'expiry', 'scoring', 'rate', 'skew', 'term', 'ratio', 'maxw', 'minm', 'maxm', 'minprem', 'maxiv']) $(id).addEventListener('input', update);
+  $('desks').addEventListener('click', e => { const d = e.target.dataset.desk; if (d) setDesk(d); });
+  $('basket').addEventListener('change', e => {
+    const el = e.target; if (!el.dataset.k) return;
+    const r = rows()[+el.dataset.i]; const k = el.dataset.k;
+    r[k] = k === 't' ? el.value.toUpperCase().trim() : (k === 'type' || k === 'dir') ? el.value : +el.value;
+    if (k === 'dir' && r.beta && ((r.dir === 'call') !== (r.beta < 0))) r.beta = -r.beta; // flipping direction flips the sign convention
+    update();
+  });
+  $('basket').addEventListener('click', e => { const d = e.target.dataset.del; if (d !== undefined) { rows().splice(+d, 1); update(); } });
+  $('screen').addEventListener('click', e => {
+    const t = e.target.dataset.add; if (!t) return;
+    const s = SCREEN.find(x => x.t === t); if (!s) return;
+    rows().push({ t: s.t, name: s.name, type: 'ETF', spot: s.spot, iv: s.iv, ivp: s.ivp, rv: s.rv, beta: 0.3, hc: 3, w: 5, dir: 'put', sk: s.iv < 12 ? 0.3 : 0.6 });
+    $('screen').querySelector('tbody').dataset.done = ''; update();
+  });
+  $('addrow').addEventListener('click', () => { rows().push({ t: 'NEW', type: 'Single', spot: 100, iv: 50, ivp: 50, rv: 50, beta: 1, hc: 3, w: 5, dir: 'put', sk: 1 }); update(); });
+  $('reset').addEventListener('click', () => { rowsBy[desk] = clone(DESKS[desk].seed); $('maxiv').value = DESKS[desk].maxiv; $('minprem').value = DESKS[desk].minprem; $('screen').querySelector('tbody').dataset.done = ''; update(); });
+  $('eqw').addEventListener('click', () => { rows().forEach(r => r.w = r.t === 'QQQ' && desk === 'first' ? 0 : 10); update(); });
+  $('etfw').addEventListener('click', () => { rows().forEach(r => r.w = r.type === 'ETF' && r.t !== 'QQQ' ? 50 : 0); update(); });
+  $('autow').addEventListener('click', () => {
+    const ctl = readCtl();
+    // Score every name (weights temporarily all on), then weight by score^2 with the cap.
+    const backup = rows().map(r => r.w); rows().forEach(r => { if (r.spot > 0 && r.iv > 0) r.w = 1; });
+    const res = compute(ctl);
+    rows().forEach((r, i) => { const p = res.perName.find(p => p.row === r); r.w = p && p.best && p.best.score > 0 ? Math.round(Math.pow(p.best.score, 2) * 10) : 0; });
+    const tot = rows().reduce((a, r) => a + r.w, 0) || 1;
+    rows().forEach(r => r.w = Math.round(r.w / tot * 100));
+    // Apply per-name cap iteratively.
+    for (let k = 0; k < 5; k++) { const cap = Math.round(ctl.maxw * 100); let excess = 0; rows().forEach(r => { if (r.w > cap) { excess += r.w - cap; r.w = cap; } }); const under = rows().filter(r => r.w > 0 && r.w < cap); if (!excess || !under.length) break; under.forEach(r => r.w += Math.round(excess / under.length)); }
+    if (!rows().some(r => r.w > 0)) rows().forEach((r, i) => r.w = backup[i]);
+    update();
+  });
+  update();
+}
+init();
+})();
+</script>
+</body>
+</html>
