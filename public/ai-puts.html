@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0b0e12" />
+<title>AI Complex Put Desk</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0e12; --surface: #13171d; --surface-2: #1a1f27; --line: #262c36; --line-2: #333b47;
+    --ink: #e8ebef; --ink-2: #aab2be; --ink-3: #6f7986;
+    --green: #21d07a; --green-dim: rgba(33,208,122,.14); --amber: #f5b83d; --amber-dim: rgba(245,184,61,.14);
+    --red: #ff5d5d; --red-dim: rgba(255,93,93,.14); --blue: #5aa9ff;
+    --display: 'Barlow Condensed', Impact, 'Arial Narrow', sans-serif; --body: Inter, system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; font-variant-numeric: tabular-nums; }
+  a { color: var(--green); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 44px; letter-spacing: .01em; margin: 0; line-height: 1; }
+  h1 span { color: var(--green); }
+  h2 { font-family: var(--display); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 22px; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--ink-2); margin: 6px 0 0; max-width: 820px; line-height: 1.5; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-top: 18px; }
+  .panel .sub { margin-bottom: 14px; font-size: 13px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  label.f { display: block; font-size: 12px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+  input[type=number], input[type=text], select { width: 100%; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; padding: 8px 10px; font: inherit; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--green); }
+  input:focus, select:focus { outline: 2px solid var(--green); outline-offset: 0; border-color: transparent; }
+  .val { font-family: var(--mono); color: var(--ink); font-size: 13px; }
+  .hint { color: var(--ink-3); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; }
+  .kpi .v { font-family: var(--display); font-style: italic; font-weight: 700; font-size: 30px; line-height: 1.1; margin-top: 4px; }
+  .kpi .v.g { color: var(--green); } .kpi .v.a { color: var(--amber); } .kpi .v.r { color: var(--red); }
+  .kpi .s { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+  table.out { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.out th, table.out td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  table.out th { color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+  table.out th:first-child, table.out td:first-child { text-align: left; }
+  table.out td.l { text-align: left; }
+  table.out tr.pick td { background: var(--green-dim); }
+  table.out input[type=number] { width: 78px; padding: 4px 6px; text-align: right; }
+  table.out input[type=text] { width: 70px; padding: 4px 6px; text-transform: uppercase; }
+  table.out select { width: auto; padding: 4px 6px; }
+  .scroll { overflow-x: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .pill.g { background: var(--green-dim); color: var(--green); } .pill.a { background: var(--amber-dim); color: var(--amber); } .pill.r { background: var(--red-dim); color: var(--red); } .pill.n { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line-2); }
+  button { font: inherit; font-weight: 600; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+  button:hover { border-color: var(--green); }
+  button.primary { background: var(--green); color: #06110b; border-color: var(--green); }
+  button.small { padding: 4px 8px; font-size: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .note { background: var(--amber-dim); border: 1px solid rgba(245,184,61,.35); border-radius: 8px; padding: 12px 14px; color: var(--ink); line-height: 1.5; margin-top: 14px; }
+  .note b { color: var(--amber); }
+  .danger { background: var(--red-dim); border-color: rgba(255,93,93,.35); } .danger b { color: var(--red); }
+  svg text { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+  .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+  .muted { color: var(--ink-3); }
+  .mono { font-family: var(--mono); }
+  details summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+  ol, ul { line-height: 1.6; color: var(--ink-2); }
+  @media (max-width: 700px) { h1 { font-size: 34px; } .wrap { padding: 16px 12px 60px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI Complex <span>Put Desk</span></h1>
+    <p class="sub">A sizing and structure picker for a basket of out-of-the-money puts on the AI trade. It prices every structure off a skew-calibrated Black-Scholes surface, ranks them by payoff per premium dollar at the drawdown you pick, and builds a plan inside your premium budget. Every number is editable. Nothing here is a live quote or trade advice.</p>
+  </header>
+
+  <section class="panel">
+    <h2>Budget &amp; scenario</h2>
+    <p class="sub">The scenario is a move in the "AI complex" factor. Each name moves by its beta times that factor. Ranking is payoff at expiry divided by premium paid.</p>
+    <div class="grid g4">
+      <div>
+        <label class="f">Premium budget <span class="val" id="budgetVal"></span></label>
+        <input type="range" id="budget" min="100000" max="2000000" step="25000" value="750000" />
+        <div class="hint">You said 500k to 1,000k. Slider runs 100k to 2M.</div>
+      </div>
+      <div>
+        <label class="f">Target drawdown in the complex <span class="val" id="targetVal"></span></label>
+        <input type="range" id="target" min="-60" max="-10" step="1" value="-30" />
+        <div class="hint">The move you are paying to be right about. Payoff is scored here.</div>
+      </div>
+      <div>
+        <label class="f">Expiry</label>
+        <select id="expiry"></select>
+        <div class="hint" id="expiryHint"></div>
+      </div>
+      <div>
+        <label class="f">Scoring</label>
+        <select id="scoring">
+          <option value="target">Payoff at target only</option>
+          <option value="blend" selected>Blend: 40% at 2/3x, 40% at target, 20% at 1.5x</option>
+        </select>
+        <div class="hint">Target-only pins short strikes right at the target and pays little if the crash stops short. Blend is the expected multiple across a shallower, on-target, and overshoot crash.</div>
+      </div>
+    </div>
+    <details style="margin-top:14px">
+      <summary>Pricing model inputs</summary>
+      <div class="grid g4" style="margin-top:12px">
+        <div><label class="f">Risk-free rate %</label><input type="number" id="rate" value="4.0" step="0.1" /></div>
+        <div><label class="f">Skew slope (vol pts per unit log-moneyness)</label><input type="number" id="skew" value="-0.28" step="0.01" /><div class="hint">Calibrated from live SMH and NVDA Dec-26 put mids on 2 Sep 2026: SMH about -0.30, NVDA about -0.24. Scaled by sqrt(107 / days) so longer dates are flatter.</div></div>
+        <div><label class="f">Term-structure exponent</label><input type="number" id="term" value="0.08" step="0.01" /><div class="hint">ATM IV at T = IV30 x (days / 30) ^ exponent. Live fit was 0.05 (SMH) to 0.12 (NVDA).</div></div>
+        <div><label class="f">Allow 1x2 ratio spreads</label><select id="ratio"><option value="0" selected>No (bounded risk only)</option><option value="1">Yes (naked short tail)</option></select><div class="hint">Ratios are the cheapest way to own a specific window, and they lose money in a real crash. Off by default.</div></div>
+        <div><label class="f">Max weight per name %</label><input type="number" id="maxw" value="30" step="5" min="5" max="100" /></div>
+        <div><label class="f">Min moneyness %</label><input type="number" id="minm" value="60" step="5" min="30" max="95" /><div class="hint">Deepest strike considered, as a % of spot.</div></div>
+        <div><label class="f">Max moneyness %</label><input type="number" id="maxm" value="95" step="5" min="50" max="100" /></div>
+        <div><label class="f">Min premium per contract $</label><input type="number" id="minprem" value="0.40" step="0.1" /><div class="hint">Filters out lottery tickets where the bid-ask is the whole trade.</div></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>Basket</h2>
+    <p class="sub">Seeded from IBKR snapshots on 2 Sep 2026. Spot, 30-day implied vol, 52-week IV percentile, and 30-day realized vol are live pulls. Beta to the complex, bid-ask haircut, and weight are my estimates and are the fields to argue with. Weight 0 excludes a name. "Auto-weight" sets weights by efficiency with the per-name cap.</p>
+    <div class="row" style="margin-bottom:10px">
+      <button id="autow">Auto-weight by efficiency</button>
+      <button id="eqw">Equal weight</button>
+      <button id="etfw">ETFs only</button>
+      <button id="addrow">+ Add name</button>
+      <button id="reset">Reset to snapshot</button>
+      <span class="muted" id="wsum"></span>
+    </div>
+    <div class="scroll"><table class="out" id="basket">
+      <thead><tr>
+        <th>Ticker</th><th>Type</th><th>Spot</th><th>IV30 %</th><th>IV pct 52w</th><th>RV30 %</th><th>Beta</th><th>Haircut %</th><th>Weight %</th><th>Best structure</th><th>Multiple @ target</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="ivnote"></div>
+  </section>
+
+  <section class="panel">
+    <h2>The plan</h2>
+    <p class="sub" id="plansub"></p>
+    <div class="kpis" id="kpis"></div>
+    <div class="scroll" style="margin-top:14px"><table class="out" id="plan">
+      <thead><tr><th>Name</th><th>Structure</th><th>Strikes</th><th>Debit / contract</th><th>Contracts</th><th>Premium</th><th>Payoff @ target</th><th>Multiple</th><th>Max payoff</th><th>Breakeven move</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="scroll" style="margin-top:14px"><table class="out" id="scen">
+      <thead><tr><th>Complex move</th><th>-10%</th><th>-20%</th><th>-30%</th><th>-40%</th><th>-50%</th><th>-60%</th><th>Flat</th><th>+10%</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="chart" style="margin-top:14px"></div>
+    <div class="legend"><span><i style="background:var(--green)"></i>Plan (best structure per name)</span><span><i style="background:var(--amber)"></i>Same budget, outright puts only</span><span><i style="background:var(--blue)"></i>Same budget, put spreads only</span><span><i style="background:var(--ink-3)"></i>Same budget, SMH puts only</span></div>
+    <div id="warnings"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Leaderboard</h2>
+    <p class="sub">Top four structures per name, every name with weight above zero, ranked by score. This is where "most cost effective" comes from. Multiple = payoff at expiry per dollar of premium, after the bid-ask haircut.</p>
+    <div class="scroll"><table class="out" id="board">
+      <thead><tr><th>#</th><th>Name</th><th>Structure</th><th>Strikes</th><th>Moneyness</th><th>Debit</th><th>IV used</th><th>Multiple @ 2/3x</th><th>Multiple @ target</th><th>Multiple @ 1.5x</th><th>Score</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>How to read this</h2>
+    <ul>
+      <li><b>Where the edge is.</b> Put spreads beat outright puts on payoff-per-dollar in almost every case because you sell back the most expensive part of the skew. The cost is a capped payoff, which the blend scoring penalizes. Outright puts win only when you think the crash overshoots your target.</li>
+      <li><b>ETF vs single names.</b> SMH and SOXX carry lower implied vol than the single names but also lower beta to the factor. The leaderboard settles that trade-off numerically for the scenario you picked. A basket of single names also carries idiosyncratic risk both ways: one name can crater on its own, or a name can hold up while the complex falls.</li>
+      <li><b>Vol is not high right now.</b> On the snapshot date the 52-week IV percentile for NVDA, SMH, AMD, TSM, ARM, CRWV, and MSFT was in the bottom quartile. AVGO, ORCL, and META were above the median. Low IV percentile argues for outright puts and longer dates over spreads, because you are buying vol cheap. Check the column before trusting the "vol is high" instinct.</li>
+      <li><b>Model, not market.</b> Prices come from a skew-adjusted Black-Scholes surface calibrated to a handful of live quotes. Expect real mids to differ by 10 to 20 percent, more on illiquid names. Before trading, pull the actual chain and paste real premiums into the debit field via the haircut, or compare against the leaderboard's IV column.</li>
+      <li><b>Sizing.</b> Premium is the max loss on every bounded structure here. Plan for it to go to zero. Contracts are floored to whole numbers, so the budget is never exceeded.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Snapshot: IBKR pulls on 2026-09-02 (intraday). ----------
+const SNAPSHOT_DATE = '2026-09-02';
+const SEED = [
+  // ticker, type, spot, iv30, ivPct52, rv30, beta, haircut%, weight%
+  ['SMH',  'ETF', 540.98, 32.5, 25, 42.8, 1.00, 3, 20],
+  ['SOXX', 'ETF', 493.95, 37.4, 39, 50.7, 1.00, 4, 5],
+  ['QQQ',  'ETF', 703.93, 18.1, 27, 19.1, 0.55, 1, 0],
+  ['NVDA', 'Single', 216.75, 31.7, 1, 39.4, 1.10, 1, 15],
+  ['AMD',  'Single', 454.40, 47.6, 14, 67.0, 1.40, 2, 8],
+  ['AVGO', 'Single', 368.53, 50.4, 67, 41.1, 1.10, 2, 8],
+  ['TSM',  'Single', 408.95, 31.3, 4, 40.5, 0.90, 2, 8],
+  ['MU',   'Single', 920.54, 61.3, 21, 81.6, 1.30, 3, 6],
+  ['ORCL', 'Single', 139.34, 67.1, 78, 54.1, 1.10, 3, 5],
+  ['MSFT', 'Single', 497.07, 24.4, 25, 44.0, 0.60, 1, 5],
+  ['META', 'Single', 574.80, 35.0, 56, 48.4, 0.70, 2, 5],
+  ['PLTR', 'Single', 176.54, 45.3, 13, 65.7, 1.30, 2, 5],
+  ['VRT',  'Single', 252.31, 53.0, 10, 77.8, 1.40, 4, 3],
+  ['ARM',  'Single', 230.00, 58.8, 43, 90.9, 1.40, 5, 3],
+  ['CRWV', 'Single', 80.00, 69.2, 2, 102.2, 1.80, 6, 2],
+  ['SMCI', 'Single', 36.87, 70.3, 36, 89.6, 1.60, 6, 2],
+];
+const EXPIRIES = [
+  ['2026-10-16', 'Oct 16 2026 (monthly)'],
+  ['2026-11-20', 'Nov 20 2026 (monthly)'],
+  ['2026-12-18', 'Dec 18 2026 (quarterly)'],
+  ['2027-01-15', 'Jan 15 2027 (LEAPS roll)'],
+  ['2027-03-19', 'Mar 19 2027 (quarterly)'],
+  ['2027-06-17', 'Jun 17 2027 (quarterly)'],
+  ['2027-09-17', 'Sep 17 2027'],
+  ['2027-12-17', 'Dec 17 2027'],
+  ['2028-01-21', 'Jan 21 2028 (LEAPS)'],
+];
+const TODAY = new Date(SNAPSHOT_DATE + 'T16:00:00Z');
+
+// ---------- Math ----------
+function N(x) { // standard normal CDF
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x >= 0 ? 1 - p : p;
+}
+function bsPut(S, K, T, r, v) {
+  if (T <= 0) return Math.max(K - S, 0);
+  const sq = v * Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r + v * v / 2) * T) / sq;
+  const d2 = d1 - sq;
+  return K * Math.exp(-r * T) * N(-d2) - S * N(-d1);
+}
+const fmt$ = n => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+const fmt$k = n => { const a = Math.abs(n); const s = n < 0 ? '-' : ''; return a >= 1e6 ? s + '$' + (a / 1e6).toFixed(2) + 'M' : a >= 1e3 ? s + '$' + Math.round(a / 1e3) + 'k' : s + '$' + Math.round(a); };
+const fmtX = n => (isFinite(n) ? n.toFixed(2) + 'x' : '—');
+const pct = n => (n * 100).toFixed(0) + '%';
+
+// ---------- State ----------
+let rows = [];
+const LS = 'aiputs.v1';
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(LS)); if (s && s.rows && s.rows.length) { rows = s.rows; return s; } } catch (e) {}
+  rows = SEED.map(seedRow); return null;
+}
+function seedRow(r) { return { t: r[0], type: r[1], spot: r[2], iv: r[3], ivp: r[4], rv: r[5], beta: r[6], hc: r[7], w: r[8] }; }
+function save() {
+  try { localStorage.setItem(LS, JSON.stringify({ rows, ctl: readCtl() })); } catch (e) {}
+}
+const $ = id => document.getElementById(id);
+function readCtl() {
+  return { budget: +$('budget').value, target: +$('target').value / 100, expiry: $('expiry').value, scoring: $('scoring').value,
+    rate: +$('rate').value / 100, skew: +$('skew').value, term: +$('term').value, ratio: $('ratio').value === '1',
+    maxw: +$('maxw').value / 100, minm: +$('minm').value / 100, maxm: +$('maxm').value / 100, minprem: +$('minprem').value };
+}
+
+// ---------- Surface ----------
+function daysTo(exp) { return Math.max(1, Math.round((new Date(exp + 'T20:00:00Z') - TODAY) / 86400000)); }
+function ivAt(row, K, days, ctl) {
+  const T = days / 365;
+  const atm = (row.iv / 100) * Math.pow(days / 30, ctl.term);
+  const slope = ctl.skew * Math.sqrt(107 / days);
+  const lm = Math.log(K / row.spot);
+  return Math.max(0.08, atm + slope * lm + 0.15 * lm * lm * Math.max(0, -lm)); // gentle wing convexity
+}
+function putMid(row, K, days, ctl) { return bsPut(row.spot, K, days / 365, ctl.rate, ivAt(row, K, days, ctl)); }
+function strikeGrid(row, ctl) {
+  const step = row.spot >= 400 ? 10 : row.spot >= 150 ? 5 : row.spot >= 50 ? 2.5 : 1;
+  const ks = [];
+  for (let m = ctl.maxm; m >= ctl.minm - 1e-9; m -= 0.05) { ks.push(Math.round(row.spot * m / step) * step); }
+  return [...new Set(ks)].filter(k => k > 0 && k < row.spot);
+}
+
+// ---------- Structures ----------
+// Each structure: { kind, legs:[{K, q}], debit (per share, after haircut), payoff(S_T), maxPayoff, label }
+function buildStructures(row, days, ctl) {
+  const ks = strikeGrid(row, ctl);
+  const h = row.hc / 100;
+  const buy = K => putMid(row, K, days, ctl) * (1 + h / 2);
+  const sell = K => putMid(row, K, days, ctl) * (1 - h / 2);
+  const out = [];
+  for (const K of ks) {
+    const d = buy(K);
+    if (d < ctl.minprem) continue;
+    out.push({ kind: 'Put', legs: [{ K, q: 1 }], debit: d, iv: ivAt(row, K, days, ctl), maxPayoff: K, unbounded: false,
+      payoff: S => Math.max(K - S, 0), label: K.toFixed(0) + 'P' });
+  }
+  for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
+    const K1 = ks[i], K2 = ks[j]; // K1 > K2
+    if (K1 / row.spot - K2 / row.spot < 0.099) continue; // at least 10 pts of moneyness wide
+    const d = buy(K1) - sell(K2);
+    if (d < ctl.minprem) continue;
+    out.push({ kind: 'Put spread', legs: [{ K: K1, q: 1 }, { K: K2, q: -1 }], debit: d, iv: ivAt(row, K1, days, ctl), maxPayoff: K1 - K2, unbounded: false,
+      payoff: S => Math.max(K1 - S, 0) - Math.max(K2 - S, 0), label: K1.toFixed(0) + '/' + K2.toFixed(0) + 'P' });
+    if (ctl.ratio) {
+      const dr = buy(K1) - 2 * sell(K2);
+      if (dr < ctl.minprem) continue;
+      out.push({ kind: '1x2 ratio', legs: [{ K: K1, q: 1 }, { K: K2, q: -2 }], debit: dr, iv: ivAt(row, K1, days, ctl), maxPayoff: K1 - K2, unbounded: true,
+        payoff: S => Math.max(K1 - S, 0) - 2 * Math.max(K2 - S, 0), label: K1.toFixed(0) + '/' + K2.toFixed(0) + 'P 1x2' });
+    }
+  }
+  return out;
+}
+function nameMove(row, factor) { return Math.max(-0.95, row.beta * factor); }
+function scoreStructure(st, row, ctl) {
+  const mult = f => st.payoff(row.spot * (1 + nameMove(row, f))) / st.debit;
+  const m23 = mult(ctl.target * 2 / 3), m1 = mult(ctl.target), m15 = mult(ctl.target * 1.5);
+  // Blend = expected multiple under a discrete crash distribution: 40% it stops at 2/3 of target, 40% it hits target, 20% it overshoots to 1.5x.
+  const score = m1 <= 0 ? 0 : ctl.scoring === 'target' ? m1 : 0.4 * m23 + 0.4 * m1 + 0.2 * m15;
+  return { m23, m1, m15, score };
+}
+
+// ---------- Compute ----------
+function compute(ctl) {
+  const days = daysTo(ctl.expiry);
+  const active = rows.filter(r => r.w > 0 && r.spot > 0 && r.iv > 0);
+  const wsum = active.reduce((a, r) => a + r.w, 0) || 1;
+  const board = [];
+  const perName = [];
+  for (const row of active) {
+    const sts = buildStructures(row, days, ctl);
+    let best = null, bestPut = null, bestSpread = null;
+    for (const st of sts) {
+      const sc = scoreStructure(st, row, ctl);
+      Object.assign(st, sc, { row });
+      board.push(st);
+      if (st.m1 > 0 && (!best || st.score > best.score)) best = st;
+      if (st.kind === 'Put' && st.m1 > 0 && (!bestPut || st.score > bestPut.score)) bestPut = st;
+      if (st.kind === 'Put spread' && st.m1 > 0 && (!bestSpread || st.score > bestSpread.score)) bestSpread = st;
+    }
+    perName.push({ row, best, bestPut, bestSpread, w: Math.min(row.w / wsum, ctl.maxw) });
+  }
+  board.sort((a, b) => b.score - a.score);
+  // Normalize weights after cap so the budget is fully used.
+  const cw = perName.reduce((a, p) => a + p.w, 0) || 1;
+  perName.forEach(p => p.w = p.w / cw);
+  const plan = allocate(perName, p => p.best, ctl.budget);
+  const altPut = allocate(perName, p => p.bestPut, ctl.budget);
+  const altSpread = allocate(perName, p => p.bestSpread, ctl.budget);
+  const smhRow = rows.find(r => r.t === 'SMH');
+  let altSMH = null;
+  if (smhRow) {
+    const sts = buildStructures(smhRow, days, ctl).filter(s => s.kind === 'Put');
+    let b = null; for (const st of sts) { const sc = scoreStructure(st, smhRow, ctl); Object.assign(st, sc, { row: smhRow }); if (st.m1 > 0 && (!b || st.score > b.score)) b = st; }
+    if (b) altSMH = allocate([{ row: smhRow, best: b, w: 1 }], p => p.best, ctl.budget);
+  }
+  return { days, board, perName, plan, altPut, altSpread, altSMH, ctl };
+}
+function allocate(perName, pick, budget) {
+  const lines = [];
+  for (const p of perName) {
+    const st = pick(p); if (!st) continue;
+    const alloc = budget * p.w;
+    const n = Math.floor(alloc / (st.debit * 100));
+    if (n <= 0) continue;
+    lines.push({ row: p.row, st, n, premium: n * st.debit * 100 });
+  }
+  const premium = lines.reduce((a, l) => a + l.premium, 0);
+  const pnl = f => lines.reduce((a, l) => a + l.n * 100 * l.st.payoff(l.row.spot * (1 + nameMove(l.row, f))), 0) - premium;
+  return { lines, premium, pnl };
+}
+function breakeven(pnl) { // most shallow factor move at which pnl >= 0, searched from 0 down to -95%
+  let lo = -0.95, hi = 0;
+  if (pnl(lo) < 0) return null;
+  if (pnl(hi) >= 0) return 0;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (pnl(m) >= 0) lo = m; else hi = m; }
+  return lo;
+}
+
+// ---------- Render ----------
+function renderBasket(res) {
+  const tb = $('basket').querySelector('tbody');
+  tb.innerHTML = '';
+  rows.forEach((r, i) => {
+    const pn = res.perName.find(p => p.row === r);
+    const tr = document.createElement('tr');
+    if (pn && pn.best) tr.className = 'pick';
+    const ivpClass = r.ivp >= 60 ? 'a' : r.ivp <= 25 ? 'g' : 'n';
+    tr.innerHTML = `
+      <td class="l"><input type="text" data-i="${i}" data-k="t" value="${r.t}" /></td>
+      <td class="l"><select data-i="${i}" data-k="type"><option ${r.type === 'ETF' ? 'selected' : ''}>ETF</option><option ${r.type === 'Single' ? 'selected' : ''}>Single</option></select></td>
+      <td><input type="number" step="0.01" data-i="${i}" data-k="spot" value="${r.spot}" /></td>
+      <td><input type="number" step="0.1" data-i="${i}" data-k="iv" value="${r.iv}" /></td>
+      <td><span class="pill ${ivpClass}">${r.ivp}</span></td>
+      <td class="muted">${r.rv}</td>
+      <td><input type="number" step="0.05" data-i="${i}" data-k="beta" value="${r.beta}" /></td>
+      <td><input type="number" step="0.5" data-i="${i}" data-k="hc" value="${r.hc}" /></td>
+      <td><input type="number" step="1" min="0" data-i="${i}" data-k="w" value="${r.w}" /></td>
+      <td class="l">${pn && pn.best ? `<span class="mono">${pn.best.kind} ${pn.best.label}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${pn && pn.best ? fmtX(pn.best.m1) : '—'}</td>
+      <td><button class="small" data-del="${i}">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  const ws = rows.reduce((a, r) => a + (+r.w || 0), 0);
+  $('wsum').textContent = `weights sum to ${ws}% (normalized automatically)`;
+  const low = rows.filter(r => r.w > 0 && r.ivp <= 25).map(r => r.t);
+  const high = rows.filter(r => r.w > 0 && r.ivp >= 60).map(r => r.t);
+  $('ivnote').innerHTML = `<div class="note"><b>Vol check.</b> Bottom-quartile 52-week IV percentile: ${low.join(', ') || 'none'}. Above median: ${high.join(', ') || 'none'}. Cheap vol favors owning outright puts and longer dates; rich vol favors spreads. As of ${SNAPSHOT_DATE}, most of this basket is closer to cheap than expensive.</div>`;
+}
+function renderPlan(res) {
+  const { plan, ctl } = res;
+  const be = breakeven(plan.pnl);
+  const atT = plan.pnl(ctl.target);
+  const mult = plan.premium > 0 ? (atT + plan.premium) / plan.premium : 0;
+  $('plansub').textContent = `${plan.lines.length} lines, ${res.days} days to ${ctl.expiry}, complex target ${pct(ctl.target)}. Best-scoring bounded structure per name, sized by weight, contracts floored so the budget is never exceeded.`;
+  const kp = [
+    ['Premium deployed', fmt$k(plan.premium), 'g', `of ${fmt$k(ctl.budget)} budget, max loss`],
+    ['P&L at target', fmt$k(atT), atT > 0 ? 'g' : 'r', `complex ${pct(ctl.target)} at expiry`],
+    ['Multiple at target', fmtX(mult), mult >= 3 ? 'g' : mult >= 1.5 ? 'a' : 'r', 'payoff / premium'],
+    ['Breakeven move', be === null ? 'none' : pct(be), be !== null && be > ctl.target * 0.5 ? 'g' : 'a', 'complex move needed at expiry'],
+    ['P&L at 1.5x target', fmt$k(plan.pnl(ctl.target * 1.5)), 'g', `complex ${pct(ctl.target * 1.5)}`],
+    ['P&L flat', fmt$k(plan.pnl(0)), 'r', 'all premium decays'],
+  ];
+  $('kpis').innerHTML = kp.map(k => `<div class="kpi"><div class="l">${k[0]}</div><div class="v ${k[2]}">${k[1]}</div><div class="s">${k[3]}</div></div>`).join('');
+  const tb = $('plan').querySelector('tbody'); tb.innerHTML = '';
+  for (const l of plan.lines) {
+    const sT = l.row.spot * (1 + nameMove(l.row, ctl.target));
+    const pay = l.n * 100 * l.st.payoff(sT);
+    const beN = (() => { // name-level breakeven as factor move
+      const f = breakeven(m => l.n * 100 * l.st.payoff(l.row.spot * (1 + nameMove(l.row, m))) - l.premium); return f === null ? '—' : pct(f);
+    })();
+    tb.innerHTML += `<tr><td>${l.row.t}</td><td class="l">${l.st.kind}</td><td class="mono">${l.st.label}</td><td>$${l.st.debit.toFixed(2)}</td><td>${l.n.toLocaleString()}</td><td>${fmt$(l.premium)}</td><td>${fmt$(pay)}</td><td>${fmtX(pay / l.premium)}</td><td>${l.st.unbounded ? '<span class="pill r">open tail</span>' : fmt$k(l.n * 100 * l.st.maxPayoff)}</td><td>${beN}</td></tr>`;
+  }
+  tb.innerHTML += `<tr><td><b>Total</b></td><td></td><td></td><td></td><td>${plan.lines.reduce((a, l) => a + l.n, 0).toLocaleString()}</td><td><b>${fmt$(plan.premium)}</b></td><td><b>${fmt$(atT + plan.premium)}</b></td><td><b>${fmtX(mult)}</b></td><td></td><td>${be === null ? '—' : pct(be)}</td></tr>`;
+  const moves = [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, 0, 0.1];
+  const st = $('scen').querySelector('tbody'); st.innerHTML = '';
+  const rowsOut = [['Plan', plan], ['Outright puts only', res.altPut], ['Put spreads only', res.altSpread], ['SMH puts only', res.altSMH]];
+  for (const [name, a] of rowsOut) {
+    if (!a) continue;
+    st.innerHTML += `<tr><td class="l">${name} <span class="muted">(${fmt$k(a.premium)})</span></td>${moves.map(m => { const v = a.pnl(m); return `<td style="color:${v >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt$k(v)}</td>`; }).join('')}</tr>`;
+  }
+  renderChart(res);
+  const w = [];
+  const conc = plan.lines.map(l => l.premium / plan.premium).sort((a, b) => b - a);
+  if (conc[0] > 0.4) w.push(`<b>Concentration.</b> ${pct(conc[0])} of premium is in one name. A single earnings print can decide the trade.`);
+  if (plan.lines.some(l => l.st.unbounded)) w.push(`<b>Open tail.</b> The plan includes 1x2 ratio spreads. Below the short strike the position loses money faster the further the name falls, which is the exact scenario you are paying for. Treat this as a bet on a specific window, not a crash hedge.`);
+  if (res.days < 60) w.push(`<b>Short dated.</b> ${res.days} days is a theta furnace. A quarterly expiry roughly halves the decay per day for the same strike.`);
+  if (plan.premium < ctl.budget * 0.9) w.push(`<b>Under-deployed.</b> Contract rounding left ${fmt$k(ctl.budget - plan.premium)} unspent. Raise weights on cheaper contracts or nudge the budget.`);
+  $('warnings').innerHTML = w.map(x => `<div class="note ${x.startsWith('<b>Open') ? 'danger' : ''}">${x}</div>`).join('');
+}
+function renderBoard(res) {
+  const tb = $('board').querySelector('tbody'); tb.innerHTML = '';
+  const seen = {}; const shown = res.board.filter(s => s.score > 0 && (seen[s.row.t] = (seen[s.row.t] || 0) + 1) <= 4).slice(0, 48);
+  shown.forEach((s, i) => {
+    tb.innerHTML += `<tr><td>${i + 1}</td><td class="l">${s.row.t}</td><td class="l">${s.kind}${s.unbounded ? ' <span class="pill r">tail</span>' : ''}</td><td class="mono">${s.label}</td><td>${pct(s.legs[0].K / s.row.spot)}</td><td>$${s.debit.toFixed(2)}</td><td>${(s.iv * 100).toFixed(0)}%</td><td>${fmtX(s.m23)}</td><td>${fmtX(s.m1)}</td><td>${fmtX(s.m15)}</td><td><b>${s.score.toFixed(2)}</b></td></tr>`;
+  });
+}
+function renderChart(res) {
+  const W = 960, H = 340, padL = 70, padR = 20, padT = 16, padB = 36;
+  const xs = []; for (let m = -0.6; m <= 0.1001; m += 0.01) xs.push(+m.toFixed(3));
+  const series = [['plan', res.plan, 'var(--green)', 3], ['put', res.altPut, 'var(--amber)', 2], ['spr', res.altSpread, 'var(--blue)', 2], ['smh', res.altSMH, 'var(--ink-3)', 2]].filter(s => s[1]);
+  let ymin = 0, ymax = 0;
+  for (const s of series) for (const x of xs) { const v = s[1].pnl(x); ymin = Math.min(ymin, v); ymax = Math.max(ymax, v); }
+  ymax = Math.max(ymax, 1); ymin = Math.min(ymin, -1);
+  const X = m => padL + (m + 0.6) / 0.7 * (W - padL - padR);
+  const Y = v => padT + (ymax - v) / (ymax - ymin) * (H - padT - padB);
+  let g = '';
+  const yt = 5; for (let i = 0; i <= yt; i++) { const v = ymin + (ymax - ymin) * i / yt; g += `<line x1="${padL}" x2="${W - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" /><text x="${padL - 6}" y="${Y(v) + 4}" text-anchor="end">${fmt$k(v)}</text>`; }
+  for (let m = -0.6; m <= 0.1001; m += 0.1) { const mm = +m.toFixed(2); g += `<text x="${X(mm)}" y="${H - 12}" text-anchor="middle">${pct(mm)}</text>`; }
+  g += `<line x1="${padL}" x2="${W - padR}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--ink-3)" stroke-dasharray="3 3" />`;
+  g += `<line x1="${X(res.ctl.target)}" x2="${X(res.ctl.target)}" y1="${padT}" y2="${H - padB}" stroke="var(--amber)" stroke-dasharray="4 4" /><text x="${X(res.ctl.target) + 4}" y="${padT + 12}" style="fill:var(--amber)">target</text>`;
+  for (const s of series) {
+    const d = xs.map((x, i) => (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(s[1].pnl(x)).toFixed(1)).join(' ');
+    g += `<path d="${d}" fill="none" stroke="${s[2]}" stroke-width="${s[3]}" />`;
+  }
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%">${g}</svg>`;
+}
+
+// ---------- Wiring ----------
+function update() {
+  const ctl = readCtl();
+  $('budgetVal').textContent = fmt$k(ctl.budget);
+  $('targetVal').textContent = pct(ctl.target);
+  $('expiryHint').textContent = `${daysTo(ctl.expiry)} days from the ${SNAPSHOT_DATE} snapshot.`;
+  const res = compute(ctl);
+  renderBasket(res); renderPlan(res); renderBoard(res);
+  save();
+  window.__res = res;
+}
+function init() {
+  const sel = $('expiry');
+  for (const [v, l] of EXPIRIES) { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); }
+  sel.value = '2026-12-18';
+  const saved = load();
+  if (saved && saved.ctl) {
+    const c = saved.ctl;
+    $('budget').value = c.budget; $('target').value = Math.round(c.target * 100); if (EXPIRIES.some(e => e[0] === c.expiry)) sel.value = c.expiry;
+    $('scoring').value = c.scoring; $('rate').value = (c.rate * 100).toFixed(1); $('skew').value = c.skew; $('term').value = c.term; $('ratio').value = c.ratio ? '1' : '0';
+    $('maxw').value = Math.round(c.maxw * 100); $('minm').value = Math.round(c.minm * 100); $('maxm').value = Math.round(c.maxm * 100); $('minprem').value = c.minprem;
+  }
+  for (const id of ['budget', 'target', 'expiry', 'scoring', 'rate', 'skew', 'term', 'ratio', 'maxw', 'minm', 'maxm', 'minprem']) $(id).addEventListener('input', update);
+  $('basket').addEventListener('change', e => {
+    const el = e.target; if (!el.dataset.k) return;
+    const r = rows[+el.dataset.i]; const k = el.dataset.k;
+    r[k] = k === 't' ? el.value.toUpperCase().trim() : k === 'type' ? el.value : +el.value;
+    update();
+  });
+  $('basket').addEventListener('click', e => { const d = e.target.dataset.del; if (d !== undefined) { rows.splice(+d, 1); update(); } });
+  $('addrow').addEventListener('click', () => { rows.push({ t: 'NEW', type: 'Single', spot: 100, iv: 50, ivp: 50, rv: 50, beta: 1, hc: 3, w: 5 }); update(); });
+  $('reset').addEventListener('click', () => { rows = SEED.map(seedRow); update(); });
+  $('eqw').addEventListener('click', () => { rows.forEach(r => r.w = r.t === 'QQQ' ? 0 : 10); update(); });
+  $('etfw').addEventListener('click', () => { rows.forEach(r => r.w = r.type === 'ETF' && r.t !== 'QQQ' ? 50 : 0); update(); });
+  $('autow').addEventListener('click', () => {
+    const ctl = readCtl();
+    // Score every name (weights temporarily all on), then weight by score^2 with the cap.
+    const backup = rows.map(r => r.w); rows.forEach(r => { if (r.spot > 0 && r.iv > 0) r.w = 1; });
+    const res = compute(ctl);
+    rows.forEach((r, i) => { const p = res.perName.find(p => p.row === r); r.w = p && p.best && p.best.score > 0 ? Math.round(Math.pow(p.best.score, 2) * 10) : 0; });
+    const tot = rows.reduce((a, r) => a + r.w, 0) || 1;
+    rows.forEach(r => r.w = Math.round(r.w / tot * 100));
+    // Apply per-name cap iteratively.
+    for (let k = 0; k < 5; k++) { const cap = Math.round(ctl.maxw * 100); let excess = 0; rows.forEach(r => { if (r.w > cap) { excess += r.w - cap; r.w = cap; } }); const under = rows.filter(r => r.w > 0 && r.w < cap); if (!excess || !under.length) break; under.forEach(r => r.w += Math.round(excess / under.length)); }
+    if (!rows.some(r => r.w > 0)) rows.forEach((r, i) => r.w = backup[i]);
+    update();
+  });
+  update();
+}
+init();
+})();
+</script>
+</body>
+</html>
