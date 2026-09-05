@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import ContractBoard from '../components/ContractBoard'
 import KeeperEditor from '../components/KeeperEditor'
+import ManagerTag from '../components/ManagerTag'
 import WarRoom from '../components/WarRoom'
 import { Chip, Empty, Panel, PageHeader } from '../components/ui'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { useBudgets } from '../lib/derive'
 import { money } from '../lib/format'
+import { useMe } from '../lib/me'
+import { animationsDisabled } from '../lib/motion'
+import { blockAnchor, orderBlocks } from '../lib/ops-keepers'
 import { contractYearsRemaining, keeperEligibility } from '../lib/rules'
 import type { ContractYear } from '../lib/types'
 
@@ -21,6 +25,9 @@ const CONTRACT_TONE: Record<ContractYear, string> = {
 export default function Keepers() {
   const { league, managers, keepers } = useLeagueData()
   const { commissioner } = useLeague()
+  const me = useMe()
+  const location = useLocation()
+  const [params, setParams] = useSearchParams()
   const years = useMemo(
     () =>
       Object.keys(keepers)
@@ -28,14 +35,40 @@ export default function Keepers() {
         .sort((a, b) => b - a),
     [keepers],
   )
-  const [year, setYear] = useState(years[0] ?? league.currentSeason)
+  // The season lives in the URL (#/keepers?season=2024) so it survives a
+  // reload and can be texted to the group.
+  const requested = Number(params.get('season'))
+  const year = years.includes(requested) ? requested : (years[0] ?? league.currentSeason)
+  const setYear = (next: number) =>
+    setParams(
+      (current) => {
+        current.set('season', String(next))
+        return current
+      },
+      { replace: true },
+    )
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
 
-  const blocks = keepers[String(year)] ?? []
+  const blocks = orderBlocks(keepers[String(year)] ?? [], managers, me)
   const budgets = useBudgets(year)
   const budgetFor = (manager: string | null) =>
     budgets.find((budget) => budget.manager === manager)
+  const mine = blocks.find((block) => block.manager && block.manager === me)
+
+  // Deep links from a manager page (#/keepers#baugh) land on that card.
+  useEffect(() => {
+    const id = location.hash.replace(/^#/, '')
+    if (!id) return
+    const node = document.getElementById(id)
+    if (!node) return
+    node.scrollIntoView({ behavior: animationsDisabled() ? 'auto' : 'smooth', block: 'start' })
+  }, [location.hash, year])
+
+  const jumpTo = (id: string) =>
+    document
+      .getElementById(id)
+      ?.scrollIntoView({ behavior: animationsDisabled() ? 'auto' : 'smooth', block: 'start' })
 
   return (
     <>
@@ -63,6 +96,31 @@ export default function Keepers() {
         }
       />
 
+      {mine && (
+        <div className="line-in -mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-arc-line bg-arc-panel/80 px-3 py-2.5 text-[13px]">
+          <span className="label">Your seat</span>
+          <ManagerTag id={mine.manager} />
+          <span className="truncate text-arc-ink-soft">{mine.team}</span>
+          <span className="tnum text-arc-ink-soft">
+            <span className="text-arc-ink-faint">Budget </span>
+            <span
+              className={
+                (budgetFor(mine.manager)?.available ?? 0) < 0 ? 'text-arc-red' : 'text-arc-green'
+              }
+            >
+              {money(budgetFor(mine.manager)?.available ?? mine.draftBudget)}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn ml-auto min-h-[40px] px-3 py-1 text-[12.5px]"
+            onClick={() => jumpTo(blockAnchor(mine))}
+          >
+            Your card ↓
+          </button>
+        </div>
+      )}
+
       <div className="mb-6">
         <Panel
           title="war room"
@@ -73,14 +131,7 @@ export default function Keepers() {
       </div>
 
       <div className="mb-6">
-        <Panel
-          title="contract board"
-          subtitle="Every keeper contract from this season to its expiry. Read down a column to see how much of the league is already committed in that year."
-        >
-          <div className="px-2 py-4 sm:px-4">
-            <ContractBoard year={year} />
-          </div>
-        </Panel>
+        <ContractBoard year={year} />
       </div>
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
@@ -89,34 +140,39 @@ export default function Keepers() {
           const salary = block.keepers.reduce((total, pick) => total + (pick.salary ?? 0), 0)
           const open = expanded === block.team
           const eligible = keeperEligibility(block)
+          const isMe = Boolean(block.manager) && block.manager === me
+          const available = budget?.available ?? block.draftBudget ?? 0
 
           return (
-            <Panel key={block.team} delay={index * 40}>
-              <div className="px-5 py-5">
+            <Panel
+              key={block.team}
+              id={blockAnchor(block)}
+              delay={Math.min(index, 6) * 40}
+              className={isMe ? 'ops-me-card' : ''}
+            >
+              <div className="px-4 py-5 sm:px-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[24px] leading-tight text-arc-ink">
-                      {block.team}
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2 font-display text-[22px] leading-tight font-bold text-arc-ink">
+                      {block.manager ? (
+                        <ManagerTag id={block.manager} size={28} />
+                      ) : (
+                        <span>{block.team}</span>
+                      )}
+                      {isMe && <span className="tag text-[10px]">you</span>}
                     </div>
                     {block.manager && (
-                      <Link
-                        to={`/managers/${block.manager}`}
-                        className="label transition-colors hover:text-arc-green"
-                      >
-                        {managerName(managers, block.manager)}
-                      </Link>
+                      <div className="mt-1 truncate text-[13px] text-arc-ink-soft">{block.team}</div>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <div className="label">Draft budget</div>
                     <div
-                      className={`tnum text-[24px] leading-none ${
-                        (budget?.available ?? block.draftBudget ?? 0) < 0
-                          ? 'text-[var(--color-arc-red)]'
-                          : 'text-arc-green'
+                      className={`tnum font-display text-[28px] leading-none font-bold italic ${
+                        available < 0 ? 'text-arc-red' : 'text-arc-green'
                       }`}
                     >
-                      {money(budget?.available ?? block.draftBudget)}
+                      {money(available)}
                     </div>
                   </div>
                 </div>
@@ -134,7 +190,7 @@ export default function Keepers() {
                       <tr>
                         <th>Keeper</th>
                         <th className="n">Salary</th>
-                        <th className="n">Contract</th>
+                        <th className="n">{year} yr</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -151,9 +207,9 @@ export default function Keepers() {
                             <td className="n text-arc-ink-soft">{money(pick.salary)}</td>
                             <td className="n">
                               <span
-                                className={
-                                  pick.contractYear ? CONTRACT_TONE[pick.contractYear] : undefined
-                                }
+                                className={`font-semibold ${
+                                  pick.contractYear ? CONTRACT_TONE[pick.contractYear] : ''
+                                }`}
                               >
                                 {pick.contractYear ?? '—'}
                               </span>
@@ -179,18 +235,16 @@ export default function Keepers() {
                   </div>
                   <div>
                     <dt className="text-arc-ink-faint">Keeper salary</dt>
-                    <dd className="tnum mt-0.5 text-[var(--color-arc-red)]">
-                      {money(-salary)}
-                    </dd>
+                    <dd className="tnum mt-0.5 text-arc-red">{money(-salary)}</dd>
                   </div>
                   <div>
                     <dt className="text-arc-ink-faint">Traded cash</dt>
                     <dd
                       className={`tnum mt-0.5 ${
                         (budget?.cashNet ?? block.cashTraded) > 0
-                          ? 'text-[var(--color-arc-green)]'
+                          ? 'text-arc-green'
                           : (budget?.cashNet ?? block.cashTraded) < 0
-                            ? 'text-[var(--color-arc-red)]'
+                            ? 'text-arc-red'
                             : 'text-arc-ink-faint'
                       }`}
                     >
@@ -203,6 +257,7 @@ export default function Keepers() {
                   <button
                     type="button"
                     className="btn"
+                    aria-expanded={open}
                     onClick={() => setExpanded(open ? null : block.team)}
                   >
                     {open ? '− Hide' : '+ Show'} {year - 1} ending roster (
@@ -213,6 +268,14 @@ export default function Keepers() {
                       ✎ Edit keepers
                     </button>
                   )}
+                  {block.manager && (
+                    <Link
+                      to={`/managers/${block.manager}`}
+                      className="label self-center transition-colors hover:text-arc-green sm:ml-auto"
+                    >
+                      {managerName(managers, block.manager)}'s page →
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -222,30 +285,48 @@ export default function Keepers() {
                     <thead>
                       <tr>
                         <th>Player</th>
-                        <th className="n">Cost</th>
-                        <th className="n">Yr</th>
-                        <th>Keeper status</th>
+                        <th className="n hidden sm:table-cell">Cost</th>
+                        <th className="n hidden sm:table-cell">{year - 1} yr</th>
+                        <th>If kept in {year}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {eligible.map((spot) => (
                         <tr key={`${spot.player}-${spot.cost}`}>
-                          <td>{spot.player}</td>
-                          <td className="n text-arc-ink-soft">{money(spot.cost)}</td>
-                          <td className="n">
+                          <td>
+                            {spot.player}
+                            <span className="tnum block text-[11px] text-arc-ink-faint sm:hidden">
+                              {money(spot.cost)} · {year - 1} yr{' '}
+                              <span
+                                className={spot.contractYear ? CONTRACT_TONE[spot.contractYear] : ''}
+                              >
+                                {spot.contractYear ?? '—'}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="n hidden text-arc-ink-soft sm:table-cell">
+                            {money(spot.cost)}
+                          </td>
+                          <td className="n hidden sm:table-cell">
                             <span
-                              className={
-                                spot.contractYear ? CONTRACT_TONE[spot.contractYear] : undefined
-                              }
+                              className={`font-semibold ${
+                                spot.contractYear ? CONTRACT_TONE[spot.contractYear] : ''
+                              }`}
                             >
                               {spot.contractYear ?? '—'}
                             </span>
                           </td>
-                          <td className="text-[12px]">
-                            {spot.eligible ? (
-                              <span className="text-arc-ink-faint">{spot.reason}</span>
+                          <td className="text-[12.5px]">
+                            {spot.eligible && spot.nextYear ? (
+                              <span className="text-arc-ink-soft">
+                                Year{' '}
+                                <span className={`font-semibold ${CONTRACT_TONE[spot.nextYear]}`}>
+                                  {spot.nextYear}
+                                </span>{' '}
+                                of {league.maxContractYears}
+                              </span>
                             ) : (
-                              <Chip tone="down">{spot.reason}</Chip>
+                              <Chip tone="down">Expired</Chip>
                             )}
                           </td>
                         </tr>
@@ -259,7 +340,7 @@ export default function Keepers() {
         })}
         {blocks.length === 0 && (
           <Panel>
-            <Empty>No keeper records for {year}.</Empty>
+            <Empty kicker="no sheet">No keeper records for {year}.</Empty>
           </Panel>
         )}
       </div>

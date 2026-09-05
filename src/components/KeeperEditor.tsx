@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useLeague, useLeagueData } from '../lib/data'
+import { useLedger } from '../lib/derive'
 import { money } from '../lib/format'
+import { plainSaveError } from '../lib/ops-save'
 import { faabKeeperCost, keeperEligibility } from '../lib/rules'
-import { Chip } from './ui'
 import type { KeeperBlock, KeeperPick, LeagueData } from '../lib/types'
 
 /**
@@ -25,6 +26,7 @@ export default function KeeperEditor({
 }) {
   const { league, waivers, faab } = useLeagueData()
   const { save } = useLeague()
+  const ledger = useLedger()
   const [picks, setPicks] = useState<KeeperPick[]>(block.keepers.map((pick) => ({ ...pick })))
   const [freeName, setFreeName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -38,6 +40,8 @@ export default function KeeperEditor({
 
   const totalSalary = picks.reduce((sum, pick) => sum + (pick.salary ?? 0), 0)
   const overSlots = picks.length > league.keeperSlots
+  const cashNet = block.manager ? (ledger[String(year)]?.[block.manager]?.net ?? 0) : 0
+  const budget = league.baseDraftBudget - totalSalary + cashNet
 
   function addFromRoster(player: string) {
     const spot = addable.find((candidate) => candidate.player === player)
@@ -89,18 +93,22 @@ export default function KeeperEditor({
       )
       onDone()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not save the keepers.')
+      setError(plainSaveError(cause))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="mt-4 space-y-3 rounded-lg border border-arc-line bg-arc-bg-deep p-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="mt-4 space-y-3 rounded-lg border border-arc-line bg-arc-bg-deep p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="label">Editing keepers — {year}</span>
-        <span className="tnum text-[12.5px] text-arc-ink-soft">
-          {picks.length}/{league.keeperSlots} slots · {money(totalSalary)}
+        <span
+          className={`tnum text-[12.5px] ${overSlots ? 'font-semibold text-arc-red' : 'text-arc-ink-soft'}`}
+          role="status"
+        >
+          {picks.length}/{league.keeperSlots} slots{overSlots ? ' — over the limit' : ''} ·{' '}
+          {money(totalSalary)}
         </span>
       </div>
 
@@ -112,18 +120,18 @@ export default function KeeperEditor({
       {picks.map((pick, index) => (
         <div
           key={`${pick.player}-${index}`}
-          className="flex min-h-[38px] items-center gap-3 rounded-lg border border-arc-line/60 bg-arc-panel px-3 py-1.5"
+          className="flex min-h-[40px] items-center gap-2 rounded-lg border border-arc-line/60 bg-arc-panel py-1 pr-1 pl-3 sm:gap-3"
         >
           <span className="min-w-0 flex-1 truncate text-[14px]">{pick.player}</span>
-          <span className="tnum w-14 shrink-0 text-right text-[13.5px] text-arc-ink-soft">
+          <span className="tnum w-12 shrink-0 text-right text-[13.5px] text-arc-ink-soft">
             {money(pick.salary)}
           </span>
-          <span className="w-8 shrink-0 text-right text-[12px] text-arc-ink-faint">
+          <span className="w-5 shrink-0 text-right text-[12px] text-arc-ink-faint">
             {pick.contractYear ?? '—'}
           </span>
           <button
             type="button"
-            className="shrink-0 px-1 text-[18px] leading-none text-arc-ink-faint hover:text-[var(--color-arc-red)]"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-[20px] leading-none text-arc-ink-faint transition-colors hover:bg-arc-raised hover:text-arc-red"
             onClick={() => setPicks((current) => current.filter((_, i) => i !== index))}
             aria-label={`Remove ${pick.player}`}
           >
@@ -133,7 +141,7 @@ export default function KeeperEditor({
       ))}
 
       <select
-        className="field min-h-[38px] w-full"
+        className="field min-h-[40px] w-full"
         value=""
         onChange={(event) => addFromRoster(event.target.value)}
         aria-label="Add keeper from ending roster"
@@ -148,17 +156,18 @@ export default function KeeperEditor({
 
       <div className="flex items-center gap-2">
         <input
-          className="field min-h-[38px] flex-1"
+          className="field min-h-[40px] min-w-0 flex-1"
           placeholder="Player missing from the roster list…"
           value={freeName}
           onChange={(event) => setFreeName(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') addFreeAgent()
           }}
+          aria-label="Player not on the roster list"
         />
         <button
           type="button"
-          className="btn min-h-[38px]"
+          className="btn min-h-[40px]"
           disabled={!freeName.trim()}
           onClick={addFreeAgent}
         >
@@ -166,13 +175,26 @@ export default function KeeperEditor({
         </button>
       </div>
 
+      <p className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-arc-ink-soft">
+        <span className="label text-[11px]">Draft budget after save</span>
+        <span
+          className="tnum text-[16px] font-bold"
+          style={{ color: budget < 0 ? 'var(--color-arc-red)' : 'var(--color-arc-green)' }}
+        >
+          {money(budget)}
+        </span>
+        <span className="text-[11px] text-arc-ink-faint">
+          {money(league.baseDraftBudget)} − {money(totalSalary)}
+          {cashNet !== 0 ? ` ${cashNet > 0 ? '+' : '−'} ${money(Math.abs(cashNet))} traded` : ''}
+        </span>
+      </p>
+
       {overSlots && (
-        <Chip tone="flag">
+        <p className="border-l-2 border-arc-orange pl-3 text-[12.5px] leading-snug text-arc-orange">
           {picks.length} keepers exceeds the {league.keeperSlots}-slot limit — saving anyway is a
           commissioner override.
-        </Chip>
+        </p>
       )}
-      {error && <p className="text-[12.5px] text-[var(--color-arc-red)]">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-arc-line pt-3">
         <button
@@ -186,10 +208,16 @@ export default function KeeperEditor({
         <button type="button" className="btn" disabled={busy} onClick={onDone}>
           Cancel
         </button>
-        <span className="text-[11px] leading-snug text-arc-ink-faint">
-          Salaries and contract years follow the league rules and can't be typed over — remove and
-          re-add a player to recompute.
-        </span>
+        {error ? (
+          <span role="alert" className="basis-full text-[12.5px] leading-snug text-arc-red sm:basis-auto">
+            {error}
+          </span>
+        ) : (
+          <span className="text-[11px] leading-snug text-arc-ink-faint">
+            Salaries and contract years follow the league rules and can't be typed over — remove
+            and re-add a player to recompute.
+          </span>
+        )}
       </div>
     </div>
   )
