@@ -12,7 +12,11 @@ writes to it from the live site through the GitHub Contents API, so every
 ruling is a commit and `git log` is the audit trail. There is no server and
 no backend — do not propose adding one. HashRouter, so no basename to
 maintain; the data layer reads `import.meta.env.BASE_URL`, which follows the
-Vite `base` (currently `/`, an org root site).
+Vite `base` (currently `/`, an org root site). The room is a WebGL
+liquid-glass backdrop (`Backdrop.tsx`, CSS aurora fallback) with opaque
+panels floating on it; route changes use view transitions with the chrome
+held still. Builds are stamped (`vite.config.ts` emits `version.json`) and
+the Shell offers a refresh when a newer build is live.
 
 ## Rules that are easy to break
 
@@ -48,18 +52,42 @@ Vite `base` (currently `/`, an org root site).
 5. **Verify before claiming.** Run `npm run build` (type-check + build). If
    a change is visible in the browser, say what you checked.
 
+6. **Page styles live with the page.** `src/index.css` holds tokens and the
+   shared primitives (`.win`, `.out`, `.tag`, `.badge`, `.btn`, rails, the
+   reduced-motion guard). Each room has its own sheet in `src/styles/`
+   (`ledger`, `book`, `almanac`, `profile`, `boards`, `tables`, `ops`),
+   imported at the top of `index.css`; a page's animations are guarded in
+   its own sheet. Keep it that way so parallel work merges cleanly.
+
+7. **"Your seat" is a preference, not a login.** `useMe()` (`src/lib/me.ts`)
+   returns the manager a member picked on this device; `ManagerTag` marks
+   their rows (`.me-tag`, lit by `--me-color` on the root), the backdrop
+   tints toward their colour, pages may put "you" first. Nothing trusts it
+   and nothing writes because of it.
+
+8. **League time comes from `src/lib/season.ts`.** `seasonClock()` derives
+   pre-season / kickoff week / week N / playoffs / offseason from the
+   calendar; use it for eyebrows, countdowns and batch labels rather than
+   literals that go stale in October.
+
 ## Layout
 
 - `src/pages/` — one file per route (Dashboard is "Ledger", plus Trades,
   Keepers, Draft, Finances, Standings, Managers, Records, Lab, Almanac,
   Rules, Guide).
-- `src/lib/` — `data.tsx` (loader, writable-overlay, save), `github.ts`
-  (Contents API), `vault.ts` (password-sealed token), `rules.ts` (league
-  rules), `stats.ts` + `analytics.ts` (career tables, Lab metrics),
-  `roster.ts` (approved trades move players), `music.ts`, `motion.ts`.
-- `src/components/` — `Shell.tsx` (nav, toggles), canvas pieces
-  (`HeapScene`, `HelmetField`, `PixelSign`, `TradingCard`), editors
+- `src/lib/` — `data.tsx` (loader, writable-overlay, `save()` which also
+  broadcasts `wacl:save` events for the Shell's SaveStatus strip),
+  `github.ts` (Contents API + `friendlySaveError`), `vault.ts`
+  (password-sealed token), `rules.ts` (league rules), `stats.ts` +
+  `analytics.ts` (career tables — `bookCareerTable` is the one to print —
+  and Lab metrics), `roster.ts` (approved trades move players), `me.ts`
+  (your seat), `season.ts` (league time), `dialog.ts` (focus manners for
+  overlays), `search.ts` (palette index), `music.ts`, `motion.ts`.
+- `src/components/` — `Shell.tsx` (nav, tab bar, sheet, seat picker,
+  SaveStatus, new-version bar), `Backdrop.tsx` (the glass), canvas pieces
+  (`HeapScene`, `FireFrame`, `BurnAway`, `TradingCard`), editors
   (`TradeForm`, `KeeperEditor`).
+- `src/styles/` — one stylesheet per room (see rule 6).
 - `scripts/` — Python ETL/extractors, `manager_icons.mjs` (exports every
   manager badge to `assets/manager-icons/`, read-only on league data), and the
   Yahoo sync (parked: Yahoo now gates its Fantasy API behind an application).
