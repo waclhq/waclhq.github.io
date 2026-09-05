@@ -92,6 +92,9 @@ function Clock() {
   return <span className="tabular-nums">{now.toLocaleTimeString('en-US', { hour12: false })}</span>
 }
 
+/** The newer build a viewer has already waved away, for this tab. */
+const SEEN_BUILD = 'wacl.seenBuild'
+
 type SaveEvent = {
   phase: 'start' | 'ok' | 'error'
   file: string
@@ -131,7 +134,7 @@ function SaveStatus() {
   return (
     <div
       role={state.phase === 'error' ? 'alert' : 'status'}
-      className="slide-in fixed inset-x-3 bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-[45] flex items-center gap-3 rounded-lg border border-arc-line bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:inset-x-auto lg:right-6 lg:bottom-12 lg:max-w-md"
+      className="line-in fixed inset-x-3 bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-[45] flex items-center gap-3 rounded-lg border border-arc-line bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:inset-x-auto lg:right-6 lg:bottom-12 lg:max-w-md"
       style={{ borderLeft: `3px solid ${tone}` }}
     >
       <span aria-hidden className={state.phase === 'start' ? 'pulse' : ''} style={{ color: tone }}>
@@ -147,14 +150,14 @@ function SaveStatus() {
         {state.phase === 'error' && <span>{state.error ?? 'The save did not go through.'}</span>}
       </span>
       {state.phase === 'error' && state.retry && (
-        <button type="button" className="btn min-h-[34px] px-3 py-1 text-[12px]" onClick={state.retry}>
+        <button type="button" className="btn min-h-[40px] px-3 py-1 text-[12px]" onClick={state.retry}>
           Retry
         </button>
       )}
       {state.phase !== 'start' && (
         <button
           type="button"
-          className="px-1 text-[18px] leading-none text-arc-ink-faint"
+          className="-my-2 -mr-2 grid h-10 w-10 shrink-0 place-items-center text-[18px] leading-none text-arc-ink-faint"
           aria-label="Dismiss"
           onClick={() => setState(null)}
         >
@@ -375,7 +378,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   // A newer build live? The installed home-screen copy caches the old shell
   // hard, so poll the build stamp — every ten minutes and whenever the app
   // comes back to the foreground — and offer a refresh instead of a mystery.
-  const [stale, setStale] = useState(false)
+  // The build that is live when it is newer than ours, until it is waved off.
+  const [stale, setStale] = useState<string | null>(null)
   useEffect(() => {
     if (!import.meta.env.PROD) return
     let hiddenAt = 0
@@ -386,7 +390,14 @@ export default function Shell({ children }: { children: ReactNode }) {
         })
         if (!response.ok) return
         const { build } = (await response.json()) as { build?: string }
-        if (build && build !== __BUILD_ID__) setStale(true)
+        if (!build || build === __BUILD_ID__) return
+        let waved: string | null = null
+        try {
+          waved = sessionStorage.getItem(SEEN_BUILD)
+        } catch {
+          /* private browsing: the bar simply asks again */
+        }
+        if (waved !== build) setStale(build)
       } catch {
         /* offline — nothing to say */
       }
@@ -892,7 +903,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       {stale && (
         <div
           role="status"
-          className="slide-in fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+64px)] z-[45] flex items-center gap-3 rounded-lg border border-arc-green/60 bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:top-4 lg:right-6 lg:left-auto lg:max-w-sm"
+          className="line-in fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+64px)] z-[45] flex items-center gap-3 rounded-lg border border-arc-green/60 bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:top-4 lg:right-6 lg:left-auto lg:max-w-sm"
         >
           <span aria-hidden className="pulse text-arc-green">●</span>
           <span className="min-w-0 flex-1">
@@ -901,10 +912,25 @@ export default function Shell({ children }: { children: ReactNode }) {
           </span>
           <button
             type="button"
-            className="btn min-h-[34px] px-3 py-1 text-[12px]"
+            className="btn min-h-[40px] px-3 py-1 text-[12px]"
             onClick={() => window.location.reload()}
           >
             Refresh
+          </button>
+          <button
+            type="button"
+            className="-my-2 -mr-2 grid h-10 w-10 shrink-0 place-items-center text-[18px] leading-none text-arc-ink-faint"
+            aria-label="Dismiss"
+            onClick={() => {
+              try {
+                sessionStorage.setItem(SEEN_BUILD, stale)
+              } catch {
+                /* fine: it will ask again next visit */
+              }
+              setStale(null)
+            }}
+          >
+            ×
           </button>
         </div>
       )}

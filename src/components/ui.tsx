@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { animationsDisabled } from '../lib/motion'
 
 /**
@@ -467,6 +468,12 @@ export function Scroller({ children }: { children: ReactNode }) {
 export function SectionNav({ sections }: { sections: { id: string; label: string }[] }) {
   const [active, setActive] = useState<string | null>(null)
   const track = useRef<HTMLDivElement>(null)
+  const location = useLocation()
+  // A bare "#titles" is a route to this router, so copy-link, middle-click and
+  // open-in-new-tab all landed on "no page at /titles". The chips point at the
+  // page they are on instead, naming their section, which the stat pages read
+  // back on load and the others simply ignore.
+  const linkTo = (id: string) => `#${location.pathname}?s=${id}`
 
   // Keep the lit chip in view inside the rail (without scrolling the page).
   useEffect(() => {
@@ -505,13 +512,14 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
           <a
             key={section.id}
             data-chip={section.id}
-            href={`#${section.id}`}
+            href={linkTo(section.id)}
             onClick={(event) => {
               event.preventDefault()
               document.getElementById(section.id)?.scrollIntoView({
                 behavior: animationsDisabled() ? 'auto' : 'smooth',
                 block: 'start',
               })
+              window.history.replaceState(null, '', linkTo(section.id))
             }}
             className={`arcade inline-flex min-h-[36px] shrink-0 items-center rounded-full border px-3.5 text-[11px] whitespace-nowrap transition-colors ${
               active === section.id
