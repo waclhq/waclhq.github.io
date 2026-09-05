@@ -5,7 +5,6 @@ import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { duesRows, venmoPayUrl, type DuesRow } from '../lib/dues'
 import { money } from '../lib/format'
-import { plainSaveError } from '../lib/ops-save'
 import { useMe } from '../lib/me'
 import type { CashFile } from '../lib/types'
 
@@ -31,7 +30,9 @@ export default function DuesBoard({ season }: { season: number }) {
   const me = useMe()
   const [busy, setBusy] = useState<string | null>(null)
   const [lit, setLit] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Only true once someone has opened the solved board, or worked it: the
+  // seats must not vanish under the hand that just paid the last man off.
+  const [open, setOpen] = useState(false)
 
   const rows = duesRows(cash.entries, league, season)
   const byManager = new Map(rows.map((row) => [row.manager, row]))
@@ -67,7 +68,8 @@ export default function DuesBoard({ season }: { season: number }) {
 
   async function settle(row: DuesRow, settled: boolean) {
     setBusy(row.manager)
-    setError(null)
+    // Whatever the tap does to the totals, the stand stays on screen.
+    setOpen(true)
     try {
       await save<CashFile>(
         'cash.json',
@@ -80,8 +82,8 @@ export default function DuesBoard({ season }: { season: number }) {
         `Dues ${settled ? 'settled' : 'reopened'}: ${managerName(managers, row.manager)} (${season})`,
       )
       setLit(settled ? row.manager : null)
-    } catch (cause) {
-      setError(plainSaveError(cause))
+    } catch {
+      // The save strip above the thumb carries the words and the Retry.
     } finally {
       setBusy(null)
     }
@@ -138,7 +140,7 @@ export default function DuesBoard({ season }: { season: number }) {
                     style={{ color: managerColor(row.manager) }}
                   >
                     {managerName(managers, row.manager)}
-                    {isMe && <span className="tag ml-2 text-[9.5px]">you</span>}
+                    {isMe && <span className="tag ml-2">you</span>}
                   </span>
                   <span
                     className="block text-[11px] leading-tight"
@@ -171,20 +173,18 @@ export default function DuesBoard({ season }: { season: number }) {
           })}
         </ul>
       )}
-      {error && (
-        <p role="alert" className="border-t border-arc-line px-4 py-3 text-[12.5px] text-arc-red">
-          {error}
-        </p>
-      )}
     </>
   )
 
   // A solved board is a receipt, not a wall: when everyone has paid, the
   // whole thing folds to its conclusion and opens on demand (unticking a
-  // bounced payment still lives one tap away).
+  // bounced payment still lives one tap away). It only folds on arrival —
+  // once the commissioner has the seats open, the last tick leaves them up.
   if (unpaid.length === 0) {
     return (
       <Fold
+        open={open}
+        onToggle={setOpen}
         summary={
           <>
             <span className="label">{season} dues</span>

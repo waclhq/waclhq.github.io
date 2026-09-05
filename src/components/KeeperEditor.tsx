@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useLeague, useLeagueData } from '../lib/data'
 import { useLedger } from '../lib/derive'
 import { money } from '../lib/format'
-import { plainSaveError } from '../lib/ops-save'
 import { faabKeeperCost, keeperEligibility } from '../lib/rules'
 import type { KeeperBlock, KeeperPick, LeagueData } from '../lib/types'
 
@@ -30,7 +29,20 @@ export default function KeeperEditor({
   const [picks, setPicks] = useState<KeeperPick[]>(block.keepers.map((pick) => ({ ...pick })))
   const [freeName, setFreeName] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  // Saving an identical list still writes a commit, so the audit trail fills
+  // with rulings that ruled nothing. Nothing to save until something moved.
+  const dirty =
+    picks.length !== block.keepers.length ||
+    picks.some((pick, index) => {
+      const was = block.keepers[index]
+      return (
+        !was ||
+        pick.player !== was.player ||
+        pick.salary !== was.salary ||
+        pick.contractYear !== was.contractYear
+      )
+    })
 
   const eligible = useMemo(() => keeperEligibility(block), [block])
   const taken = new Set(picks.map((pick) => pick.player.trim().toLowerCase()))
@@ -73,7 +85,6 @@ export default function KeeperEditor({
 
   async function commit() {
     setBusy(true)
-    setError(null)
     try {
       await save<LeagueData['keepers']>(
         'keepers.json',
@@ -92,8 +103,9 @@ export default function KeeperEditor({
         `Keepers updated: ${block.team} (${year})`,
       )
       onDone()
-    } catch (cause) {
-      setError(plainSaveError(cause))
+    } catch {
+      // The editor stays open with the picks intact; the save strip above
+      // the thumb says what went wrong and offers the Retry.
     } finally {
       setBusy(false)
     }
@@ -200,7 +212,7 @@ export default function KeeperEditor({
         <button
           type="button"
           className="btn btn-primary"
-          disabled={busy}
+          disabled={busy || !dirty}
           onClick={() => void commit()}
         >
           {busy ? 'Saving…' : 'Save keepers'}
@@ -208,16 +220,11 @@ export default function KeeperEditor({
         <button type="button" className="btn" disabled={busy} onClick={onDone}>
           Cancel
         </button>
-        {error ? (
-          <span role="alert" className="basis-full text-[12.5px] leading-snug text-arc-red sm:basis-auto">
-            {error}
-          </span>
-        ) : (
-          <span className="text-[11px] leading-snug text-arc-ink-faint">
-            Salaries and contract years follow the league rules and can't be typed over — remove
-            and re-add a player to recompute.
-          </span>
-        )}
+        <span className="text-[11px] leading-snug text-arc-ink-faint">
+          {dirty
+            ? "Salaries and contract years follow the league rules and can't be typed over — remove and re-add a player to recompute."
+            : 'Nothing to save yet — add or remove a keeper first.'}
+        </span>
       </div>
     </div>
   )

@@ -59,7 +59,10 @@ export const AUCTION_ROSTER_SPOTS = 15
 export function auctionMath(budget: number, kept: number) {
   const spots = Math.max(0, AUCTION_ROSTER_SPOTS - kept)
   const avg = spots > 0 ? budget / spots : 0
-  // Every other open spot needs at least a dollar.
-  const maxBid = spots > 0 ? budget - (spots - 1) : 0
-  return { spots, avg, maxBid }
+  // Every other open spot needs at least a dollar. A budget too small to
+  // put a dollar on each one has no maximum bid at all — it has a hole, and
+  // the shortfall is the size of it.
+  const maxBid = spots > 0 ? Math.max(0, budget - (spots - 1)) : 0
+  const shortfall = spots > 0 ? Math.max(0, spots - budget) : 0
+  return { spots, avg, maxBid, shortfall }
 }

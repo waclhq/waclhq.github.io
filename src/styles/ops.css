@@ -10,6 +10,15 @@
 @layer components {
   /* ---- shared -------------------------------------------------------- */
 
+  /* The phone top bar measures 55px — 8px of padding, the row, 8px, and a
+     3px rule — plus the safe area. Anything pinned a pixel lower shows a
+     stripe of scrolling table through the gap, so every sticky thing in
+     these rooms reads one offset. --topbar-h is a fallback, not a token
+     yet: if the Shell ever publishes its own, this follows it. */
+  .ops-under-bar {
+    top: calc(env(safe-area-inset-top, 0px) + var(--topbar-h, 55px));
+  }
+
   /* A .win whose insides may stick to the viewport: `clip` cuts the corners
      like `hidden` without turning the panel into a scroll container. */
   .win.ops-clip {
@@ -63,7 +72,7 @@
      thumb works down the list. */
   .ops-strip {
     position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 56px);
+    top: calc(env(safe-area-inset-top, 0px) + var(--topbar-h, 55px));
     z-index: 20;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -76,7 +85,7 @@
 
   .ops-ruler {
     position: sticky;
-    top: calc(env(safe-area-inset-top, 0px) + 56px);
+    top: calc(env(safe-area-inset-top, 0px) + var(--topbar-h, 55px));
     z-index: 10;
   }
   @media (min-width: 1024px) {
@@ -103,6 +112,61 @@
   }
 
   /* ---- draft board ----------------------------------------------------- */
+
+  /* The filter rail stays one row down to 360: the positions scroll inside
+     their own strip rather than wrapping and eating 109px of the board. */
+  .ops-rail {
+    flex-wrap: nowrap;
+  }
+  .ops-rail > div {
+    min-width: 0;
+  }
+  .ops-rail .scroll-x {
+    min-width: 0;
+  }
+  /* One column grid in both states. Left to itself the table re-measures
+     when a Status chip grows from AVAILABLE to KEPT — VELAMOOR $69, and all
+     seven columns slide under the sticky rail. */
+  .out.ops-board {
+    table-layout: fixed;
+  }
+  .out.ops-board .ops-c-rank {
+    width: 48px;
+  }
+  .out.ops-board .ops-c-pos {
+    width: 62px;
+  }
+  /* A column whose cells are display:none still claims its share of a fixed
+     layout, so the ones a phone hides are zeroed until their breakpoint —
+     otherwise the player names get 43px and the rest is dead air. */
+  .out.ops-board .ops-c-team,
+  .out.ops-board .ops-c-bye,
+  .out.ops-board .ops-c-tier,
+  .out.ops-board .ops-c-status {
+    width: 0;
+  }
+  @media (min-width: 640px) {
+    .out.ops-board .ops-c-rank {
+      width: 84px;
+    }
+    .out.ops-board .ops-c-pos {
+      width: 96px;
+    }
+    .out.ops-board .ops-c-team {
+      width: 96px;
+    }
+    .out.ops-board .ops-c-bye {
+      width: 76px;
+    }
+    .out.ops-board .ops-c-status {
+      width: 226px;
+    }
+  }
+  @media (min-width: 768px) {
+    .out.ops-board .ops-c-tier {
+      width: 76px;
+    }
+  }
 
   /* A pressed toggle reads as on without relying on the glyph alone. */
   .btn.ops-toggle[aria-pressed='true'] {
@@ -311,7 +375,7 @@
   .ops-seat-you {
     display: block;
     font-family: var(--font-display);
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
     line-height: 1.2;
@@ -404,6 +468,15 @@
   }
 }
 
+/* Unlayered on purpose: the shared segmented control ships a min-h-[38px]
+   utility, and a utility outranks anything in @layer components. Auction
+   night is thumbs — no filter or tab in these rooms smaller than the pad it
+   needs (the K button measured 30 x 38). */
+.ops-room .scroll-x > button {
+  min-width: 40px;
+  min-height: 40px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='on']) .ops-tick,
   :root:not([data-motion='on']) .ops-bar.is-on,
@@ -416,6 +489,13 @@
     transform: translateY(-50%) scaleX(1);
   }
   :root:not([data-motion='on']) button.ops-seat {
+    transition: none !important;
+  }
+  /* Loads and reveals were already still; a tap was not. Buttons and the
+     tick-a-keeper row carry colour transitions of their own, so nothing in
+     these rooms moves after a press either. */
+  :root:not([data-motion='on']) .ops-room .btn,
+  :root:not([data-motion='on']) .ops-room [class*='transition-'] {
     transition: none !important;
   }
 }

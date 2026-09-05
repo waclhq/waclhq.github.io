@@ -134,6 +134,8 @@ export default function WarRoom({ year }: { year: number }) {
   const budget = league.baseDraftBudget - salary + cashNet
   const overSlots = chosen.length > league.keeperSlots
   const math = auctionMath(budget, chosen.length)
+  const short = math.shortfall > 0
+  const shortNote = `${money(math.shortfall)} short of a dollar on each of the ${math.spots} open spots.`
   // A key that changes with every tick, so the readouts re-arrive.
   const tickKey = [...selected].sort().join('|')
 
@@ -174,9 +176,24 @@ export default function WarRoom({ year }: { year: number }) {
         <div className="ops-strip lg:hidden" role="status" aria-live="polite">
           <StripCell label="Budget" value={money(budget)} tone={budget < 0 ? 'red' : 'green'} k={tickKey} />
           <StripCell label="Spots left" value={String(math.spots)} k={tickKey} />
-          <StripCell label="Avg/slot" value={money(math.avg)} k={tickKey} />
-          <StripCell label="Max bid" value={money(math.maxBid)} k={tickKey} />
+          <StripCell
+            label="Avg/slot"
+            value={perSlot(math.avg)}
+            tone={short ? 'red' : undefined}
+            k={tickKey}
+          />
+          <StripCell
+            label="Max bid"
+            value={money(math.maxBid)}
+            tone={short ? 'red' : undefined}
+            k={tickKey}
+          />
         </div>
+        {short && (
+          <p className="border-b border-arc-line px-4 py-2 text-[12px] text-arc-red lg:hidden" role="status">
+            {shortNote}
+          </p>
+        )}
 
         <div className="lg:max-h-[440px] lg:overflow-y-auto">
           <div className="flex items-center gap-3 border-b border-arc-line px-4 py-1.5">
@@ -249,16 +266,33 @@ export default function WarRoom({ year }: { year: number }) {
               k={tickKey}
             />
             <Readout label="Keeper salary" value={money(-salary)} k={tickKey} />
+            {/* No year on the label: at 272px it wraps to two lines and
+                drags its value out of the row. The season is overhead. */}
             <Readout
-              label={`Traded cash (${year})`}
+              label="Traded cash"
               value={cashNet === 0 ? '$0' : money(cashNet, { sign: true })}
               tone={cashNet > 0 ? 'green' : cashNet < 0 ? 'red' : undefined}
               k={tickKey}
             />
             <Readout label="Spots left" value={String(math.spots)} k={tickKey} />
-            <Readout label="Avg / slot" value={money(math.avg)} k={tickKey} />
-            <Readout label="Max bid" value={money(math.maxBid)} k={tickKey} />
+            <Readout
+              label="Avg / slot"
+              value={perSlot(math.avg)}
+              tone={short ? 'red' : undefined}
+              k={tickKey}
+            />
+            <Readout
+              label="Max bid"
+              value={money(math.maxBid)}
+              tone={short ? 'red' : undefined}
+              k={tickKey}
+            />
           </dl>
+          {short && (
+            <p className="mt-3 text-[12px] leading-snug text-arc-red" role="status">
+              {shortNote}
+            </p>
+          )}
           {overSlots && (
             <p className="mt-3 text-[12px] text-arc-red" role="alert">
               Over the limit — drop {chosen.length - league.keeperSlots}.
@@ -283,6 +317,11 @@ export default function WarRoom({ year }: { year: number }) {
       </p>
     </div>
   )
+}
+
+/** Half a dollar a slot is not a dollar a slot; money() would call it one. */
+function perSlot(avg: number): string {
+  return avg > 0 && avg < 1 ? '<$1' : money(avg)
 }
 
 function StripCell({
@@ -328,12 +367,14 @@ function Readout({
   tone?: 'green' | 'red'
   k: string
 }) {
+  // A column, with the value on mt-auto: if a label ever does take two
+  // lines, the numbers still sit on one line across the row.
   return (
-    <div className="min-w-0">
+    <div className="flex min-w-0 flex-col">
       <dt className="label text-[11px]">{label}</dt>
       <dd
         key={k}
-        className="ops-tick tnum mt-1 text-[19px] leading-none font-bold"
+        className="ops-tick tnum mt-auto pt-1 text-[19px] leading-none font-bold"
         style={{
           color:
             tone === 'green'
