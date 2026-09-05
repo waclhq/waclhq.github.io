@@ -97,6 +97,8 @@ export function friendlySaveError(cause: unknown): string {
   if (/409|conflict/i.test(message)) return 'Someone saved at the same moment. Try once more.'
   if (/rate limit/i.test(message)) return 'GitHub is rate-limiting this token for a bit. Try again in a few minutes.'
   if (/read the repo but not write/i.test(message)) return message
+  if (/Cannot read|undefined|is not a function|Unexpected token|JSON/i.test(message))
+    return 'The save did not go through — GitHub sent back something unexpected. Nothing was changed; try once more.'
   return `The save did not go through: ${message}`
 }
 

@@ -446,6 +446,8 @@
     height: 5px;
     border-radius: 50%;
     background: currentColor;
+    /* the glow is static so each dot animates transform/opacity only */
+    filter: drop-shadow(0 0 4px currentColor);
     animation: dot-crest 2.2s ease-in-out infinite;
   }
   @keyframes dot-crest {
@@ -457,7 +459,6 @@
     50% {
       transform: scale(1.25);
       opacity: 1;
-      box-shadow: 0 0 6px currentColor;
     }
   }
 
@@ -1519,9 +1520,13 @@
     .stamp {
       margin-right: 8px;
       padding: 2px 6px;
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: 0.1em;
     }
+  }
+  /* A tapped chart is not a focused control. */
+  .recharts-wrapper :focus:not(:focus-visible) {
+    outline: none;
   }
   /* punched notches where the perforation meets the edges */
   .stub-notch {

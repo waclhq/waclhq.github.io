@@ -5,8 +5,9 @@ import type { KeeperBlock, LeagueData, Trade } from './types'
  * is free text, so this parses the names and walks them across the keeper
  * blocks of the trade's season: a name found on the seller's roster moves to
  * the buyer, and — so straight swaps need no special syntax — a name found on
- * the buyer's roster moves to the seller. Contract terms travel with the
- * player untouched. Names matching neither roster are reported, not guessed.
+ * the buyer's roster moves to the seller. The keeper contract (salary,
+ * contract year) travels with the player and each block's keeper salary is
+ * re-summed. Names matching neither roster are reported, not guessed.
  */
 
 export interface RosterMoveResult {
@@ -34,7 +35,11 @@ export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): 
   const names = parsePlayers(trade.players)
   if (!blocks || names.length === 0) return { keepers, moved: [], unmatched: names }
 
-  const next = blocks.map((block) => ({ ...block, endingRoster: [...block.endingRoster] }))
+  const next = blocks.map((block) => ({
+    ...block,
+    endingRoster: [...block.endingRoster],
+    keepers: [...block.keepers],
+  }))
   const seller = next.find((block) => block.manager === trade.seller)
   const buyer = next.find((block) => block.manager === trade.buyer)
   if (!seller || !buyer) return { keepers, moved: [], unmatched: names }
@@ -42,11 +47,24 @@ export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): 
   const moved: RosterMoveResult['moved'] = []
   const unmatched: string[] = []
 
+  const moveContract = (from: KeeperBlock, to: KeeperBlock, player: string) => {
+    const needle = player.trim().toLowerCase()
+    const index = from.keepers.findIndex((pick) => pick.player.trim().toLowerCase() === needle)
+    if (index < 0) return
+    const [pick] = from.keepers.splice(index, 1)
+    to.keepers.push(pick)
+  }
+  const resum = (block: KeeperBlock) => {
+    if (block.keeperSalary === null) return
+    block.keeperSalary = block.keepers.reduce((total, pick) => total + (pick.salary ?? 0), 0)
+  }
+
   for (const name of names) {
     const fromSeller = findSpot(seller, name)
     if (fromSeller >= 0) {
       const [spot] = seller.endingRoster.splice(fromSeller, 1)
       buyer.endingRoster.push(spot)
+      moveContract(seller, buyer, spot.player)
       moved.push({ player: spot.player, to: trade.buyer })
       continue
     }
@@ -54,6 +72,7 @@ export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): 
     if (fromBuyer >= 0) {
       const [spot] = buyer.endingRoster.splice(fromBuyer, 1)
       seller.endingRoster.push(spot)
+      moveContract(buyer, seller, spot.player)
       moved.push({ player: spot.player, to: trade.seller })
       continue
     }
@@ -61,5 +80,7 @@ export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): 
   }
 
   if (moved.length === 0) return { keepers, moved, unmatched }
+  resum(seller)
+  resum(buyer)
   return { keepers: { ...keepers, [yearKey]: next }, moved, unmatched }
 }

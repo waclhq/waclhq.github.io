@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Boot, { shouldBoot } from './components/Boot'
 import Shell from './components/Shell'
 import { clearOverlay, useLeague } from './lib/data'
@@ -23,6 +23,12 @@ const PlayerDetail = lazy(() => import('./pages/PlayerDetail'))
 const Records = lazy(() => import('./pages/Records'))
 const Rules = lazy(() => import('./pages/Rules'))
 const Trades = lazy(() => import('./pages/Trades'))
+
+/** Unknown routes land on the Ledger, which says which door was missing. */
+function Missing() {
+  const location = useLocation()
+  return <Navigate to="/" replace state={{ missing: location.pathname }} />
+}
 
 function RoomLoading() {
   return (
@@ -167,7 +173,7 @@ export default function App() {
         <Route path="/almanac" element={<Almanac />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/guide" element={<Guide />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Missing />} />
           </Routes>
         </Suspense>
       </RoomBoundary>

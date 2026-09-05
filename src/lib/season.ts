@@ -43,12 +43,15 @@ export function seasonClock(currentSeason: number, now: Date = new Date()): Seas
   const daysToKickoff = Math.round((startOfDay(kickoff) - startOfDay(now)) / DAY)
   // Weeks turn on the Tuesday before kickoff Thursday.
   const weekOne = startOfDay(kickoff) - 2 * DAY
-  const week = Math.floor((now.getTime() - weekOne) / (7 * DAY)) + 1
+  const week = Math.max(1, Math.floor((now.getTime() - weekOne) / (7 * DAY)) + 1)
 
+  // The opener kicks at 8:15pm ET on the Thursday; until then it is still
+  // kickoff week (so "Kickoff tonight" is a real line), after it week one.
+  const kickoffAt = startOfDay(kickoff) + 20.25 * 3_600_000
   let phase: SeasonPhase
   if (now.getFullYear() < currentSeason || now.getMonth() < 7) phase = 'offseason'
   else if (daysToKickoff > 7) phase = 'preseason'
-  else if (daysToKickoff > 0 || now.getTime() < weekOne) phase = 'kickoff-week'
+  else if (now.getTime() < kickoffAt) phase = 'kickoff-week'
   else if (week <= REGULAR_WEEKS) phase = 'in-season'
   else if (week <= REGULAR_WEEKS + PLAYOFF_WEEKS) phase = 'playoffs'
   else phase = 'offseason'

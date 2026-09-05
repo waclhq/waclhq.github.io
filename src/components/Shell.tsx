@@ -312,8 +312,12 @@ export default function Shell({ children }: { children: ReactNode }) {
   // Every page opens at its top (a back/forward pop keeps the browser's
   // restored position, and a hash deep link lands on its section). Layout
   // effect so the jump happens before the new page is painted or snapshotted.
+  const lastPath = useRef(location.pathname)
   useLayoutEffect(() => {
-    if (firstNav.current) return
+    const changed = lastPath.current !== location.pathname
+    lastPath.current = location.pathname
+    if (firstNav.current || !changed) return
+    // A same-page ?season= / ?bet= / ?sort= rewrite is not a navigation.
     if (navigationType !== 'POP' && !location.hash) {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     }
@@ -334,6 +338,8 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   // Each room names the tab.
   useEffect(() => {
+    // Detail pages (a manager, a player) name themselves.
+    if (location.pathname.split('/').filter(Boolean).length > 1) return
     const room = NAV.find((item) =>
       item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
     )

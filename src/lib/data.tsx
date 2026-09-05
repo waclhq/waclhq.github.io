@@ -138,6 +138,15 @@ async function loadJson<T>(file: string): Promise<T> {
   return (await response.json()) as T
 }
 
+/** What save() broadcasts on window as a 'wacl:save' CustomEvent. */
+export interface SaveEvent {
+  phase: 'start' | 'ok' | 'error'
+  file: WritableFile
+  message: string
+  error?: string
+  retry?: () => void
+}
+
 interface DataContextValue {
   data: LeagueData | null
   error: string | null

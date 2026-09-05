@@ -131,6 +131,7 @@ export function Panel({
   children,
   className = '',
   delay = 0,
+  flush = false,
 }: {
   id?: string
   title?: string
@@ -139,6 +140,9 @@ export function Panel({
   children: ReactNode
   className?: string
   delay?: number
+  /** Render children without the horizontal-scroll wrapper (boards whose
+   *  effects deliberately bleed past their edges, like the Book's fire). */
+  flush?: boolean
 }) {
   const frame = useRef<HTMLElement>(null)
   const aired = useRevealed(frame)
@@ -160,12 +164,12 @@ export function Panel({
               <p className="mt-1 text-[12px] leading-snug text-arc-ink-soft">{subtitle}</p>
             )}
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {action && <div className="min-w-0 max-w-full">{action}</div>}
         </header>
       )}
       {/* Tables inside panels scroll here rather than splitting thead/tbody
           into separate layout contexts, which desynced header columns. */}
-      <ScrollHint>{children}</ScrollHint>
+      {flush ? <div className="min-w-0 overflow-x-clip">{children}</div> : <ScrollHint>{children}</ScrollHint>}
     </section>
   )
 }

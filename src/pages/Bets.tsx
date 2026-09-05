@@ -659,6 +659,7 @@ export default function Bets() {
       <div className="mt-6 space-y-6">
         <Panel
           id="table"
+          flush
           title="on the table"
           subtitle={
             loading
@@ -723,6 +724,7 @@ export default function Bets() {
 
         <Panel
           id="live"
+          flush
           title="live action"
           subtitle={
             loading

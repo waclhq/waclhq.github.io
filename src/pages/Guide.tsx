@@ -172,12 +172,14 @@ export default function Guide() {
               and a one-line description.
             </Step>
             <Step n={4}>
-              Money <B>a manager owes the league</B> goes in as a negative number; money{' '}
-              <B>the league owes them</B> is positive. The form reminds you.
+              Pick <B>Manager owes league</B> or <B>League owes manager</B>, then type the amount
+              as a plain positive number. The form shows how it will book before you press{' '}
+              <B>Record</B>, and a green <B>Recorded</B> line confirms it landed.
             </Step>
             <Step n={5}>
-              When one of those is squared away, click its <B>Open</B> tag to flip it to{' '}
-              <B>Settled</B>. The standing-balances table always shows who still owes what.
+              When one of those is squared away, tick the box on its row to mark it{' '}
+              <B>Settled</B> (untick to undo). The standing-balances table always shows who still
+              owes what.
             </Step>
           </ol>
         </Panel>

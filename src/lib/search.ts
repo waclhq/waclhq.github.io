@@ -27,8 +27,9 @@ export const PAGES: { title: string; subtitle: string; to: string; aliases: stri
   { title: 'Manual', subtitle: "Commissioner's guide — how to run the league here", to: '/guide', aliases: 'guide help how to commissioner instructions' },
 ]
 
+/** /players/<slug>: the normalized name ("Ja'Marr Chase" and "JaMarr Chase" share one door). */
 export function playerSlug(name: string): string {
-  return encodeURIComponent(name.toLowerCase().trim())
+  return normalizePlayer(name) || encodeURIComponent(name.toLowerCase().trim())
 }
 
 export interface PlayerStint {
