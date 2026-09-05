@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { commitFile, isCommissioner } from './github'
+import { commitFile, friendlySaveError, isCommissioner } from './github'
 import type {
   CashFile,
   FaabFile,
@@ -271,8 +271,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     void reload()
   }, [reload])
 
-  const save = useCallback<DataContextValue['save']>(async (file, update, message) => {
-    const next = await commitFile(file, update, message)
+  // Every write announces itself (see SaveStatus in the Shell) so a page can
+  // stay focused on its own form while one strip tells the commissioner what
+  // happened, where their thumb is, on every page alike.
+  const save = useCallback<DataContextValue['save']>(async function saveFile(file, update, message) {
+    const announce = (detail: Record<string, unknown>) =>
+      window.dispatchEvent(new CustomEvent('wacl:save', { detail: { file, message, ...detail } }))
+    announce({ phase: 'start' })
+    let next: unknown
+    try {
+      next = await commitFile(file, update, message)
+    } catch (cause) {
+      announce({
+        phase: 'error',
+        error: friendlySaveError(cause),
+        retry: () => void saveFile(file, update, message).catch(() => undefined),
+      })
+      throw cause
+    }
+    announce({ phase: 'ok' })
     const overlay = readOverlay()
     const ages = readAges()
     overlay[file] = next

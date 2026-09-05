@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, useLocation, useNavigationType } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom'
 import { useLeague } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { setMe, useMe } from '../lib/me'
@@ -88,6 +88,79 @@ function Clock() {
     return () => clearInterval(timer)
   }, [])
   return <span className="tabular-nums">{now.toLocaleTimeString('en-US', { hour12: false })}</span>
+}
+
+type SaveEvent = {
+  phase: 'start' | 'ok' | 'error'
+  file: string
+  message: string
+  error?: string
+  retry?: () => void
+}
+
+/**
+ * One strip, every page: what the last save did. Lives above the tab bar on
+ * phones and above the credits footer on desktop, so the answer to "did that
+ * work?" is always where the thumb already is. Fed by lib/data.ts save().
+ */
+function SaveStatus() {
+  const [state, setState] = useState<SaveEvent | null>(null)
+  useEffect(() => {
+    let timer = 0
+    const onSave = (event: Event) => {
+      const detail = (event as CustomEvent<SaveEvent>).detail
+      setState(detail)
+      window.clearTimeout(timer)
+      if (detail.phase === 'ok') timer = window.setTimeout(() => setState(null), 4200)
+    }
+    window.addEventListener('wacl:save', onSave)
+    return () => {
+      window.removeEventListener('wacl:save', onSave)
+      window.clearTimeout(timer)
+    }
+  }, [])
+  if (!state) return null
+  const tone =
+    state.phase === 'error'
+      ? 'var(--color-arc-red)'
+      : state.phase === 'ok'
+        ? 'var(--color-arc-green)'
+        : 'var(--color-arc-yellow)'
+  return (
+    <div
+      role={state.phase === 'error' ? 'alert' : 'status'}
+      className="slide-in fixed inset-x-3 bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-[45] flex items-center gap-3 rounded-lg border border-arc-line bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:inset-x-auto lg:right-6 lg:bottom-12 lg:max-w-md"
+      style={{ borderLeft: `3px solid ${tone}` }}
+    >
+      <span aria-hidden className={state.phase === 'start' ? 'pulse' : ''} style={{ color: tone }}>
+        {state.phase === 'error' ? '✗' : state.phase === 'ok' ? '✓' : '●'}
+      </span>
+      <span className="min-w-0 flex-1 leading-snug">
+        {state.phase === 'start' && <span className="text-arc-ink-soft">Saving · {state.message}</span>}
+        {state.phase === 'ok' && (
+          <span>
+            <b className="text-arc-green">Saved</b> <span className="text-arc-ink-soft">· {state.message}</span>
+          </span>
+        )}
+        {state.phase === 'error' && <span>{state.error ?? 'The save did not go through.'}</span>}
+      </span>
+      {state.phase === 'error' && state.retry && (
+        <button type="button" className="btn min-h-[34px] px-3 py-1 text-[12px]" onClick={state.retry}>
+          Retry
+        </button>
+      )}
+      {state.phase !== 'start' && (
+        <button
+          type="button"
+          className="px-1 text-[18px] leading-none text-arc-ink-faint"
+          aria-label="Dismiss"
+          onClick={() => setState(null)}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -258,6 +331,45 @@ export default function Shell({ children }: { children: ReactNode }) {
     document.documentElement.style.setProperty('--me-color', me ? managerColor(me) : 'transparent')
   }, [me])
 
+  // Each room names the tab.
+  useEffect(() => {
+    const room = NAV.find((item) =>
+      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
+    )
+    document.title = room && room.to !== '/' ? `${room.label} · WACL League HQ` : 'WACL League HQ'
+  }, [location.pathname])
+
+  // A newer build live? The installed home-screen copy caches the old shell
+  // hard, so poll the build stamp — every ten minutes and whenever the app
+  // comes back to the foreground — and offer a refresh instead of a mystery.
+  const [stale, setStale] = useState(false)
+  useEffect(() => {
+    if (!import.meta.env.PROD) return
+    let hiddenAt = 0
+    const check = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`, {
+          cache: 'no-store',
+        })
+        if (!response.ok) return
+        const { build } = (await response.json()) as { build?: string }
+        if (build && build !== __BUILD_ID__) setStale(true)
+      } catch {
+        /* offline — nothing to say */
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') hiddenAt = Date.now()
+      else if (Date.now() - hiddenAt > 90_000) void check()
+    }
+    const timer = window.setInterval(check, 10 * 60_000)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
+
   // Stadium light: a soft lamp that follows the pointer across the panel it
   // is over (CSS .win::after reads --mx/--my). Pointer devices only, and
   // never when the person asked for stillness.
@@ -415,9 +527,9 @@ export default function Shell({ children }: { children: ReactNode }) {
         style={{ viewTransitionName: 'chrome-top' }}
       >
         <div className="flex min-w-0 items-center gap-3" onClick={onLogoTap}>
-          <div className="relative -my-1 shrink-0">
+          <Link to="/" className="relative -my-1 shrink-0" aria-label="Ledger" viewTransition={viewTransitions}>
             <Crest size={38} glow={false} />
-          </div>
+          </Link>
           <span className="arcade truncate text-[12px] text-arc-ink-soft">
             {current?.label ?? 'Ledger'}
           </span>
@@ -643,7 +755,9 @@ export default function Shell({ children }: { children: ReactNode }) {
       >
         <div className="border-b-[3px] border-arc-line bg-arc-bg-deep px-4 py-5 text-center">
           <div className="relative inline-block" onClick={onLogoTap}>
-            <Crest size={140} />
+            <Link to="/" aria-label="Ledger" viewTransition={viewTransitions} className="block">
+              <Crest size={140} />
+            </Link>
             <Sparkles count={5} />
           </div>
           <div className="arcade mt-2 text-[10px] text-arc-yellow">EST. 2004</div>
@@ -741,6 +855,26 @@ export default function Shell({ children }: { children: ReactNode }) {
         </span>
       </footer>
 
+      <SaveStatus />
+      {stale && (
+        <div
+          role="status"
+          className="slide-in fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+64px)] z-[45] flex items-center gap-3 rounded-lg border border-arc-green/60 bg-arc-bg-deep/95 px-3.5 py-2.5 text-[12.5px] shadow-hard backdrop-blur-sm lg:top-4 lg:right-6 lg:left-auto lg:max-w-sm"
+        >
+          <span aria-hidden className="pulse text-arc-green">●</span>
+          <span className="min-w-0 flex-1">
+            <b className="text-arc-green">New version live.</b>{' '}
+            <span className="text-arc-ink-soft">Refresh to get it.</span>
+          </span>
+          <button
+            type="button"
+            className="btn min-h-[34px] px-3 py-1 text-[12px]"
+            onClick={() => window.location.reload()}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
       {wipe > 0 && <ReplayWipe key={wipe} />}
       {godMode && <GodMode onDone={() => setGodMode(false)} />}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}

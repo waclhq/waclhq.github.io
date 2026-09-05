@@ -43,7 +43,10 @@ export function useFlipList<T extends HTMLElement>(ref: React.RefObject<T | null
     if (!container) return
     const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-flip]'))
     const next = new Map<string, number>()
-    for (const row of rows) next.set(row.dataset.flip!, row.getBoundingClientRect().top)
+    // Positions relative to the container, not the viewport: a page that
+    // scrolled between renders must not send every row flying.
+    const origin = container.getBoundingClientRect().top
+    for (const row of rows) next.set(row.dataset.flip!, row.getBoundingClientRect().top - origin)
     if (!animationsDisabled()) {
       for (const row of rows) {
         const before = previous.current.get(row.dataset.flip!)
@@ -84,6 +87,10 @@ function ScrollHint({ children, className = '' }: { children: ReactNode; classNa
     el.addEventListener('scroll', onScroll, { passive: true })
     const watch = new ResizeObserver(check)
     watch.observe(el)
+    // The table inside can change width without the track changing size
+    // (a column hides, a font lands), so watch the content as well.
+    if (el.firstElementChild) watch.observe(el.firstElementChild)
+    document.fonts?.ready.then(check).catch(() => undefined)
     return () => {
       el.removeEventListener('scroll', onScroll)
       watch.disconnect()
@@ -378,10 +385,13 @@ export function SegmentedControl<T extends string>({
   )
 }
 
-export function Empty({ children }: { children: ReactNode }) {
+export function Empty({ children, kicker = 'nothing here' }: { children: ReactNode; kicker?: string }) {
   return (
-    <div className="arcade px-4 py-10 text-center text-[10px] leading-relaxed text-arc-ink-soft">
-      {children}
+    <div className="px-4 py-9 text-center">
+      <div className="label">{kicker}</div>
+      <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-arc-ink-soft italic">
+        {children}
+      </p>
     </div>
   )
 }
@@ -452,6 +462,17 @@ export function Scroller({ children }: { children: ReactNode }) {
  */
 export function SectionNav({ sections }: { sections: { id: string; label: string }[] }) {
   const [active, setActive] = useState<string | null>(null)
+  const track = useRef<HTMLDivElement>(null)
+
+  // Keep the lit chip in view inside the rail (without scrolling the page).
+  useEffect(() => {
+    const rail = track.current
+    if (!rail || !active) return
+    const chip = rail.querySelector<HTMLElement>(`[data-chip="${active}"]`)
+    if (!chip) return
+    const left = chip.offsetLeft - rail.clientWidth / 2 + chip.clientWidth / 2
+    rail.scrollTo({ left, behavior: animationsDisabled() ? 'auto' : 'smooth' })
+  }, [active])
 
   useEffect(() => {
     const seen = new Map<string, boolean>()
@@ -475,10 +496,11 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
       aria-label="Sections"
       className="section-rail sticky top-[calc(env(safe-area-inset-top,0px)+56px)] z-30 -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
     >
-      <div className="scroll-x flex gap-1.5 py-2">
+      <div ref={track} className="scroll-x flex gap-1.5 py-2 [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)]">
         {sections.map((section) => (
           <a
             key={section.id}
+            data-chip={section.id}
             href={`#${section.id}`}
             onClick={(event) => {
               event.preventDefault()
@@ -487,7 +509,7 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
                 block: 'start',
               })
             }}
-            className={`arcade shrink-0 rounded-full border px-3 py-1.5 text-[10px] whitespace-nowrap transition-colors ${
+            className={`arcade inline-flex min-h-[36px] shrink-0 items-center rounded-full border px-3.5 text-[11px] whitespace-nowrap transition-colors ${
               active === section.id
                 ? 'border-arc-green bg-arc-green text-[#06210a]'
                 : 'border-arc-line bg-arc-panel text-arc-ink-soft hover:border-arc-ink-faint hover:text-arc-ink'
@@ -507,25 +529,38 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
  * on demand, so the archive stops taxing every scroll past it.
  */
 export function Fold({
+  id,
   summary,
   children,
   defaultOpen = false,
+  open: controlled,
+  onToggle,
   delay = 0,
 }: {
+  id?: string
   summary: ReactNode
   children: ReactNode
   defaultOpen?: boolean
+  /** Controlled mode: the caller owns the open state (deep links, rails). */
+  open?: boolean
+  onToggle?: (open: boolean) => void
   delay?: number
 }) {
-  const [open, setOpen] = useState(defaultOpen)
+  const [own, setOwn] = useState(defaultOpen)
+  const open = controlled ?? own
+  const setOpen = (next: boolean) => {
+    if (controlled === undefined) setOwn(next)
+    onToggle?.(next)
+  }
   return (
     <section
+      id={id}
       className="win pop-in"
       style={delay ? { animationDelay: `${delay}ms` } : undefined}
     >
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         className="flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-arc-raised/40"
       >

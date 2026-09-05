@@ -11,20 +11,20 @@ export interface SearchResult {
   to: string
 }
 
-export const PAGES: { title: string; subtitle: string; to: string }[] = [
-  { title: 'Ledger', subtitle: 'Season overview and draft budgets', to: '/' },
-  { title: 'Trades', subtitle: 'Approval queue and trade history', to: '/trades' },
-  { title: 'Keepers', subtitle: 'Rosters, contracts, and the contract board', to: '/keepers' },
-  { title: 'Draft Board', subtitle: 'Top-ranked players still available at auction', to: '/draft' },
-  { title: 'Finances', subtitle: 'Auction dollars and cash', to: '/finances' },
-  { title: 'The Book', subtitle: 'Side bets between managers', to: '/bets' },
-  { title: 'Standings', subtitle: '22 seasons of final tables', to: '/standings' },
-  { title: 'Managers', subtitle: 'Career records', to: '/managers' },
-  { title: 'Records', subtitle: 'Leaderboards, trade flow, champions', to: '/records' },
-  { title: 'The Lab', subtitle: 'Luck index, GOAT index, Elo, title odds, contracts', to: '/lab' },
-  { title: 'Almanac', subtitle: 'The written record, one entry per season', to: '/almanac' },
-  { title: 'Rules', subtitle: 'League constitution', to: '/rules' },
-  { title: 'Manual', subtitle: "Commissioner's guide — how to run the league here", to: '/guide' },
+export const PAGES: { title: string; subtitle: string; to: string; aliases: string }[] = [
+  { title: 'Ledger', subtitle: 'The desk: what changed, what needs a ruling', to: '/', aliases: 'home desk dashboard budgets overview' },
+  { title: 'Trades', subtitle: 'Approval queue and trade history', to: '/trades', aliases: 'queue pending approve trade history' },
+  { title: 'Keepers', subtitle: 'Rosters, contracts, and the contract board', to: '/keepers', aliases: 'contracts rosters keeper team' },
+  { title: 'Draft Board', subtitle: 'Top-ranked players still available at auction', to: '/draft', aliases: 'auction war room rankings available' },
+  { title: 'Finances', subtitle: 'Auction dollars and cash', to: '/finances', aliases: 'dues cash money owed payouts venmo' },
+  { title: 'The Book', subtitle: 'Side bets between managers', to: '/bets', aliases: 'bets bet book side action wager stake' },
+  { title: 'Standings', subtitle: 'Final tables, season by season', to: '/standings', aliases: 'table final results season' },
+  { title: 'Managers', subtitle: 'Career records', to: '/managers', aliases: 'people career profiles' },
+  { title: 'Records', subtitle: 'Leaderboards, trade flow, champions', to: '/records', aliases: 'leaderboards podium all-time best worst' },
+  { title: 'The Lab', subtitle: 'Luck index, GOAT index, Elo, title odds, contracts', to: '/lab', aliases: 'odds vegas luck goat elo roast stats' },
+  { title: 'Almanac', subtitle: 'The written record, one entry per season', to: '/almanac', aliases: 'history years champions banners' },
+  { title: 'Rules', subtitle: 'League constitution', to: '/rules', aliases: 'constitution bylaws rulebook' },
+  { title: 'Manual', subtitle: "Commissioner's guide — how to run the league here", to: '/guide', aliases: 'guide help how to commissioner instructions' },
 ]
 
 export function playerSlug(name: string): string {
@@ -155,11 +155,12 @@ export function buildResults(data: LeagueData, query: string, limit = 24): Searc
   }
 
   for (const page of PAGES) {
-    push(
-      { kind: 'page', id: page.to, title: page.title, subtitle: page.subtitle, to: page.to },
-      page.title,
-      0,
-    )
+    const result = { kind: 'page' as const, id: page.to, title: page.title, subtitle: page.subtitle, to: page.to }
+    // Best of: the title, any alias, the subtitle — so "bets" and "help" land.
+    const scores = [page.title, ...page.aliases.split(' '), page.subtitle]
+      .map((haystack) => fuzzyScore(trimmed, haystack))
+      .filter((score): score is number => score !== null)
+    if (scores.length) scored.push({ result, score: Math.min(...scores) })
   }
 
   for (const manager of data.managers) {

@@ -67,8 +67,10 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`
 
-/** Render scale — caustics are soft, and 2/3 keeps phones cool. */
-const SCALE = 0.66
+/** Render scale — caustics are soft; 2/3 on desktop, half on phones. */
+const SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.5 : 0.66
+/** The glass moves slowly; 30 frames a second is indistinguishable and halves the GPU bill. */
+const FRAME_MS = 1000 / 30
 
 export default function Backdrop({ enabled }: { enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -111,8 +113,11 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       const uR = gl.getUniformLocation(program, 'R')
       const uT = gl.getUniformLocation(program, 'T')
 
+      let lastDraw = 0
       const tick = (time: number) => {
         raf = requestAnimationFrame(tick)
+        if (document.hidden || time - lastDraw < FRAME_MS) return
+        lastDraw = time
         const w = Math.floor(window.innerWidth * SCALE)
         const h = Math.floor(window.innerHeight * SCALE)
         if (canvas.width !== w || canvas.height !== h) {

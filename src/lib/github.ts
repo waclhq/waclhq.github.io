@@ -83,6 +83,23 @@ export async function verifyToken(token: string): Promise<TokenIdentity> {
   return { login, canWrite: Boolean(permissions?.push) }
 }
 
+/**
+ * What to tell the commissioner when a write fails. The raw exception is kept
+ * for the console; this is the sentence that appears next to the button.
+ */
+export function friendlySaveError(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : String(cause)
+  if (/Commissioner mode is off/i.test(message)) return 'Sign in as commissioner first — it is at the bottom of the menu.'
+  if (/Failed to fetch|NetworkError|Load failed|network/i.test(message))
+    return 'Could not reach GitHub. Check the connection and try again — nothing was changed.'
+  if (/401|Bad credentials|rejected that token/i.test(message))
+    return 'GitHub no longer accepts the saved token. Sign out and back in with a fresh one.'
+  if (/409|conflict/i.test(message)) return 'Someone saved at the same moment. Try once more.'
+  if (/rate limit/i.test(message)) return 'GitHub is rate-limiting this token for a bit. Try again in a few minutes.'
+  if (/read the repo but not write/i.test(message)) return message
+  return `The save did not go through: ${message}`
+}
+
 interface FileHandle {
   json: unknown
   sha: string
