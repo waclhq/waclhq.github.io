@@ -5,14 +5,617 @@
   var(--font-display), ...) — never raw hex. Anything that moves must also be
   listed in the reduced-motion guard at the bottom of this file, and any
   canvas / rAF work must check animationsDisabled() in JS.
+
+  The desk's motion registers: the split-flap board and the odometer are
+  one-shot arrivals (they move when the data does — on load and on the minute);
+  the scoreboard tiles count up once when seen; nothing here loops except the
+  field-goal attempt, which was already in the room and now fires every
+  fourteen seconds instead of every three.
 */
 
 @layer components {
-  /* styles */
+  /* ---- the kickoff clock: a split-flap board ------------------------- */
+
+  .desk-board {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 100%;
+    padding: 9px 12px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--color-arc-line);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-arc-bg-deep) 94%, transparent),
+      color-mix(in srgb, var(--color-arc-bg) 94%, transparent)
+    );
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--color-arc-ink) 5%, transparent),
+      var(--shadow-hard-sm);
+  }
+  .desk-board-cap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .desk-board-cap .label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+  }
+  .desk-board-cap-r {
+    margin-left: auto;
+    padding-left: 12px;
+    color: var(--color-arc-ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* A state lamp: colour is carried by --lamp, the words beside it carry
+     the same message for anyone who cannot see the colour. */
+  .desk-lamp {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--lamp, var(--color-arc-yellow));
+    box-shadow: 0 0 8px var(--lamp, var(--color-arc-yellow));
+  }
+
+  .flap-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+  }
+  .flap-word {
+    display: inline-flex;
+    gap: 2px;
+  }
+  .flap-sm {
+    --w: 13px;
+    --h: 20px;
+    --fs: 15px;
+  }
+  .flap-lg {
+    --w: 26px;
+    --h: 40px;
+    --fs: 34px;
+  }
+  @media (min-width: 640px) {
+    .flap-sm {
+      --w: 15px;
+      --h: 23px;
+      --fs: 17px;
+    }
+    .flap-lg {
+      --w: 32px;
+      --h: 46px;
+      --fs: 40px;
+    }
+  }
+  .flap {
+    position: relative;
+    display: inline-block;
+    width: var(--w);
+    height: var(--h);
+    perspective: 240px;
+  }
+  .flap-gap {
+    display: inline-block;
+    width: calc(var(--w) * 0.5);
+    height: var(--h);
+  }
+  .flap-dot {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs);
+    line-height: var(--h);
+    color: var(--color-arc-ink-faint);
+  }
+  /* Each half is a clipped window onto a full-height line box; the bottom
+     half's glyph is shifted up by half so the two halves read as one card. */
+  .flap-half {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    overflow: hidden;
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs);
+    line-height: var(--h);
+    letter-spacing: 0;
+    color: var(--color-arc-ink);
+    text-shadow: none;
+    background: linear-gradient(180deg, var(--color-arc-raised), var(--color-arc-panel));
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flap-half > span {
+    display: block;
+    height: var(--h);
+  }
+  .flap-top {
+    top: 0;
+    border-radius: 3px 3px 0 0;
+  }
+  .flap-bot {
+    bottom: 0;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(180deg, var(--color-arc-panel), var(--color-arc-bg-deep));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-arc-ink) 7%, transparent);
+  }
+  .flap-bot > span {
+    transform: translateY(-50%);
+  }
+  .flap-seam {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    z-index: 4;
+    height: 1px;
+    margin-top: -0.5px;
+    background: var(--color-arc-bg-deep);
+  }
+  /* The change: the old top half falls forward on its bottom edge; the new
+     bottom half falls in behind it from the seam and lands with a knock. */
+  .flap-fold-top {
+    z-index: 2;
+    transform-origin: 50% 100%;
+    animation: flap-top-down 420ms linear var(--flap-delay, 0ms) both;
+  }
+  .flap-fold-bot {
+    z-index: 3;
+    transform-origin: 50% 0%;
+    animation: flap-bot-down 420ms linear var(--flap-delay, 0ms) both;
+  }
+  @keyframes flap-top-down {
+    0% {
+      transform: rotateX(0deg);
+      animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.4);
+    }
+    50%,
+    100% {
+      transform: rotateX(-90deg);
+    }
+  }
+  @keyframes flap-bot-down {
+    0%,
+    50% {
+      transform: rotateX(90deg);
+      animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.4);
+    }
+    78% {
+      transform: rotateX(-9deg);
+      animation-timing-function: ease-out;
+    }
+    100% {
+      transform: rotateX(0deg);
+    }
+  }
+
+  .desk-count {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .flap-pair {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .flap-caption {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+  }
+  .desk-colon {
+    --h: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 9px;
+    width: 6px;
+    height: var(--h);
+  }
+  @media (min-width: 640px) {
+    .desk-colon {
+      --h: 46px;
+    }
+  }
+  .desk-colon::before,
+  .desk-colon::after {
+    content: '';
+    width: 3px;
+    height: 3px;
+    margin: 0 auto;
+    border-radius: 1px;
+    background: var(--color-arc-ink-faint);
+  }
+
+  /* Seventeen notches: fourteen regular weeks, a gap, three of playoffs. */
+  .desk-weekrow {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .desk-weeks {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .desk-week {
+    width: 7px;
+    height: 8px;
+    border-radius: 1px;
+    background: var(--color-arc-line);
+  }
+  .desk-week.is-past {
+    background: var(--color-arc-ink-soft);
+  }
+  .desk-week.is-now {
+    height: 14px;
+    background: var(--color-arc-ink);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-arc-ink) 55%, transparent);
+  }
+  .desk-week.is-playoff {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--color-arc-yellow);
+  }
+  .desk-week.is-playoff.is-past,
+  .desk-week.is-playoff.is-now {
+    background: var(--color-arc-yellow);
+  }
+  .desk-week:nth-child(15) {
+    margin-left: 7px;
+  }
+  .desk-weeks-cap {
+    display: flex;
+    justify-content: space-between;
+  }
+  .desk-weeks-cap .label {
+    font-size: 11px;
+  }
+
+  /* ---- the odometer --------------------------------------------------- */
+
+  .odo {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  /* The glow is a static copy underneath: text-shadow would otherwise paint
+     over the gradient-filled numerals, and a filter would re-blur on every
+     frame of the spin. */
+  .odo-glow {
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    pointer-events: none;
+    user-select: none;
+  }
+  .odo-face {
+    position: relative;
+    display: inline-block;
+    text-shadow: none;
+  }
+  .odo-glyph {
+    display: inline-block;
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-arc-green) 28%, white) 0%,
+      color-mix(in srgb, var(--color-arc-green) 62%, white) 26%,
+      var(--color-arc-green) 50%,
+      color-mix(in srgb, var(--color-arc-green) 88%, black) 74%,
+      color-mix(in srgb, var(--color-arc-green) 64%, black) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .odo-win {
+    display: inline-block;
+    height: 1em;
+    overflow: hidden;
+    vertical-align: top;
+  }
+  .odo-strip {
+    display: block;
+    transform: translateY(calc(var(--n, 0) * -1em));
+    transition: transform var(--odo-dur, 1.2s) cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .odo-strip .odo-glyph {
+    display: block;
+    height: 1em;
+    line-height: 1;
+    text-align: center;
+  }
+
+  /* ---- the scoreboard strip -------------------------------------------- */
+
+  .desk-tile {
+    display: block;
+    padding: 12px 14px 13px;
+    color: inherit;
+    text-decoration: none;
+    box-shadow:
+      var(--shadow-hard),
+      inset 0 2px 0 var(--lamp);
+    transition:
+      border-color 0.15s ease,
+      transform 0.15s ease;
+  }
+  a.desk-tile:hover {
+    border-color: color-mix(in srgb, var(--lamp) 55%, var(--color-arc-line));
+    transform: translateY(-1px);
+  }
+  .desk-tile-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .desk-tile-head .label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .desk-tile-val {
+    margin-top: 9px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    padding-right: 0.06em;
+    color: var(--tone);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--tone) 32%, transparent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .desk-tile-hint {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--color-arc-ink-soft);
+  }
+
+  /* ---- your desk ------------------------------------------------------- */
+
+  .desk-mine {
+    box-shadow:
+      var(--shadow-hard),
+      inset 3px 0 0 var(--c);
+  }
+  .desk-mine-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--c) 16%, transparent),
+      transparent 72%
+    );
+    border-bottom: 1px solid var(--color-arc-line);
+  }
+  .desk-mine-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    text-transform: uppercase;
+    font-size: 22px;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    padding-right: 0.08em;
+  }
+  .desk-mine-team {
+    font-style: normal;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    color: var(--color-arc-ink-soft);
+  }
+  .desk-mine-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--color-arc-line);
+  }
+  @media (min-width: 1024px) {
+    .desk-mine-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+  .desk-mine-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-height: 92px;
+    height: 100%;
+    padding: 11px 12px 12px;
+    color: inherit;
+    text-decoration: none;
+    background: var(--color-arc-panel);
+    transition: background 0.15s ease;
+  }
+  .desk-mine-item:hover {
+    background: color-mix(in srgb, var(--c) 10%, var(--color-arc-panel));
+  }
+  .desk-mine-item .label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+  .desk-mine-val {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 26px;
+    line-height: 1;
+    padding-right: 0.06em;
+    color: var(--color-arc-ink);
+  }
+  .desk-mine-sub {
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--color-arc-ink-soft);
+  }
+  .desk-invite {
+    margin: 0;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--color-arc-ink-soft);
+  }
+
+  /* ---- the tape -------------------------------------------------------- */
+
+  .desk-tape-still {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--color-arc-bg-deep);
+    cursor: pointer;
+  }
+  .desk-tape-play {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 12px 5px 5px;
+    border-radius: 999px;
+    border: 1px solid var(--color-arc-line);
+    background: color-mix(in srgb, var(--color-arc-bg) 84%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  .desk-tape-play .label {
+    color: var(--color-arc-ink);
+  }
+  .desk-tape-btn {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: var(--color-arc-green);
+    color: var(--color-arc-bg);
+    font-size: 11px;
+    padding-left: 2px;
+    transition: transform 0.15s ease;
+  }
+  .desk-tape-still:hover .desk-tape-btn {
+    transform: scale(1.08);
+  }
+
+  /* ---- the trade queue's empty line ------------------------------------ */
+
+  .desk-empty {
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .desk-empty p {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    font-style: italic;
+    color: var(--color-arc-ink-soft);
+  }
+}
+
+@layer utilities {
+  /* The field-goal attempt fires every fourteen seconds: the flight fills the
+     first quarter of the cycle and the ball is off the field for the rest, so
+     the kick is an event next to the money number rather than a metronome.
+     Travel is a transform against the strip's own width. */
+  .desk-field {
+    container-type: inline-size;
+  }
+  .desk-field .punt-x {
+    left: -10px;
+    animation: desk-punt-x 14s linear infinite;
+  }
+  .desk-field .punt-y {
+    animation: desk-punt-y 14s infinite;
+  }
+  .desk-field .punt-rot {
+    animation: desk-punt-rot 14s linear infinite;
+  }
+  @keyframes desk-punt-x {
+    0% {
+      transform: translateX(0);
+      opacity: 0;
+    }
+    1.5% {
+      opacity: 1;
+    }
+    22% {
+      opacity: 1;
+    }
+    24%,
+    100% {
+      transform: translateX(calc(100cqw - 54px));
+      opacity: 0;
+    }
+  }
+  @keyframes desk-punt-y {
+    0% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.18, 0.6, 0.5, 1);
+    }
+    13.2% {
+      transform: translateY(-56px);
+      animation-timing-function: cubic-bezier(0.5, 0, 0.82, 0.4);
+    }
+    24%,
+    100% {
+      transform: translateY(-30px);
+    }
+  }
+  @keyframes desk-punt-rot {
+    0% {
+      transform: rotate(-20deg);
+    }
+    24%,
+    100% {
+      transform: rotate(460deg);
+    }
+  }
+  /* The yard lines behind the hero slide once as the number arrives, then
+     hold. */
+  .desk-hero .field-stripes {
+    animation: yard-scroll 6s linear 1 forwards;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .ledger-placeholder-never-matches {
+  :root:not([data-motion='on']) .flap-fold-top,
+  :root:not([data-motion='on']) .flap-fold-bot,
+  :root:not([data-motion='on']) .desk-field .punt-x,
+  :root:not([data-motion='on']) .desk-field .punt-y,
+  :root:not([data-motion='on']) .desk-field .punt-rot,
+  :root:not([data-motion='on']) .desk-hero .field-stripes {
     animation: none !important;
+  }
+  :root:not([data-motion='on']) .odo-strip,
+  :root:not([data-motion='on']) .desk-tile,
+  :root:not([data-motion='on']) .desk-mine-item,
+  :root:not([data-motion='on']) .desk-tape-btn {
+    transition: none !important;
   }
 }
