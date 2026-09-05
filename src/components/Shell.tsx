@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { NavLink, useLocation, useNavigationType } from 'react-router-dom'
 import { useLeague } from '../lib/data'
+import { managerColor } from '../lib/identity'
+import { setMe, useMe } from '../lib/me'
+import type { Manager } from '../lib/types'
+import PixelMugshot from './PixelMugshot'
 import { usePendingTrades } from '../lib/derive'
 import CommandPalette from './CommandPalette'
 import GodMode from './GodMode'
@@ -86,8 +90,99 @@ function Clock() {
   return <span className="tabular-nums">{now.toLocaleTimeString('en-US', { hour12: false })}</span>
 }
 
+/**
+ * Pick your seat: one tap says which of the twelve you are, and from then on
+ * your rows light up in your colour on every table. A preference, not a
+ * login — see lib/me.ts.
+ */
+function SeatPicker({ managers, compact = false }: { managers: Manager[]; compact?: boolean }) {
+  const me = useMe()
+  const [open, setOpen] = useState(false)
+  const active = managers.filter((manager) => manager.active)
+  const mine = active.find((manager) => manager.id === me)
+  const color = mine ? managerColor(mine.id) : undefined
+  return (
+    <div className={compact ? 'px-4 py-3' : 'mx-3 mt-3'}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="btn min-h-[40px] w-full justify-start gap-2.5 px-3 text-[12px] normal-case tracking-normal"
+        style={mine ? { borderColor: color } : undefined}
+      >
+        {mine ? (
+          <>
+            <span className="seat-face" style={{ ['--c' as string]: color }}>
+              <PixelMugshot seed={mine.id} scale={1} />
+            </span>
+            <span className="min-w-0 truncate">
+              <span className="text-arc-ink-soft">Your seat · </span>
+              <b style={{ color }}>{mine.displayName}</b>
+            </span>
+          </>
+        ) : (
+          <>
+            <span aria-hidden className="text-arc-yellow">◉</span>
+            <span className="min-w-0 truncate">
+              Pick your seat
+              <span className="text-arc-ink-faint"> · light up your rows</span>
+            </span>
+          </>
+        )}
+        <span aria-hidden className="ml-auto text-arc-ink-faint">{open ? '▴' : '▾'}</span>
+      </button>
+      {open && (
+        <div className="mt-2 grid grid-cols-3 gap-1.5" role="listbox" aria-label="Your seat">
+          {active.map((manager) => {
+            const picked = manager.id === me
+            const c = managerColor(manager.id)
+            return (
+              <button
+                key={manager.id}
+                type="button"
+                role="option"
+                aria-selected={picked}
+                onClick={() => {
+                  setMe(picked ? null : manager.id)
+                  setOpen(false)
+                  play(picked ? 'blip' : 'coin')
+                }}
+                className="flex min-h-[44px] items-center gap-1.5 rounded-md border px-1.5 py-1 text-left text-[11px] transition-colors"
+                style={{
+                  borderColor: picked ? c : 'var(--color-arc-line)',
+                  background: picked ? `color-mix(in srgb, ${c} 18%, var(--color-arc-panel))` : 'var(--color-arc-panel)',
+                }}
+              >
+                <span className="seat-face shrink-0" style={{ ['--c' as string]: picked ? c : 'transparent' }}>
+                  <PixelMugshot seed={manager.id} scale={1} />
+                </span>
+                <span className="truncate" style={{ color: picked ? c : 'var(--color-arc-ink)' }}>
+                  {manager.displayName}
+                </span>
+              </button>
+            )
+          })}
+          {me && (
+            <button
+              type="button"
+              onClick={() => {
+                setMe(null)
+                setOpen(false)
+              }}
+              className="col-span-3 min-h-[36px] rounded-md border border-arc-line text-[11px] text-arc-ink-faint hover:text-arc-ink"
+            >
+              Just visiting
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Shell({ children }: { children: ReactNode }) {
   const { data, commissioner } = useLeague()
+  const me = useMe()
   const pending = usePendingTrades()
   const [panelOpen, setPanelOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -131,18 +226,64 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [godMode, setGodMode] = useState(false)
   const reducedByOS = systemPrefersReduced()
   const location = useLocation()
+  const navigationType = useNavigationType()
 
-  // Broadcast-style replay wipe on every page change (not the first load).
+  // Route changes. Browsers with view transitions get the page sliding under
+  // a still chrome (see ::view-transition rules in index.css); the rest keep
+  // the broadcast replay wipe. Neither runs when animations are off.
+  const viewTransitions =
+    typeof document !== 'undefined' && 'startViewTransition' in document && !animationsDisabled()
   const [wipe, setWipe] = useState(0)
   const firstNav = useRef(true)
+  // Every page opens at its top (a back/forward pop keeps the browser's
+  // restored position, and a hash deep link lands on its section). Layout
+  // effect so the jump happens before the new page is painted or snapshotted.
+  useLayoutEffect(() => {
+    if (firstNav.current) return
+    if (navigationType !== 'POP' && !location.hash) {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    }
+  }, [location.pathname, location.hash, navigationType])
   useEffect(() => {
     setMenuOpen(false)
     if (firstNav.current) {
       firstNav.current = false
       return
     }
-    if (!animationsDisabled()) setWipe((count) => count + 1)
-  }, [location.pathname])
+    if (!animationsDisabled() && !viewTransitions) setWipe((count) => count + 1)
+  }, [location.pathname, viewTransitions])
+
+  // Your seat, as a colour the stylesheet can use (rows, badges, names).
+  useEffect(() => {
+    document.documentElement.style.setProperty('--me-color', me ? managerColor(me) : 'transparent')
+  }, [me])
+
+  // Stadium light: a soft lamp that follows the pointer across the panel it
+  // is over (CSS .win::after reads --mx/--my). Pointer devices only, and
+  // never when the person asked for stillness.
+  useEffect(() => {
+    if (animationsDisabled()) return
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+    let frame = 0
+    let last: PointerEvent | null = null
+    const move = (event: PointerEvent) => {
+      last = event
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const target = last?.target instanceof Element ? last.target.closest<HTMLElement>('.win') : null
+        if (!target || !last) return
+        const rect = target.getBoundingClientRect()
+        target.style.setProperty('--mx', `${last.clientX - rect.left}px`)
+        target.style.setProperty('--my', `${last.clientY - rect.top}px`)
+      })
+    }
+    document.addEventListener('pointermove', move, { passive: true })
+    return () => {
+      document.removeEventListener('pointermove', move)
+      cancelAnimationFrame(frame)
+    }
+  }, [])
 
   const closeMenu = () => {
     if (animationsDisabled()) {
@@ -215,11 +356,13 @@ export default function Shell({ children }: { children: ReactNode }) {
       } else if (event.key === '/' && !typing && !paletteOpen) {
         event.preventDefault()
         setPaletteOpen(true)
+      } else if (event.key === 'Escape' && menuOpen) {
+        closeMenu()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [paletteOpen])
+  }, [paletteOpen, menuOpen])
 
   const current = NAV.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
@@ -232,6 +375,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           key={item.to}
           to={item.to}
           end={item.end}
+          viewTransition={viewTransitions}
           className="block no-underline"
           onClick={() => play('blip')}
         >
@@ -249,8 +393,8 @@ export default function Shell({ children }: { children: ReactNode }) {
               {item.label}
               {item.label === 'Trades' && pending.length > 0 && (
                 <span
-                  className="pulse flex h-5 min-w-[20px] items-center justify-center border-2 border-arc-line px-1 text-[11px]"
-                  style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-ink)' }}
+                  className="pulse flex h-5 min-w-[20px] items-center justify-center rounded-md border-2 border-arc-line px-1 text-[11px]"
+                  style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-bg-deep)' }}
                 >
                   {pending.length}
                 </span>
@@ -266,7 +410,10 @@ export default function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10">
       <Backdrop enabled={!animationsDisabled()} />
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 lg:hidden">
+      <div
+        className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 lg:hidden"
+        style={{ viewTransitionName: 'chrome-top' }}
+      >
         <div className="flex min-w-0 items-center gap-3" onClick={onLogoTap}>
           <div className="relative -my-1 shrink-0">
             <Crest size={38} glow={false} />
@@ -323,6 +470,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                   key={item.to}
                   to={item.to}
                   end={item.end}
+                  viewTransition={viewTransitions}
                   className="menu-tile block no-underline"
                   style={{ ['--i' as string]: index }}
                   onClick={() => {
@@ -349,8 +497,8 @@ export default function Shell({ children }: { children: ReactNode }) {
                         {item.label}
                         {item.label === 'Trades' && pending.length > 0 && (
                           <span
-                            className="pulse flex h-4 min-w-[18px] items-center justify-center px-1 text-[10px]"
-                            style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-ink)' }}
+                            className="pulse flex h-4 min-w-[18px] items-center justify-center rounded-md px-1 text-[10px]"
+                            style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-bg-deep)' }}
                           >
                             {pending.length}
                           </span>
@@ -368,6 +516,9 @@ export default function Shell({ children }: { children: ReactNode }) {
                   )}
                 </NavLink>
               ))}
+            </div>
+            <div className="sheet-foot border-t border-arc-line">
+              {data && <SeatPicker managers={data.managers} compact />}
             </div>
             <div className="sheet-foot flex flex-wrap items-center gap-2.5 border-t border-arc-line px-4 py-3">
               <button
@@ -432,6 +583,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <nav
         className="fixed inset-x-0 bottom-0 z-40 flex border-t-[3px] border-arc-line bg-arc-bg-deep pb-[env(safe-area-inset-bottom)] lg:hidden"
         aria-label="Primary"
+        style={{ viewTransitionName: 'chrome-tabs' }}
       >
         {TABS.map((to) => {
           const item = NAV.find((candidate) => candidate.to === to)!
@@ -440,6 +592,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               key={to}
               to={to}
               end={item.end}
+              viewTransition={viewTransitions}
               className="min-w-0 flex-1 no-underline"
               onClick={() => play('blip')}
             >
@@ -476,7 +629,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span
                 aria-hidden
                 className="pulse absolute top-2 right-[26%] h-2 w-2 rounded-full"
-                style={{ background: 'var(--color-arc-red)' }}
+                style={{ background: 'var(--color-arc-yellow)' }}
               />
             )}
           </span>
@@ -484,7 +637,10 @@ export default function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside className="hidden border-r-[3px] border-arc-line bg-arc-bg-deep lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
+      <aside
+        className="hidden border-r-[3px] border-arc-line bg-arc-bg-deep lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col"
+        style={{ viewTransitionName: 'chrome-side' }}
+      >
         <div className="border-b-[3px] border-arc-line bg-arc-bg-deep px-4 py-5 text-center">
           <div className="relative inline-block" onClick={onLogoTap}>
             <Crest size={140} />
@@ -504,6 +660,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           </button>
           {musicButton(false)}
         </div>
+        {data && <SeatPicker managers={data.managers} />}
 
         <div className="flex-1 overflow-y-auto p-3">{navList}</div>
 
@@ -528,7 +685,10 @@ export default function Shell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Credits bar, bottom of the cabinet */}
-      <footer className="arcade fixed inset-x-0 bottom-0 z-30 hidden items-center lg:flex justify-between gap-3 border-t-[3px] border-arc-line bg-arc-bg-deep px-3 py-2 text-[11px] text-arc-ink-soft">
+      <footer
+        className="arcade fixed inset-x-0 bottom-0 z-30 hidden items-center lg:left-[228px] lg:flex justify-between gap-3 border-t-[3px] border-arc-line bg-arc-bg-deep px-3 py-2 text-[11px] text-arc-ink-soft"
+        style={{ viewTransitionName: 'chrome-foot' }}
+      >
         <span className="flex min-w-0 items-center gap-2.5">
           <span style={{ color: 'var(--color-arc-yellow)' }}>
             {commissioner ? '2 CREDITS' : '1 CREDIT'}
@@ -537,7 +697,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             {data?.managers.filter((manager) => manager.active).length ?? 0}P
           </span>
           {pending.length > 0 && (
-            <span style={{ color: 'var(--color-arc-red)' }}>{pending.length} PENDING</span>
+            <span style={{ color: 'var(--color-arc-yellow)' }}>{pending.length} PENDING</span>
           )}
         </span>
         <span className="flex shrink-0 items-center gap-2.5">

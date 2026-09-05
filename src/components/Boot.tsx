@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import HeapScene, { HEAP_BOOT_SECONDS } from './HeapScene'
 import Crest from './Crest'
 import { Sparkles } from './effects'
@@ -7,9 +7,11 @@ import { play } from '../lib/sfx'
 
 /**
  * Title screen: King of the Heap. Eleven players brawl onto a dogpile and the
- * reigning champion climbs it to hoist the trophy. Plays on every real page
- * load, skippable by tap, absent entirely when animations are off.
+ * reigning champion climbs it to hoist the trophy. Plays once per browser
+ * session (the tenth open of the evening lands straight on the desk),
+ * skippable by tap or any key, absent entirely when animations are off.
  */
+const BOOTED_KEY = 'wacl.booted'
 export default function Boot({
   onDone,
   championColor,
@@ -18,8 +20,15 @@ export default function Boot({
   championColor?: string
 }) {
   const [closing, setClosing] = useState(false)
+  const host = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    try {
+      sessionStorage.setItem(BOOTED_KEY, '1')
+    } catch {
+      /* private browsing: it will simply play again next load */
+    }
+    host.current?.focus({ preventScroll: true })
     const timer = setTimeout(() => setClosing(true), HEAP_BOOT_SECONDS * 1000)
     // fanfare as the trophy goes up (only audible after a prior user gesture,
     // per browser autoplay rules — reloads and SPA navs qualify)
@@ -38,13 +47,28 @@ export default function Boot({
 
   return (
     <div
-      className={`fixed inset-0 z-[70] flex items-center justify-center bg-arc-bg px-4 transition-opacity duration-200 ${
+      ref={host}
+      tabIndex={0}
+      className={`fixed inset-0 z-[70] flex items-center justify-center bg-arc-bg px-4 outline-none transition-opacity duration-200 ${
         closing ? 'opacity-0' : 'opacity-100'
       }`}
       onClick={onDone}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') {
+          event.preventDefault()
+          onDone()
+        }
+      }}
       role="status"
       aria-label="Loading — tap to skip"
     >
+      <div
+        className="arcade pop-in absolute right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+14px)] text-[10px] text-arc-ink-faint"
+        style={{ animationDelay: '0.7s' }}
+        aria-hidden
+      >
+        TAP TO SKIP ›
+      </div>
       <div className="w-full max-w-md text-center">
         {/* pop-in and the tilt must live on different elements: the entrance
             animation's fill retains transform:none and would erase the lean */}
@@ -82,7 +106,8 @@ export default function Boot({
 
 export function shouldBoot(): boolean {
   try {
-    return !animationsDisabled()
+    if (animationsDisabled()) return false
+    return !sessionStorage.getItem(BOOTED_KEY)
   } catch {
     return false
   }

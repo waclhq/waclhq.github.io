@@ -390,15 +390,18 @@ export default function Bets() {
           <span className="tile-shine" aria-hidden />
         </span>
         <span className="tile-bar">
-          <span
-            className={`tnum min-w-0 flex-1 truncate leading-tight font-semibold ${
-              bet.stakeKind === 'cash'
-                ? 'text-[15px] text-arc-green'
-                : 'text-[12px] text-[var(--color-arc-orange)]'
-            }`}
-          >
-            {stakeLabel(bet)}
-          </span>
+          {bet.stakeKind === 'cash' ? (
+            <span className="tnum min-w-0 flex-1 truncate text-[15px] leading-tight font-semibold text-arc-green">
+              {stakeLabel(bet)}
+            </span>
+          ) : (
+            <span className="flex min-w-0 flex-1 items-baseline gap-1.5 leading-tight">
+              <span className="arcade shrink-0 text-[12px] text-[var(--color-arc-orange)]">Dare</span>
+              <span className="min-w-0 truncate text-[11px] text-arc-ink-soft">
+                {bet.forfeit || 'Forfeit'}
+              </span>
+            </span>
+          )}
           {bet.status === 'live' ? (
             <span className="flex shrink-0 items-center gap-1.5 text-[10px] tracking-[0.14em] whitespace-nowrap text-arc-green uppercase">
               <span className="live-dot" aria-hidden />
@@ -858,12 +861,11 @@ export default function Bets() {
                       className="stub"
                       style={{
                         ['--rot' as string]: `${((index % 3) - 1) * 0.45}deg`,
-                        ['--seam' as string]: '86px',
                       }}
                     >
                       <span className="stub-notch top" aria-hidden />
                       <span className="stub-notch bottom" aria-hidden />
-                      <div className="stub-stake w-[86px]">
+                      <div className="stub-stake w-[64px] sm:w-[86px]">
                         <span className="text-[9.5px] tracking-[0.14em] text-arc-ink-faint uppercase">
                           {bet.stakeKind === 'cash' ? 'Stake' : 'Forfeit'}
                         </span>
@@ -878,8 +880,8 @@ export default function Bets() {
                         </span>
                       </div>
                       <div className="min-w-0 flex-1 px-3 py-2.5">
-                        <p className="truncate text-[13.5px] text-arc-ink">{bet.terms}</p>
-                        <p className="mt-0.5 truncate text-[11.5px] text-arc-ink-faint">
+                        <p className="line-clamp-2 text-[13.5px] leading-snug text-arc-ink sm:truncate">{bet.terms}</p>
+                        <p className="mt-0.5 text-[11.5px] leading-snug text-arc-ink-faint sm:truncate">
                           <b style={{ color: winnerColor }}>{managerName(managers, winner)}</b>
                           {' beat '}
                           {managerName(managers, beaten)}
@@ -898,16 +900,9 @@ export default function Bets() {
                         {managerName(managers, winner)} ✓
                       </span>
                       {commissioner && (
-                        <button
-                          type="button"
-                          className="mr-2 self-center px-1 text-[15px] leading-none text-arc-ink-faint hover:text-arc-green"
-                          disabled={busy === bet.id}
-                          onClick={() => setEditing(bet)}
-                          aria-label={`Edit or delete the bet: ${bet.terms}`}
-                          title="Edit or delete this bet"
-                        >
-                          ✎
-                        </button>
+                        <span className="mr-2 self-center">
+                          <EditButton bet={bet} />
+                        </span>
                       )}
                     </div>
                   )
@@ -936,7 +931,7 @@ export default function Bets() {
                   return (
                     <li
                       key={key}
-                      className="flex flex-wrap items-center gap-3 border-b border-arc-line/40 px-5 py-3 last:border-b-0"
+                      className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-b border-arc-line/40 px-5 py-3 last:border-b-0 sm:flex"
                     >
                       {face(debt.from, 1.6)}
                       <span className="min-w-0 flex-1 text-[14px]">
@@ -952,30 +947,34 @@ export default function Bets() {
                           {debt.betIds.length === 1 ? '' : 's'}
                         </span>
                       </span>
-                      <span className="tnum shrink-0 text-[17px] text-[var(--color-arc-red)]">
-                        {money(debt.amount)}
+                      {/* Sentence on one line, the money and its buttons on the next
+                          below sm; one row on wider screens. */}
+                      <span className="col-span-2 flex items-center justify-end gap-2 sm:col-span-1 sm:ml-auto">
+                        <span className="tnum mr-1 text-[17px] text-[var(--color-arc-red)]">
+                          {money(debt.amount)}
+                        </span>
+                        {pay && (
+                          <a
+                            href={pay}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="arcade inline-flex min-h-[34px] shrink-0 items-center rounded-md px-3 text-[12px]"
+                            style={{ background: 'var(--color-arc-green)', color: 'var(--color-arc-bg-deep)' }}
+                          >
+                            PAY
+                          </a>
+                        )}
+                        {unlocked && (
+                          <button
+                            type="button"
+                            className="btn min-h-[34px] shrink-0 px-3 py-1"
+                            disabled={busy === key}
+                            onClick={() => void settleUp(debt)}
+                          >
+                            {busy === key ? 'Saving…' : 'Mark paid'}
+                          </button>
+                        )}
                       </span>
-                      {pay && (
-                        <a
-                          href={pay}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="arcade shrink-0 rounded-md px-2.5 py-1 text-[12px]"
-                          style={{ background: 'var(--color-arc-green)', color: '#06210a' }}
-                        >
-                          PAY
-                        </a>
-                      )}
-                      {unlocked && (
-                        <button
-                          type="button"
-                          className="btn min-h-[34px] shrink-0 px-3 py-1"
-                          disabled={busy === key}
-                          onClick={() => void settleUp(debt)}
-                        >
-                          {busy === key ? 'Saving…' : 'Mark paid'}
-                        </button>
-                      )}
                     </li>
                   )
                 })}

@@ -227,7 +227,7 @@ export function Stat({
     default: 'text-arc-ink',
     up: 'text-arc-green',
     down: 'text-arc-red',
-    gold: 'text-arc-ink',
+    gold: 'text-arc-yellow',
   }[tone]
 
   const counted = useCountUp(countTo ?? 0, countTo !== undefined)
@@ -290,7 +290,14 @@ export function Chip({
     down: 'var(--color-arc-red)',
     flag: 'var(--color-arc-orange)',
   }[tone]
-  const fg = tone === 'down' ? 'var(--color-arc-panel)' : 'var(--color-arc-ink)'
+  // Dark type on every coloured chip: the lime/amber/orange fills sit at
+  // 9-12:1 against arc-bg, where near-white ink was 1.4:1.
+  const fg =
+    tone === 'neutral'
+      ? 'var(--color-arc-ink)'
+      : tone === 'down'
+        ? 'var(--color-arc-panel)'
+        : 'var(--color-arc-bg)'
   return (
     <span className="tag" style={{ background: bg, color: fg }}>
       {children}
@@ -317,7 +324,12 @@ export function PageHeader({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 max-w-2xl">
           <div className="label type-in">{eyebrow}</div>
-          <h1 className="display cursor neon-soft mt-3 text-arc-ink">{title}</h1>
+          <h1
+            className="display cursor neon-soft mt-3 text-arc-ink"
+            style={{ viewTransitionName: 'page-title' }}
+          >
+            {title}
+          </h1>
           <div aria-hidden className="dot-wave mt-3 w-full max-w-md text-arc-purple">
             {Array.from({ length: 72 }, (_, i) => (
               <span key={i} style={{ animationDelay: `${i * 0.055}s` }} />
@@ -352,10 +364,10 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(option.id)}
             aria-pressed={value === option.id}
-            className={`arcade min-h-[38px] px-3 py-1 text-[9px] whitespace-nowrap transition-colors ${
+            className={`arcade min-h-[38px] px-3 py-1 text-[11px] whitespace-nowrap transition-colors ${
               value === option.id
                 ? 'bg-arc-blue text-arc-panel'
-                : 'bg-arc-panel text-arc-ink hover:bg-arc-yellow'
+                : 'bg-arc-panel text-arc-ink hover:bg-arc-yellow hover:text-arc-bg'
             }`}
           >
             {option.label}

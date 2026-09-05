@@ -64,30 +64,44 @@ export function Football({ size = 18, className = '' }: { size?: number; classNa
  * and only a dozen nodes so it stays cheap.
  */
 export function Confetti({ count = 14 }: { count?: number }) {
+  // The whole palette, in an order that never puts two neighbours in the
+  // same family: money green first, because this is a league.
   const colors = [
-    'var(--color-arc-cyan)',
+    'var(--color-arc-green)',
     'var(--color-arc-yellow)',
     'var(--color-arc-pink)',
-    'var(--color-arc-lime)',
+    'var(--color-arc-cyan)',
     'var(--color-arc-orange)',
     'var(--color-arc-purple)',
+    'var(--color-arc-lime)',
+    'var(--color-arc-red)',
+    'var(--color-arc-blue)',
+    'var(--color-arc-teal)',
+    'var(--color-arc-ink)',
   ]
   return (
-    <span className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <span className="confetti-field pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       {Array.from({ length: count }, (_, index) => {
-        // Golden-ratio spacing spreads the pieces without random().
+        // Golden-ratio spacing spreads the pieces without random(); the
+        // other parameters cycle at coprime periods so no two pieces match.
         const left = ((index * 61.8) % 100).toFixed(1)
-        const delay = ((index * 137) % 1800) / 1000
-        const drift = index % 2 === 0 ? '6px' : '-8px'
+        const delay = ((index * 137) % 2200) / 1000
+        const dur = 1.5 + ((index * 53) % 80) / 100
+        const size = 4 + ((index * 7) % 4)
+        const drift = (index % 2 === 0 ? 1 : -1) * (6 + ((index * 11) % 17))
+        const spin = (index % 3 === 0 ? -1 : 1) * (380 + ((index * 97) % 340))
         return (
           <span
             key={index}
-            className="confetti"
+            className={`confetti ${index % 3 === 1 ? 'ribbon' : ''}`}
             style={{
               left: `${left}%`,
               background: colors[index % colors.length],
-              animationDelay: `${delay}s`,
-              ['--drift' as string]: drift,
+              ['--delay' as string]: `${delay}s`,
+              ['--dur' as string]: `${dur.toFixed(2)}s`,
+              ['--size' as string]: `${size}px`,
+              ['--drift' as string]: `${drift}px`,
+              ['--spin' as string]: `${spin}deg`,
             }}
           />
         )

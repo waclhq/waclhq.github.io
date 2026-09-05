@@ -1,4 +1,12 @@
 @import 'tailwindcss';
+/* Page-level styles, one file per room. Shared primitives stay in this file. */
+@import './styles/ledger.css';
+@import './styles/book.css';
+@import './styles/almanac.css';
+@import './styles/profile.css';
+@import './styles/boards.css';
+@import './styles/tables.css';
+@import './styles/ops.css';
 
 /*
   WACL LEAGUE HQ — the book.
@@ -106,6 +114,43 @@
   }
   :root[data-hours='late'] .hero-num {
     text-shadow: 0 0 38px rgba(83, 211, 55, 0.55);
+  }
+
+  /* Route changes on browsers with view transitions: the chrome (sidebar,
+     top bar, tab bar, footer) holds still while the page slides under it and
+     the title morphs into the next one. The Shell only asks for a transition
+     when animations are on. */
+  ::view-transition-old(root) {
+    animation: vt-out 0.16s ease-in both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  ::view-transition-group(page-title) {
+    animation-duration: 0.34s;
+    animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  ::view-transition-old(chrome-side),
+  ::view-transition-new(chrome-side),
+  ::view-transition-old(chrome-top),
+  ::view-transition-new(chrome-top),
+  ::view-transition-old(chrome-tabs),
+  ::view-transition-new(chrome-tabs),
+  ::view-transition-old(chrome-foot),
+  ::view-transition-new(chrome-foot) {
+    animation: none;
+  }
+  @keyframes vt-out {
+    to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes vt-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
   }
 
   @keyframes arena-drift {
@@ -447,6 +492,57 @@
     border-bottom: 1px solid var(--color-arc-line);
   }
 
+  /* Stadium light: on a pointer device a soft lamp follows the cursor across
+     whichever panel it is over. Position is fed by the Shell (--mx/--my). */
+  @media (hover: hover) and (pointer: fine) {
+    .win::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(
+        460px circle at var(--mx, 50%) var(--my, 40%),
+        rgba(238, 241, 246, 0.065),
+        rgba(238, 241, 246, 0.02) 40%,
+        transparent 64%
+      );
+      transition: opacity 0.35s ease;
+    }
+    .win:hover::after {
+      opacity: 1;
+    }
+  }
+
+  /* Your seat. The Shell stamps --me-color on the root from the picked
+     manager; every ManagerTag for that manager carries .me-tag, so one rule
+     lights your rows on every table in the league. */
+  .me-tag .badge {
+    box-shadow:
+      0 0 0 2px var(--color-arc-bg),
+      0 0 0 3.5px var(--me-color, transparent),
+      0 0 16px color-mix(in srgb, var(--me-color, transparent) 60%, transparent);
+  }
+  .me-tag > span:last-child {
+    text-shadow: 0 0 14px color-mix(in srgb, var(--me-color, transparent) 70%, transparent);
+  }
+  tr:has(.me-tag) {
+    background: color-mix(in srgb, var(--me-color, transparent) 9%, transparent);
+    box-shadow: inset 3px 0 0 var(--me-color, transparent);
+  }
+  .seat-face {
+    display: inline-flex;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid var(--color-arc-line);
+    box-shadow: 0 0 0 2px var(--c, transparent);
+  }
+  .seat-face img,
+  .seat-face canvas {
+    display: block;
+  }
+
   /* ---- tables ---------------------------------------------------------- */
 
   /* A real table: thead and tbody must share one column grid or headers
@@ -781,26 +877,44 @@
 
   /* ---- football flourishes -------------------------------------------- */
 
-  /* Confetti for a title. Falls the height of its container, then stops. */
+  /* Confetti for a title. Each piece falls the full height of its field
+     (container query units, so the same class works on a stat tile and a
+     full screen), at its own speed and spin, and is recycled at the top. */
+  .confetti-field {
+    container-type: size;
+    /* Above the panel it decorates: a sibling .win paints later in DOM order
+       and would otherwise hide every piece. */
+    z-index: 1;
+  }
   @keyframes confetti-fall {
     0% {
       opacity: 0;
-      transform: translateY(-120%) rotate(0deg);
+      transform: translate3d(0, -14px, 0) rotate(0deg);
     }
-    12% {
+    8% {
+      opacity: 1;
+    }
+    92% {
       opacity: 1;
     }
     100% {
       opacity: 0;
-      transform: translateY(340%) translateX(var(--drift, 0)) rotate(420deg);
+      transform: translate3d(var(--drift, 0px), calc(100cqh + 14px), 0) rotate(var(--spin, 540deg));
     }
   }
   .confetti {
     position: absolute;
     top: 0;
-    width: 5px;
-    height: 5px;
-    animation: confetti-fall 2.6s linear infinite;
+    width: var(--size, 5px);
+    height: var(--size, 5px);
+    border-radius: 1px;
+    animation: confetti-fall var(--dur, 1.8s) cubic-bezier(0.35, 0, 0.75, 1) infinite;
+    animation-delay: var(--delay, 0s);
+    will-change: transform;
+  }
+  .confetti.ribbon {
+    height: calc(var(--size, 5px) * 2.4);
+    border-radius: 999px;
   }
 
   /* Yard lines drifting behind a hero number. */
@@ -1208,6 +1322,14 @@
     background: var(--color-arc-bg);
     color: var(--color-arc-ink-faint);
   }
+  @media (max-width: 639px) {
+    /* Phone tiles are ~170px wide: the name under the left portrait reaches
+       further down the seam, so the pill rides lower to stay clear of it. */
+    .tile-vs {
+      top: 79%;
+      left: 21%;
+    }
+  }
   /* Foil catch-light that follows the pointer. */
   .tile-shine {
     position: absolute;
@@ -1279,6 +1401,11 @@
     overflow: visible;
   }
   .slip-unfold {
+    /* A ticket, not a banner: cap the opened slip so the two names stay
+       within a glance of each other on wide boards (and the fire canvas
+       behind a fresh bet shrinks with it). */
+    max-width: 42rem;
+    margin-inline: auto;
     transform-origin: 50% 0;
     transform: perspective(1100px) rotateX(-34deg) scale(0.97);
     opacity: 0.15;
@@ -1345,6 +1472,7 @@
      and the story, a sawtooth tear along the bottom, and the winner's rubber
      stamp pressed on slightly askew. */
   .stub {
+    --seam: 64px;
     position: relative;
     display: flex;
     align-items: stretch;
@@ -1370,10 +1498,26 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-width: 78px;
-    padding: 12px 12px;
+    padding: 12px 6px;
     text-align: center;
     border-right: 2px dashed rgba(103, 112, 127, 0.55);
+  }
+  @media (min-width: 640px) {
+    .stub {
+      --seam: 86px;
+    }
+    .stub-stake {
+      padding: 12px;
+    }
+  }
+  @media (max-width: 639px) {
+    /* The stamp gives the story room on a phone. */
+    .stamp {
+      margin-right: 8px;
+      padding: 2px 6px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
   }
   /* punched notches where the perforation meets the edges */
   .stub-notch {
@@ -1687,6 +1831,14 @@
     }
     :root:not([data-motion='on']) .type-in {
       max-width: 100%;
+    }
+    :root:not([data-motion='on']) .win::after {
+      display: none;
+    }
+    :root:not([data-motion='on'])::view-transition-group(*),
+    :root:not([data-motion='on'])::view-transition-old(*),
+    :root:not([data-motion='on'])::view-transition-new(*) {
+      animation: none !important;
     }
     :root:not([data-motion='on']) body::before {
       animation: none !important;

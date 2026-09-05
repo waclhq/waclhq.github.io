@@ -180,8 +180,16 @@ function CashBook({ season }: { season: number }) {
   return (
     <div className="space-y-6">
       <div className="line-in grid grid-cols-2 gap-6 lg:grid-cols-4">
-        <Stat label="Owed to the league" value={money(Math.abs(owedToLeague))} tone="down" />
-        <Stat label="Owed by the league" value={money(owedByLeague)} tone="up" />
+        <Stat
+          label="Owed to the league"
+          value={money(Math.abs(owedToLeague))}
+          tone={owedToLeague ? 'down' : 'default'}
+        />
+        <Stat
+          label="Owed by the league"
+          value={money(owedByLeague)}
+          tone={owedByLeague ? 'up' : 'default'}
+        />
         <Stat label="Entries" value={entries.length} />
         <Stat
           label="Net position"

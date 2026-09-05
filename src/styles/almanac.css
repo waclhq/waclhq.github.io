@@ -1,0 +1,18 @@
+/*
+  almanac.css — page-level styles for the Almanac.
+
+  Uses the tokens from the @theme block in src/index.css (var(--color-arc-*),
+  var(--font-display), ...) — never raw hex. Anything that moves must also be
+  listed in the reduced-motion guard at the bottom of this file, and any
+  canvas / rAF work must check animationsDisabled() in JS.
+*/
+
+@layer components {
+  /* styles */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .almanac-placeholder-never-matches {
+    animation: none !important;
+  }
+}

@@ -6,7 +6,7 @@ import { Confetti, FieldGoalStrip, FieldStripes, Sparkles } from '../components/
 import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
 import { Bar, Chip, Empty, Hero, Panel, PageHeader, Stat } from '../components/ui'
-import { managerName, useLeagueData } from '../lib/data'
+import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { useBudgets, useCash, useObligationHorizon, usePendingTrades, useTrades } from '../lib/derive'
 import { money, num, record, shortDate } from '../lib/format'
 import { antiDumpingCheck } from '../lib/rules'
@@ -15,6 +15,7 @@ import DuesBoard from '../components/DuesBoard'
 
 export default function Dashboard() {
   const data = useLeagueData()
+  const { commissioner } = useLeague()
   const { league, managers, seasons } = data
   const season = league.currentSeason
   const budgets = useBudgets(season)
@@ -37,7 +38,7 @@ export default function Dashboard() {
           Pure CSS, so it shows even when animations are switched off. */}
       <div className="mb-6 flex justify-center lg:hidden">
         <div className="relative inline-block text-center">
-          <Crest size={168} />
+          <Crest size={128} />
           <Sparkles count={8} />
         </div>
       </div>
@@ -46,7 +47,7 @@ export default function Dashboard() {
         path="~"
         eyebrow={`${season} Pre-Season · Commissioner's Desk`}
         title="The Ledger"
-        lede={`Twenty-two seasons of ${league.name}, from the 2004 charter to the ${season} auction. Every dollar, contract, and decision in one book.`}
+        lede={`Every dollar, contract, and ruling from ${seasons.length} seasons of ${league.name}, in one book.`}
       />
 
       <div className="-mx-4 mb-8 sm:-mx-6 lg:-mx-9">
@@ -92,14 +93,24 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-          <Stat
-            label="Awaiting ruling"
-            countTo={pending.length}
-            value={pending.length}
-            hint={pending.length ? 'Needs your decision' : 'Queue clear'}
-            tone={pending.length ? 'gold' : 'default'}
-          />
+        {/* The scoreboard strip: first thing on a phone, a full-width row
+            under the hero and the tape on desktop. */}
+        <div className="order-first grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:order-none lg:col-span-2">
+          <Link to="/trades" className="block no-underline">
+            <Stat
+              label="Awaiting ruling"
+              countTo={pending.length}
+              value={pending.length}
+              hint={
+                pending.length
+                  ? commissioner
+                    ? 'Needs your ruling'
+                    : 'Awaiting the commissioner'
+                  : 'Queue clear'
+              }
+              tone={pending.length ? 'gold' : 'default'}
+            />
+          </Link>
           <div className="relative overflow-hidden">
             <Confetti count={10} />
             <Stat
@@ -108,7 +119,7 @@ export default function Dashboard() {
               hint={lastSeason ? `${lastSeason.year} title` : undefined}
             />
           </div>
-          <Link to="/finances" className="block no-underline">
+          <Link to="/finances" className="col-span-2 block no-underline sm:col-span-1">
             <Stat
               label="Cash open"
               countTo={cashOutstanding}
@@ -298,11 +309,12 @@ export default function Dashboard() {
                           {money(trade.totalDollars)}
                         </div>
                       </div>
-                      {verdict.triggered && (
-                        <div className="mt-2">
-                          <Chip tone="flag">Market check</Chip>
-                        </div>
-                      )}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Chip tone={trade.status === 'market-check' ? 'flag' : 'gold'}>
+                          {trade.status === 'market-check' ? 'Market check' : 'Pending'}
+                        </Chip>
+                        {verdict.triggered && <Chip tone="flag">Anti-dumping trigger</Chip>}
+                      </div>
                     </li>
                   )
                 })}
