@@ -26,7 +26,7 @@ const axisProps = {
   stroke: AXIS,
   tickLine: false,
   axisLine: { stroke: GRID },
-  tick: { fill: AXIS, fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' },
+  tick: { fill: AXIS, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
 } as const
 
 const roundedDomain: [(min: number) => number, (max: number) => number] = [
@@ -97,7 +97,7 @@ export function FormChart({
           y={0.5}
           stroke={AXIS}
           strokeDasharray="3 4"
-          label={{ value: '.500', fill: AXIS, fontSize: 10, position: 'right' }}
+          label={{ value: '.500', fill: AXIS, fontSize: 11, position: 'right' }}
         />
         <Tooltip
           cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '3 3' }}
@@ -137,10 +137,15 @@ export function ScoringChart({
   trough?: number | null
   height?: number
 }) {
+  // A mark in the back half of the run hangs its label on the left of the
+  // line; otherwise the word runs off the plot when the extreme year is the
+  // last one on the shelf.
   const marks = [
     { year: peak, label: 'peak', stroke: 'var(--color-arc-green)' },
     { year: trough, label: 'trough', stroke: 'var(--color-arc-red)' },
-  ].filter((mark) => mark.year && data.some((row) => row.year === mark.year))
+  ]
+    .map((mark) => ({ ...mark, at: data.findIndex((row) => row.year === mark.year) }))
+    .filter((mark) => mark.year && mark.at >= 0)
   return (
     <div>
       <div className="mb-2 flex flex-wrap gap-4 px-1">
@@ -168,9 +173,9 @@ export function ScoringChart({
               label={{
                 value: mark.label,
                 fill: mark.stroke,
-                fontSize: 10,
+                fontSize: 11,
                 fontFamily: 'IBM Plex Mono, monospace',
-                position: 'insideTopLeft',
+                position: mark.at > (data.length - 1) / 2 ? 'insideTopRight' : 'insideTopLeft',
               }}
             />
           ))}

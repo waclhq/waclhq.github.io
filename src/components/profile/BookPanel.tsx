@@ -47,7 +47,10 @@ export function BookPanel({
     <Panel title="The Book" subtitle={summary} delay={delay} className="lg:self-start">
       {bets && mine.length === 0 ? (
         <Empty kicker="clean sheet">
-          No side action on {name}. <Link to="/bets" className="text-arc-green">Propose one →</Link>
+          No side action on {name}.{' '}
+          <Link to="/bets" className="pf-foot-link text-arc-green">
+            Propose one →
+          </Link>
         </Empty>
       ) : (
         <ul className="pf-book">
@@ -94,7 +97,7 @@ export function BookPanel({
         </ul>
       )}
       <div className="border-t border-arc-line px-4 py-3">
-        <Link to="/bets" className="label hover:text-arc-green">
+        <Link to="/bets" className="label pf-foot-link hover:text-arc-green">
           The Book →{mine.length > shown.length ? ` ${mine.length - shown.length} more` : ''}
         </Link>
       </div>

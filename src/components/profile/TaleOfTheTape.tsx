@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { CareerLuck } from '../../lib/analytics'
 import type { HeadToHead } from '../../lib/bets'
 import { num, pct, record } from '../../lib/format'
@@ -148,6 +148,7 @@ export function TaleOfTheTape({
   useEffect(() => setOpponent(defaultOpponent), [defaultOpponent, id])
 
   const frame = useRef<HTMLDivElement>(null)
+  const pick = useRef<HTMLDivElement>(null)
   const revealed = useRevealed(frame)
 
   const a = table.find((line) => line.manager === id)
@@ -173,6 +174,26 @@ export function TaleOfTheTape({
       pair,
     )
   }, [a, b, luck, h2h, id, opponent])
+
+  // The face row is a radiogroup, so it answers to arrows: one tab stop, the
+  // selection following focus. It also stops the page's flip-to-the-next-
+  // manager handler, which reads defaultPrevented.
+  const onPickKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    const at = choices.findIndex((m) => m.id === opponent)
+    if (at < 0) return
+    const last = choices.length - 1
+    const step = (delta: number) => (at + delta + choices.length) % choices.length
+    let to: number
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') to = step(1)
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') to = step(-1)
+    else if (event.key === 'Home') to = 0
+    else if (event.key === 'End') to = last
+    else return
+    event.preventDefault()
+    setOpponent(choices[to].id)
+    pick.current?.querySelectorAll<HTMLElement>('[role="radio"]')[to]?.focus()
+  }
 
   if (!a || !b) return null
   const colorA = managerColor(id)
@@ -209,13 +230,20 @@ export function TaleOfTheTape({
       delay={delay}
     >
       <div ref={frame} className={`pf-tape ${revealed ? 'on' : ''}`}>
-        <div className="pf-tape-pick" role="radiogroup" aria-label="Opponent">
+        <div
+          ref={pick}
+          className="pf-tape-pick"
+          role="radiogroup"
+          aria-label="Opponent"
+          onKeyDown={onPickKey}
+        >
           {choices.map((m) => (
             <button
               key={m.id}
               type="button"
               role="radio"
               aria-checked={m.id === opponent}
+              tabIndex={m.id === opponent ? 0 : -1}
               className={`pf-pick ${m.id === opponent ? 'is-on' : ''}`}
               style={{ ['--c' as string]: managerColor(m.id) }}
               onClick={() => setOpponent(m.id)}

@@ -111,7 +111,7 @@
   }
   .pf-step-name {
     display: none;
-    max-width: 9ch;
+    max-width: 12ch;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -259,7 +259,7 @@
   .pf-pennant {
     display: inline-flex;
     transform-origin: 2px 2px;
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--color-arc-bg-deep) 65%, transparent));
     animation: pf-hoist 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) both;
     animation-delay: calc(360ms + var(--i, 0) * 80ms);
   }
@@ -312,15 +312,15 @@
     background:
       radial-gradient(
         360px circle at var(--gx, 50%) var(--gy, 40%),
-        rgba(255, 255, 255, 0.13),
-        rgba(255, 255, 255, 0.04) 40%,
+        color-mix(in srgb, var(--color-arc-ink) 13%, transparent),
+        color-mix(in srgb, var(--color-arc-ink) 4%, transparent) 40%,
         transparent 66%
       ),
       linear-gradient(
         112deg,
         transparent calc(var(--gx, 50%) - 22%),
         color-mix(in srgb, var(--c) 20%, transparent) calc(var(--gx, 50%) - 6%),
-        rgba(255, 255, 255, 0.09) var(--gx, 50%),
+        color-mix(in srgb, var(--color-arc-ink) 9%, transparent) var(--gx, 50%),
         color-mix(in srgb, var(--color-arc-cyan) 12%, transparent) calc(var(--gx, 50%) + 7%),
         transparent calc(var(--gx, 50%) + 22%)
       );
@@ -372,6 +372,20 @@
   }
   .pf-name:hover {
     color: var(--c);
+  }
+  /* A name in a dense table is a 19px line of type and, on a phone, a target.
+     Touch gets the 40px box; the negative margin gives the height back to the
+     row, so nothing moves. Mice keep the tight table. */
+  @media (pointer: coarse) {
+    .pf-name,
+    .pf-foot-link {
+      min-height: 40px;
+      margin-block: -8px;
+    }
+    .pf-foot-link {
+      display: inline-flex;
+      align-items: center;
+    }
   }
   .pf-name-me {
     text-shadow: 0 0 14px color-mix(in srgb, var(--c) 70%, transparent);
@@ -760,7 +774,7 @@
   }
   .pf-sal-col.is-peak .pf-sal-bar {
     opacity: 1;
-    box-shadow: 0 0 14px rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--color-arc-ink) 18%, transparent);
   }
   .pf-sal.on .pf-sal-bar {
     transform: scaleY(1);
