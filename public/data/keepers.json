@@ -15611,11 +15611,6 @@
           "contractYear": "B"
         },
         {
-          "player": "Joe Burrow",
-          "salary": 10,
-          "contractYear": "C"
-        },
-        {
           "player": "Javonte Williams",
           "salary": 8,
           "contractYear": "B"
@@ -15624,9 +15619,14 @@
           "player": "Jameson Williams",
           "salary": 4,
           "contractYear": "C"
+        },
+        {
+          "player": "Josh Allen",
+          "salary": 45,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 29,
+      "keeperSalary": 64,
       "cashTraded": 0,
       "draftBudget": 133
     },
