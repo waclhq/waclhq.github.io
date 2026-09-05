@@ -135,7 +135,7 @@ export default function PlayerDetail() {
         )}
       </div>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 items-start gap-6 lg:grid-cols-2">
         <Panel title="Roster history" subtitle="Every keeper sheet this player appears on.">
           <table className="out">
             <thead>

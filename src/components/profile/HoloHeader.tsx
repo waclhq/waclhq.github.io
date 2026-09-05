@@ -63,8 +63,11 @@ export function HoloHeader({
             {manager.displayName}
           </span>
           {position.index >= 0 && (
-            <span className="pf-trail-pos tnum">
-              {position.index + 1} of {position.total}
+            <span
+              className="pf-trail-pos tnum"
+              title="Managers ordered by career win percentage — the order ‹ and › follow"
+            >
+              {position.index + 1} of {position.total} · win %
             </span>
           )}
         </div>

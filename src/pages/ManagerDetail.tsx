@@ -78,16 +78,19 @@ export default function ManagerDetail() {
   const prev = neighbour(-1)
   const next = neighbour(1)
 
+  // Left and right flip to the neighbouring manager — but only from the page
+  // itself. Anything that owns its own arrows (the opponent radios, the seat
+  // listbox, a sheet, a field) keeps them, the same guard the season scrubber
+  // uses.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       const target = event.target as HTMLElement | null
       if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
-          target.isContentEditable)
+        target?.closest(
+          'input, textarea, select, [contenteditable="true"], [role="dialog"], [aria-modal="true"], [role="listbox"], [role="radiogroup"], [role="tablist"], [role="menu"]',
+        )
       )
         return
       const options = { viewTransition: viewTransitionsOn() }
@@ -290,7 +293,7 @@ export default function ManagerDetail() {
         </Panel>
       </div>
 
-      <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-6 grid min-w-0 items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
         <TaleOfTheTape
           key={id}
           id={id}
@@ -304,7 +307,7 @@ export default function ManagerDetail() {
         <BookPanel id={id} bets={bets} managers={managers} delay={200} />
       </div>
 
-      <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="mt-6 grid min-w-0 items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Panel
           title="Season by season"
           subtitle="PF/gm as scored that season; the record book re-scores 2004–06 for career averages."
@@ -403,7 +406,7 @@ export default function ManagerDetail() {
                 </tbody>
               </table>
               <div className="border-t border-arc-line px-5 py-3">
-                <Link to={`/keepers#${id}`} className="label hover:text-arc-green">
+                <Link to={`/keepers#${id}`} className="label pf-foot-link hover:text-arc-green">
                   Full roster →
                 </Link>
               </div>
