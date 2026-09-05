@@ -13,23 +13,25 @@ import {
 import { animationsDisabled } from '../lib/motion'
 
 /*
-  Chart palette for the ink surface (#0F1512):
-    single series  → arcade blue, contrast 3:1+ against the dark panel
-    two series     → #5478E8 + #E85447, validated against the #171128 panel for
-                     the lightness band, chroma floor, CVD separation, and the
-                     normal-vision floor
-  Grid and axes stay recessive; every chart on this site sits beside the table
-  that holds the same numbers, so the data is never color-only.
+  Chart palette, on tokens so it follows the slate:
+    single series  → the signature blue
+    two series     → blue for the manager's own points, red for the points
+                     scored against them; the pair was validated for
+                     lightness band, chroma floor and CVD separation
+  Grid and axes stay recessive but legible (ink-soft is 7:1 on the panel);
+  every chart on this site sits beside the table that holds the same
+  numbers, so the data is never colour-only. SVG presentation attributes
+  accept var(), which is what keeps the palette swappable.
 */
-export const GOLD = '#5A83FF'
-export const GOLD_MARK = '#5478E8'
-export const PERIWINKLE = '#E85447'
+export const SERIES = 'var(--color-arc-blue)'
+export const SERIES_ALT = 'var(--color-arc-red)'
 
-const AXIS = '#6b6089'
-const GRID = 'rgba(239, 234, 251, 0.09)'
+const AXIS = 'var(--color-arc-ink-soft)'
+const GRID = 'color-mix(in srgb, var(--color-arc-line) 70%, transparent)'
+const DOT_RING = 'var(--color-arc-panel)'
 
 const axisProps = {
-  stroke: AXIS,
+  stroke: GRID,
   tickLine: false,
   axisLine: { stroke: GRID },
   tick: { fill: AXIS, fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' },
@@ -41,7 +43,7 @@ const roundedDomain: [(min: number) => number, (max: number) => number] = [
   (max) => Math.ceil((max + 5) / 10) * 10,
 ]
 
-function TooltipBox({
+export function TooltipBox({
   active,
   payload,
   label,
@@ -56,7 +58,7 @@ function TooltipBox({
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="border border-arc-line bg-arc-bg px-3 py-2 shadow-lg">
+    <div className="border border-arc-line bg-arc-bg px-3 py-2 [box-shadow:var(--shadow-hard-sm)]">
       <div className="label">{label}</div>
       {payload.map((entry, index) =>
         entry.value === null ? null : (
@@ -91,43 +93,53 @@ export function WinPctChart({
   height?: number
 }) {
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -14 }}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="year" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-        <YAxis
-          {...axisProps}
-          domain={[0, 1]}
-          ticks={[0, 0.25, 0.5, 0.75, 1]}
-          tickFormatter={(value: number) => `${Math.round(value * 100)}`}
-          width={44}
-        />
-        <ReferenceLine
-          y={0.5}
-          stroke={AXIS}
-          strokeDasharray="3 4"
-          label={{ value: '.500', fill: AXIS, fontSize: 10, position: 'right' }}
-        />
-        <Tooltip
-          cursor={{ stroke: GOLD, strokeWidth: 1, strokeDasharray: '3 3' }}
-          content={
-            <TooltipBox format={(value) => `${(value * 100).toFixed(1)}%`} />
-          }
-        />
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke={GOLD}
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4, fill: GOLD, stroke: '#171128', strokeWidth: 2 }}
-          connectNulls={false}
-          animationDuration={900}
-          isAnimationActive={!animationsDisabled()}
-          animationEasing="ease-out"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="chart-frame">
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -14 }}>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="year" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+          <YAxis
+            {...axisProps}
+            domain={[0, 1]}
+            ticks={[0, 0.25, 0.5, 0.75, 1]}
+            tickFormatter={(value: number) => `${Math.round(value * 100)}`}
+            width={44}
+          />
+          {/* The coin-flip line, labelled inside the plot so the label survives
+              the right margin on a phone. */}
+          <ReferenceLine
+            y={0.5}
+            stroke={AXIS}
+            strokeDasharray="3 4"
+            label={{
+              value: '.500',
+              fill: AXIS,
+              fontSize: 10,
+              fontFamily: 'IBM Plex Mono, monospace',
+              position: 'insideTopRight',
+              dy: -4,
+            }}
+          />
+          <Tooltip
+            cursor={{ stroke: SERIES, strokeWidth: 1, strokeDasharray: '3 3' }}
+            content={<TooltipBox format={(value) => `${(value * 100).toFixed(1)}%`} />}
+            wrapperStyle={{ outline: 'none' }}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={SERIES}
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: SERIES, stroke: DOT_RING, strokeWidth: 2 }}
+            connectNulls={false}
+            animationDuration={900}
+            isAnimationActive={!animationsDisabled()}
+            animationEasing="ease-out"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -140,40 +152,43 @@ export function ScoringChart({
   height?: number
 }) {
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -14 }}>
-        <defs>
-          <linearGradient id="scoringFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={GOLD} stopOpacity={0.28} />
-            <stop offset="100%" stopColor={GOLD} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis dataKey="year" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-        <YAxis
-          {...axisProps}
-          domain={roundedDomain}
-          tickCount={6}
-          allowDecimals={false}
-          width={44}
-        />
-        <Tooltip
-          cursor={{ stroke: GOLD, strokeWidth: 1, strokeDasharray: '3 3' }}
-          content={<TooltipBox format={(value) => value.toFixed(1)} suffix=" pts/gm" />}
-        />
-        <Area
-          type="monotone"
-          dataKey="avg"
-          stroke={GOLD}
-          strokeWidth={2}
-          fill="url(#scoringFill)"
-          activeDot={{ r: 4, fill: GOLD, stroke: '#171128', strokeWidth: 2 }}
-          animationDuration={1000}
-          isAnimationActive={!animationsDisabled()}
-          animationEasing="ease-out"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div className="chart-frame">
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -14 }}>
+          <defs>
+            <linearGradient id="scoringFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={SERIES} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={SERIES} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke={GRID} vertical={false} />
+          <XAxis dataKey="year" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+          <YAxis
+            {...axisProps}
+            domain={roundedDomain}
+            tickCount={6}
+            allowDecimals={false}
+            width={44}
+          />
+          <Tooltip
+            cursor={{ stroke: SERIES, strokeWidth: 1, strokeDasharray: '3 3' }}
+            content={<TooltipBox format={(value) => value.toFixed(1)} suffix=" pts/gm" />}
+            wrapperStyle={{ outline: 'none' }}
+          />
+          <Area
+            type="monotone"
+            dataKey="avg"
+            stroke={SERIES}
+            strokeWidth={2}
+            fill="url(#scoringFill)"
+            activeDot={{ r: 4, fill: SERIES, stroke: DOT_RING, strokeWidth: 2 }}
+            animationDuration={1000}
+            isAnimationActive={!animationsDisabled()}
+            animationEasing="ease-out"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -186,11 +201,11 @@ export function ForAgainstChart({
   height?: number
 }) {
   return (
-    <div>
+    <div className="chart-frame">
       <div className="mb-2 flex flex-wrap gap-4 px-1">
         {[
-          { label: 'Points for', color: GOLD_MARK },
-          { label: 'Points against', color: PERIWINKLE },
+          { label: 'Points for', color: SERIES },
+          { label: 'Points against', color: SERIES_ALT },
         ].map((item) => (
           <span key={item.label} className="flex items-center gap-2 text-[11px] text-arc-ink-soft">
             <span aria-hidden className="h-2 w-4" style={{ background: item.color }} />
@@ -203,40 +218,41 @@ export function ForAgainstChart({
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis dataKey="year" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
           <YAxis
-          {...axisProps}
-          domain={roundedDomain}
-          tickCount={6}
-          allowDecimals={false}
-          width={44}
-        />
+            {...axisProps}
+            domain={roundedDomain}
+            tickCount={6}
+            allowDecimals={false}
+            width={44}
+          />
           <Tooltip
-            cursor={{ stroke: GOLD, strokeWidth: 1, strokeDasharray: '3 3' }}
+            cursor={{ stroke: SERIES, strokeWidth: 1, strokeDasharray: '3 3' }}
             content={<TooltipBox format={(value) => value.toFixed(1)} suffix=" pts/gm" />}
+            wrapperStyle={{ outline: 'none' }}
           />
           <Line
             type="monotone"
             dataKey="for"
             name="Points for"
-            stroke={GOLD_MARK}
+            stroke={SERIES}
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: GOLD_MARK, stroke: '#171128', strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: SERIES, stroke: DOT_RING, strokeWidth: 2 }}
             connectNulls={false}
             animationDuration={900}
-          isAnimationActive={!animationsDisabled()}
+            isAnimationActive={!animationsDisabled()}
             animationEasing="ease-out"
           />
           <Line
             type="monotone"
             dataKey="against"
             name="Points against"
-            stroke={PERIWINKLE}
+            stroke={SERIES_ALT}
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: PERIWINKLE, stroke: '#171128', strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: SERIES_ALT, stroke: DOT_RING, strokeWidth: 2 }}
             connectNulls={false}
             animationDuration={900}
-          isAnimationActive={!animationsDisabled()}
+            isAnimationActive={!animationsDisabled()}
             animationBegin={160}
             animationEasing="ease-out"
           />

@@ -5,14 +5,297 @@
   var(--font-display), ...) — never raw hex. Anything that moves must also be
   listed in the reduced-motion guard at the bottom of this file, and any
   canvas / rAF work must check animationsDisabled() in JS.
+
+  Motion registers on these pages, all one-shot reveals (data arriving):
+    .board-sweep   a soft light crossing the podium as a board enters view
+    .board-medal   the top-three rank numerals settling under that light
+    .board-lead    the leader's colour wash filling in (background-size)
+    .odds-bar      the probability bar under each line of the Vegas board
+    .prompter-caret the teleprompter's caret, blinking only while it types
+  The bars behind cells ride .barcell from index.css (already guarded).
 */
 
 @layer components {
-  /* styles */
+  /* ---- the podium spotlight ------------------------------------------ */
+
+  .board-stage {
+    position: relative;
+  }
+
+  /* A translucent diagonal band, transform-only, sized to the top three rows
+     (--pod-top / --pod-h are measured once by Board when it lights). */
+  .board-sweep {
+    position: absolute;
+    left: 0;
+    top: var(--pod-top, 0px);
+    height: var(--pod-h, 0px);
+    width: 34%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-arc-ink) 10%, transparent) 36%,
+      color-mix(in srgb, var(--color-arc-yellow) 24%, transparent) 50%,
+      color-mix(in srgb, var(--color-arc-ink) 10%, transparent) 64%,
+      transparent 100%
+    );
+    transform: skewX(-16deg) translateX(-140%);
+  }
+  .board-stage[data-lit] .board-sweep {
+    animation: board-sweep 1.2s cubic-bezier(0.3, 0.6, 0.25, 1) 60ms forwards;
+  }
+  @keyframes board-sweep {
+    0% {
+      opacity: 0;
+      transform: skewX(-16deg) translateX(-140%);
+    }
+    10% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: skewX(-16deg) translateX(320%);
+    }
+  }
+
+  /* Medals are held back until the light reaches them, then settle. */
+  .board-medal {
+    display: inline-block;
+    transform-origin: 60% 55%;
+  }
+  .board-stage:not([data-lit]) .board-medal {
+    opacity: 0;
+  }
+  .board-stage[data-lit] .board-medal {
+    animation: board-medal 0.55s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+    animation-delay: calc(260ms + var(--i, 0) * 120ms);
+  }
+  @keyframes board-medal {
+    from {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* The leader's wash fills in with the bars (background-size, like them). */
+  tr.board-lead {
+    transition: background-size 1s cubic-bezier(0.2, 0.9, 0.3, 1) 180ms;
+  }
+
+  /* Your seat, pinned under the fold at its true rank. */
+  tr.board-you td {
+    border-top: 1px dashed var(--color-arc-line);
+  }
+
+  /* Group seam (blessed / cursed). */
+  tr.board-seam td {
+    padding: 6px 12px;
+    background: var(--color-arc-bg-deep);
+    border-bottom: 1px solid var(--color-arc-line);
+  }
+  .out tbody tr.board-seam:hover td {
+    background: var(--color-arc-bg-deep);
+  }
+
+  /* ---- champions wall: no scroll trap on a phone ----------------------- */
+
+  .champs-fold {
+    position: relative;
+    max-height: 430px;
+    overflow: hidden;
+  }
+  .champs-fold::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 96px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--color-arc-panel));
+  }
+  @media (min-width: 1024px) {
+    .champs-fold {
+      max-height: 560px;
+      overflow-y: auto;
+    }
+    .champs-fold::after {
+      display: none;
+    }
+  }
+
+  /* ---- charts ----------------------------------------------------------- */
+
+  /* Recharts focuses a layer on tap; the UA ring then frames the plot like a
+     glitch. Keyboard users keep the green :focus-visible ring. */
+  .chart-frame :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 12px 0 9px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-arc-ink-soft);
+    background: var(--color-arc-panel);
+    border: 1px solid var(--color-arc-line);
+    border-radius: 999px;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s,
+      opacity 0.15s;
+  }
+  .legend-chip[aria-pressed='true'] {
+    color: var(--color-arc-ink);
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 18%, var(--color-arc-panel));
+  }
+  .legend-chip[data-dim='true'] {
+    opacity: 0.55;
+  }
+  .legend-chip:hover {
+    border-color: var(--c, var(--color-arc-ink-faint));
+    color: var(--color-arc-ink);
+  }
+
+  /* ---- the vegas board -------------------------------------------------- */
+
+  .odds-line {
+    position: relative;
+  }
+  /* Probability as a manager-coloured bar along the bottom of the line;
+     transform-only, from zero when the board is first seen. */
+  .odds-bar {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 0;
+    height: 2px;
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) var(--d, 0ms);
+    opacity: 0.85;
+  }
+
+  /* ---- the roast booth -------------------------------------------------- */
+
+  .seat-pick {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 6px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    background: transparent;
+    transition:
+      border-color 0.15s,
+      background 0.15s,
+      opacity 0.15s;
+  }
+  .seat-pick[aria-pressed='true'] {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 16%, transparent);
+  }
+  .seat-pick:not([aria-pressed='true']) {
+    opacity: 0.72;
+  }
+  .seat-pick:hover {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  }
+
+  .prompter {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--color-arc-ink-soft);
+    min-height: 3lh;
+  }
+  .prompter p + p {
+    margin-top: 12px;
+  }
+  .prompter-caret {
+    display: inline-block;
+    width: 0.55em;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -0.15em;
+    background: var(--color-arc-green);
+    animation: prompter-caret 0.9s steps(2, jump-none) infinite;
+  }
+  @keyframes prompter-caret {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* ---- the shrine -------------------------------------------------------- */
+
+  .shrine-still {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px 12px;
+    background:
+      radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--c) 34%, transparent), transparent 60%),
+      linear-gradient(180deg, var(--color-arc-raised), var(--color-arc-bg-deep));
+  }
 }
 
+/* Short careers and out-of-era games stay on the board, quietly. Unlayered
+   on purpose: the cell colour utilities live in Tailwind's utilities layer,
+   and a layered rule could never win against them. */
+tr.board-dim td,
+tr.board-dim td.text-arc-green,
+tr.board-dim td.text-arc-ink,
+tr.board-dim td a {
+  color: var(--color-arc-ink-faint);
+}
+tr.board-dim td .badge {
+  opacity: 0.6;
+}
+
+/* Reduced motion is honoured unless the user flips the in-app FX switch,
+   which stamps data-motion="on" on the root. Every keyframe above is here. */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .boards-placeholder-never-matches {
+  :root:not([data-motion='on']) .board-sweep,
+  :root:not([data-motion='on']) .board-stage[data-lit] .board-sweep,
+  :root:not([data-motion='on']) .board-medal,
+  :root:not([data-motion='on']) .board-stage[data-lit] .board-medal,
+  :root:not([data-motion='on']) .prompter-caret {
     animation: none !important;
+  }
+  :root:not([data-motion='on']) .board-sweep {
+    display: none;
+  }
+  :root:not([data-motion='on']) .board-medal,
+  :root:not([data-motion='on']) .board-stage:not([data-lit]) .board-medal {
+    opacity: 1;
+  }
+  :root:not([data-motion='on']) tr.board-lead,
+  :root:not([data-motion='on']) .odds-bar,
+  :root:not([data-motion='on']) .legend-chip,
+  :root:not([data-motion='on']) .seat-pick {
+    transition: none !important;
+  }
+  :root:not([data-motion='on']) .prompter-caret {
+    display: none;
   }
 }
