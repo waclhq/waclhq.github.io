@@ -12,15 +12,36 @@ import { useLocation } from 'react-router-dom'
  * the top, should not hear about it. Router-driven arrivals still win — a
  * pasted link, back/forward, the sidebar tab — because the hook re-reads the
  * router's location whenever the router itself moves.
+ *
+ * `accepts` names the values the page can actually show. A value it rejects
+ * — ?season=1999, ?sort=bogus — is read as absent and swept out of the
+ * address bar, so the link a member texts is the view they are looking at
+ * rather than the junk they arrived with.
  */
-export function useUrlParam(name: string): [string | null, (next: string | null) => void] {
+export function useUrlParam(
+  name: string,
+  accepts?: (value: string) => boolean,
+): [string | null, (next: string | null) => void] {
   const location = useLocation()
-  const fromRouter = new URLSearchParams(location.search).get(name)
+  const raw = new URLSearchParams(location.search).get(name)
+  const fromRouter = raw !== null && accepts && !accepts(raw) ? null : raw
   const [value, setValue] = useState<string | null>(fromRouter)
 
   useEffect(() => {
     setValue(fromRouter)
   }, [fromRouter, location.key])
+
+  // Sweep the rejected value out once the page has resolved its fallback.
+  // No dependency list on purpose: replaceState does not wake the router, so
+  // the router keeps handing back the junk the reader arrived with, and the
+  // honest question is whether the address bar still shows it. Once it does
+  // not — swept already, or the reader has since picked a real value — this
+  // leaves history alone.
+  useEffect(() => {
+    if (raw !== null && fromRouter === null && readHashParam(name) === raw) {
+      writeHashParam(name, null)
+    }
+  })
 
   const set = useCallback(
     (next: string | null) => {
@@ -31,6 +52,12 @@ export function useUrlParam(name: string): [string | null, (next: string | null)
   )
 
   return [value, set]
+}
+
+function readHashParam(name: string): string | null {
+  const at = window.location.hash.indexOf('?')
+  if (at < 0) return null
+  return new URLSearchParams(window.location.hash.slice(at + 1)).get(name)
 }
 
 function writeHashParam(name: string, value: string | null): void {

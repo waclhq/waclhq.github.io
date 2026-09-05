@@ -65,19 +65,25 @@ function isSortKey(value: string | null): value is SortKey {
   return value !== null && value in SORTS
 }
 
+function isDir(value: string | null): value is SortDir {
+  return value === 'asc' || value === 'desc'
+}
+
 export default function Managers() {
   const { seasons, managers, careerAverages } = useLeagueData()
   const me = useMe()
   const eras = eraOptions(seasons)
 
-  const [eraParam, setEraParam] = useUrlParam('era')
-  const [sortParam, setSortParam] = useUrlParam('sort')
-  const [dirParam, setDirParam] = useUrlParam('dir')
+  const [eraParam, setEraParam] = useUrlParam('era', (value) =>
+    eras.some((option) => option.id === value),
+  )
+  const [sortParam, setSortParam] = useUrlParam('sort', isSortKey)
+  const [dirParam, setDirParam] = useUrlParam('dir', isDir)
 
   const era = eras.find((option) => option.id === eraParam) ?? eras[0]
   const sortKey: SortKey = isSortKey(sortParam) ? sortParam : DEFAULT_SORT
   const natural = SORTS[sortKey].natural
-  const dir: SortDir = dirParam === 'asc' || dirParam === 'desc' ? dirParam : natural
+  const dir: SortDir = isDir(dirParam) ? dirParam : natural
 
   const table = useMemo(
     () => bookCareerTable(seasons, era, careerAverages),
@@ -247,7 +253,7 @@ export default function Managers() {
               />
               <SortHeader
                 label="PF/gm"
-                className="hidden lg:table-cell"
+                className="hidden xl:table-cell"
                 hint="Career points for per game"
                 active={sortKey === 'pf'}
                 dir={sortKey === 'pf' ? dir : 'desc'}
@@ -255,13 +261,13 @@ export default function Managers() {
               />
               <SortHeader
                 label="PA/gm"
-                className="hidden lg:table-cell"
+                className="hidden xl:table-cell"
                 hint="Career points against per game"
                 active={sortKey === 'pa'}
                 dir={sortKey === 'pa' ? dir : 'desc'}
                 onClick={() => onSort('pa')}
               />
-              <th className="hidden sm:table-cell" scope="col">
+              <th className="hidden xl:table-cell" scope="col">
                 Form
               </th>
             </tr>
@@ -327,10 +333,10 @@ export default function Managers() {
                     {line.playoffAppearances}/{line.seasonsPlayed}
                   </td>
                   <td className="n hidden text-arc-ink-faint md:table-cell">{pct(line.playoffRate, 0)}</td>
-                  <td className="n hidden text-arc-ink-soft lg:table-cell">{num(line.avgPointsFor)}</td>
-                  <td className="n hidden text-arc-ink-faint lg:table-cell">{num(line.avgPointsAgainst)}</td>
+                  <td className="n hidden text-arc-ink-soft xl:table-cell">{num(line.avgPointsFor)}</td>
+                  <td className="n hidden text-arc-ink-faint xl:table-cell">{num(line.avgPointsAgainst)}</td>
                   <td
-                    className="hidden sm:table-cell"
+                    className="hidden xl:table-cell"
                     title={`Win % by season inside ${era.label}, oldest to newest`}
                   >
                     <Sparkline
