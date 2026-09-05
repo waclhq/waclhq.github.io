@@ -67,6 +67,32 @@ export function useCountUp(target: number, run: boolean, duration = 780): number
   return value
 }
 
+/**
+ * True while the room is held still. Unlike a bare animationsDisabled() read,
+ * this follows the FX toggle: the Shell stamps data-motion on the root, which
+ * is the only signal a page gets that the preference changed mid-visit. Use
+ * it where stillness changes what a control *is*, not just how it moves.
+ */
+export function useStillness(): boolean {
+  const [still, setStill] = useState(() => animationsDisabled())
+  useEffect(() => {
+    const read = () => setStill(animationsDisabled())
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-motion'],
+    })
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    media.addEventListener('change', read)
+    return () => {
+      observer.disconnect()
+      media.removeEventListener('change', read)
+    }
+  }, [])
+  return still
+}
+
 /** True while the element is on screen (with a margin), false when it leaves. */
 export function useOnScreen<T extends Element>(
   ref: React.RefObject<T | null>,

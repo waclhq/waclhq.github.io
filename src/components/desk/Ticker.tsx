@@ -1,8 +1,8 @@
 import { useMemo, useState, type HTMLAttributes } from 'react'
 import { managerName, useLeagueData } from '../../lib/data'
 import { money } from '../../lib/format'
-import { animationsDisabled } from '../../lib/motion'
 import type { Trade } from '../../lib/types'
+import { useStillness } from './hooks'
 
 /**
  * Transaction tape. The content is duplicated so the marquee can loop
@@ -16,7 +16,7 @@ import type { Trade } from '../../lib/types'
  */
 export default function Ticker({ trades }: { trades: Trade[] }) {
   const { managers } = useLeagueData()
-  const still = animationsDisabled()
+  const still = useStillness()
 
   const items = useMemo(
     () =>
