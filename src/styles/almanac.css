@@ -1,18 +1,855 @@
 /*
-  almanac.css — page-level styles for the Almanac.
+  almanac.css — page-level styles for the Almanac: the rafters (banners), the
+  twenty-two-second race, and the season folds. Also dresses the champions
+  wall on Records, which shares the title tag.
 
   Uses the tokens from the @theme block in src/index.css (var(--color-arc-*),
-  var(--font-display), ...) — never raw hex. Anything that moves must also be
-  listed in the reduced-motion guard at the bottom of this file, and any
-  canvas / rAF work must check animationsDisabled() in JS.
+  var(--font-display), ...) — never raw hex. Anything that moves is listed in
+  the reduced-motion guard at the bottom of this file; the race's timer and
+  scrolls check animationsDisabled() in JS.
 */
 
 @layer components {
-  /* styles */
+  /* ---- the rafters -----------------------------------------------------
+     A beam across the top of the page and one pennant per title hanging
+     from it, newest nearest. Each banner is sized in em off --unit and its
+     own --depth, so older banners are physically smaller and the row reads
+     as receding down the beam. The sway is a transform on the cloth alone;
+     the hanger carries the perspective and the hover lift. */
+  .rafters {
+    --unit: 14px;
+    --edge: 16px;
+    position: relative;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-arc-bg-deep) 80%, transparent),
+      color-mix(in srgb, var(--color-arc-bg-deep) 30%, transparent) 70%,
+      transparent
+    );
+  }
+  @media (min-width: 640px) {
+    .rafters {
+      --unit: 15px;
+      --edge: 24px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .rafters {
+      --unit: 16px;
+      --edge: 36px;
+    }
+  }
+
+  .rafters-beam {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 2;
+    height: 10px;
+    background:
+      radial-gradient(
+          circle at 14px 5px,
+          color-mix(in srgb, var(--color-arc-ink) 38%, transparent) 1.3px,
+          transparent 2px
+        )
+        0 0 / 56px 10px repeat-x,
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-arc-ink) 24%, var(--color-arc-line)),
+        var(--color-arc-line) 55%,
+        color-mix(in srgb, var(--color-arc-bg-deep) 55%, var(--color-arc-line))
+      );
+    box-shadow:
+      0 2px 0 var(--color-arc-bg-deep),
+      0 10px 22px color-mix(in srgb, var(--color-arc-bg-deep) 85%, transparent);
+  }
+
+  .rafters-rail {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(var(--unit) * 0.7);
+    margin: 0;
+    padding-top: 10px;
+    padding-bottom: 30px;
+    list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--edge);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 var(--edge),
+      #000 calc(100% - var(--edge)),
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 var(--edge),
+      #000 calc(100% - var(--edge)),
+      transparent
+    );
+  }
+  .rafters-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .banner-slot {
+    position: relative;
+    flex: none;
+    scroll-snap-align: start;
+    font-size: calc(var(--unit) * var(--depth, 1));
+    transform-origin: 50% 0;
+    animation: banner-unfurl 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 40ms + 80ms);
+  }
+  /* The lamp: a pool of the owner's colour behind the open season, and a
+     fainter one behind the banners with your name on them. */
+  .banner-slot::before {
+    content: '';
+    position: absolute;
+    inset: -0.5em -1.8em -1.4em;
+    pointer-events: none;
+    background: radial-gradient(
+      55% 62% at 50% 10%,
+      color-mix(in srgb, var(--c) 32%, transparent),
+      transparent 72%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .banner-slot.is-mine::before {
+    opacity: 0.6;
+  }
+  .banner-slot.is-current::before {
+    opacity: 1;
+  }
+
+  .banner {
+    --lift: 0px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 8em;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-arc-bg);
+    text-shadow: none;
+    cursor: pointer;
+    transform: perspective(38em) rotateY(-9deg) translateZ(var(--lift));
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .banner:hover,
+  .banner:focus-visible {
+    --lift: 2.4em;
+  }
+  .banner-slot.is-current .banner {
+    --lift: 1.3em;
+  }
+  .banner-slot.is-current .banner:hover,
+  .banner-slot.is-current .banner:focus-visible {
+    --lift: 2.8em;
+  }
+  .banner:focus-visible {
+    border-radius: 6px;
+    outline-offset: 3px;
+  }
+
+  .banner-rod {
+    position: relative;
+    z-index: 2;
+    width: 8.7em;
+    height: 0.34em;
+    border-radius: 0.2em;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-arc-ink) 60%, var(--color-arc-line)),
+      color-mix(in srgb, var(--color-arc-ink) 14%, var(--color-arc-line)) 60%,
+      var(--color-arc-line)
+    );
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-arc-bg-deep) 80%, transparent);
+  }
+  .banner-slot.is-current .banner-rod {
+    background: linear-gradient(
+      180deg,
+      var(--color-arc-ink),
+      color-mix(in srgb, var(--color-arc-ink) 65%, var(--color-arc-line))
+    );
+  }
+  .banner-slot.is-mine .banner-rod {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--c) 80%, var(--color-arc-ink)),
+      color-mix(in srgb, var(--c) 55%, var(--color-arc-line))
+    );
+  }
+
+  .banner-cloth {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 8em;
+    height: 12.6em;
+    margin-top: -0.06em;
+    padding-top: 1.05em;
+    clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%);
+    /* the trim, a lighter cut of the owner's colour */
+    background: color-mix(in srgb, var(--c) 66%, var(--color-arc-ink));
+    transform-origin: 50% 0;
+    animation: banner-sway var(--sway-dur, 7s) ease-in-out var(--sway-delay, 0s) infinite;
+    will-change: transform;
+  }
+  /* the field inside the trim */
+  .banner-cloth::before {
+    content: '';
+    position: absolute;
+    inset: 0.34em;
+    clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%);
+    background: var(--c);
+  }
+  /* light from the beam, shade toward the point, and the years of dust */
+  .banner-cloth::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-arc-ink) 28%, transparent),
+        transparent 30%,
+        transparent 58%,
+        color-mix(in srgb, var(--color-arc-bg-deep) 36%, transparent)
+      ),
+      linear-gradient(
+        color-mix(in srgb, var(--color-arc-bg-deep) var(--dim, 0%), transparent),
+        color-mix(in srgb, var(--color-arc-bg-deep) var(--dim, 0%), transparent)
+      );
+  }
+  .banner-slot.is-current .banner-cloth::after,
+  .banner-slot.is-mine .banner-cloth::after {
+    --dim: 0%;
+  }
+  .banner-cloth > span {
+    position: relative;
+    z-index: 1;
+  }
+  .banner-year {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 2.75em;
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+    padding-right: 0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+  .banner-rule {
+    width: 4.2em;
+    height: 0.14em;
+    margin: 0.45em 0 0.5em;
+    background: currentColor;
+    opacity: 0.55;
+  }
+  .banner-name {
+    max-width: 7em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.98em;
+    line-height: 1.15;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .banner-record {
+    margin-top: 0.15em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05em;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.9;
+  }
+  .banner-nth {
+    margin-top: 0.5em;
+    padding: 0.1em 0.5em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.92em;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+    border-radius: 0.3em;
+  }
+
+  .rafters-caption {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+    margin-top: -10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-arc-ink-faint);
+  }
+  .rafters-mine {
+    color: var(--color-arc-ink-soft);
+  }
+
+  /* Pointer devices have no thumb to flick the rail with. */
+  .rail-nudge {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: none;
+    width: 40px;
+    height: 40px;
+    margin-top: -32px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-arc-line);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-arc-bg) 86%, transparent);
+    color: var(--color-arc-ink-soft);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .rail-nudge:hover {
+    color: var(--color-arc-green);
+    border-color: var(--color-arc-green);
+  }
+  .rail-nudge-l {
+    left: 4px;
+  }
+  .rail-nudge-r {
+    right: 4px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .rail-nudge {
+      display: inline-flex;
+    }
+    .rafters[data-at-start] .rail-nudge-l,
+    .rafters[data-at-end] .rail-nudge-r {
+      display: none;
+    }
+  }
+
+  /* ---- twenty-two seasons in twenty-two seconds ------------------------ */
+  .race-seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--color-arc-line);
+    border-radius: 9px;
+    background: var(--color-arc-bg-deep);
+  }
+  .race-seg button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-arc-ink-soft);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+  .race-seg button:hover {
+    color: var(--color-arc-ink);
+  }
+  .race-seg button[aria-pressed='true'] {
+    background: var(--color-arc-green);
+    color: var(--color-arc-bg);
+    text-shadow: none;
+  }
+
+  .race-body {
+    display: grid;
+  }
+  .race-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid var(--color-arc-line);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-arc-bg-deep) 55%, transparent),
+      transparent 70%
+    );
+  }
+  @media (min-width: 1024px) {
+    .race-body {
+      grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    }
+    .race-stage {
+      border-right: 1px solid var(--color-arc-line);
+      border-bottom: 0;
+    }
+  }
+
+  /* The year: the one numeral on the page that wears chrome. */
+  .race-year {
+    display: flex;
+    margin-top: 2px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: clamp(3.6rem, 16vw, 5.8rem);
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+    padding-right: 0.08em;
+  }
+  .race-digit {
+    display: inline-block;
+    background-image: linear-gradient(
+      180deg,
+      var(--color-arc-ink) 0%,
+      var(--color-arc-ink-soft) 36%,
+      var(--color-arc-ink-faint) 50%,
+      var(--color-arc-ink) 54%,
+      var(--color-arc-ink-soft) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    animation: digit-roll 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  .race-champ {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    font-size: 14px;
+  }
+  .tag.race-champ-tag {
+    background: var(--champ, var(--color-arc-ink-soft));
+    color: var(--color-arc-bg);
+    text-shadow: none;
+  }
+
+  .race-verdict {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+    min-height: 4.4em;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-arc-ink-soft);
+  }
+  @media (min-width: 1024px) {
+    .race-verdict {
+      min-height: 5.8em;
+    }
+  }
+  .race-verdict-line {
+    display: block;
+    animation: verdict-in 0.4s ease-out both;
+  }
+
+  .race-transport {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .race-step {
+    min-width: 44px;
+    padding-inline: 10px;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .race-play {
+    min-width: 108px;
+  }
+  .race-clock {
+    margin-left: auto;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--color-arc-ink-soft);
+  }
+
+  .race-scrub {
+    position: relative;
+    padding-bottom: 22px;
+  }
+  .race-scrub input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 40px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .race-scrub input[type='range']:focus {
+    outline: none;
+  }
+  .race-scrub input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-arc-line);
+  }
+  .race-scrub input[type='range']::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-arc-line);
+  }
+  .race-scrub input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    border: 3px solid var(--color-arc-bg);
+    border-radius: 999px;
+    background: var(--color-arc-green);
+    box-shadow:
+      0 0 0 1px var(--color-arc-green),
+      0 0 14px color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+  }
+  .race-scrub input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 3px solid var(--color-arc-bg);
+    border-radius: 999px;
+    background: var(--color-arc-green);
+    box-shadow: 0 0 0 1px var(--color-arc-green);
+  }
+  .race-scrub input[type='range']:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid var(--color-arc-green);
+    outline-offset: 3px;
+  }
+  .race-scrub input[type='range']:focus-visible::-moz-range-thumb {
+    outline: 3px solid var(--color-arc-green);
+    outline-offset: 3px;
+  }
+  .race-ticks {
+    position: absolute;
+    top: 32px;
+    right: 11px;
+    left: 11px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .race-tick {
+    width: 2px;
+    height: 6px;
+    border-radius: 1px;
+    background: var(--color-arc-line);
+  }
+  .race-tick.is-era {
+    height: 10px;
+    background: var(--color-arc-ink-faint);
+  }
+  .race-tick.is-at {
+    height: 10px;
+    background: var(--color-arc-green);
+  }
+  .race-tick-labels {
+    position: absolute;
+    top: 44px;
+    right: 11px;
+    left: 11px;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--color-arc-ink-faint);
+  }
+  .race-tick-labels > span:first-child {
+    transform: translateX(-50%);
+  }
+  .race-tick-labels > span:last-child {
+    transform: translateX(50%);
+  }
+  .race-era-label {
+    position: absolute;
+    transform: translateX(-50%);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .race-tape {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .race-swatch {
+    flex: 1 1 0;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--c);
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
+  }
+  .race-swatch.is-ahead {
+    opacity: 0.16;
+  }
+  .race-swatch.is-at {
+    opacity: 1;
+    box-shadow:
+      0 0 0 2px var(--color-arc-panel),
+      0 0 0 3.5px var(--color-arc-ink);
+  }
+  .race-tape-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-arc-ink-faint);
+  }
+
+  .race-table {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .race-out tbody td {
+    position: relative;
+  }
+  .race-out tbody tr.is-champ td:first-child {
+    box-shadow: inset 3px 0 0 var(--champ);
+  }
+  /* The flash: the champion's colour floods their row and drains away. Two
+     identical keyframes, alternated by year, so a back-to-back champion's
+     row lights again instead of holding. */
+  .race-out tbody tr.is-champ td::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--champ);
+    opacity: 0;
+  }
+  .race-out tbody tr.is-champ[data-pulse='0'] td::after {
+    animation: champ-flash-a 1.1s ease-out both;
+  }
+  .race-out tbody tr.is-champ[data-pulse='1'] td::after {
+    animation: champ-flash-b 1.1s ease-out both;
+  }
+  .race-champ-pip {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--champ);
+    color: var(--color-arc-bg);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: none;
+  }
+  .race-count {
+    display: inline-block;
+    animation: race-count-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  .race-row {
+    animation: race-row-in 0.4s ease-out both;
+  }
+
+  /* ---- the folds ------------------------------------------------------- */
+  .fold-year {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--color-arc-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .fold-year-big {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 30px;
+    line-height: 1;
+    color: var(--color-arc-ink);
+  }
+  .tag.fold-title-tag {
+    background: var(--color-arc-yellow);
+    color: var(--color-arc-bg);
+    text-shadow: none;
+  }
+  .season-fold.is-open {
+    border-color: color-mix(in srgb, var(--color-arc-ink-faint) 55%, var(--color-arc-line));
+  }
+  .fold-jump {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--color-arc-line);
+    border-radius: 999px;
+    background: var(--color-arc-panel);
+    color: var(--color-arc-ink-soft);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .fold-jump:hover {
+    color: var(--color-arc-ink);
+    border-color: var(--color-arc-ink-faint);
+  }
+  .fold-jump-quiet {
+    border-color: transparent;
+    background: transparent;
+  }
+  .inline-manager {
+    color: var(--color-arc-ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+  }
+  .inline-manager:hover {
+    color: var(--color-arc-green);
+  }
+  .inline-player {
+    color: var(--color-arc-ink-soft);
+    text-decoration: underline dotted;
+    text-decoration-color: var(--color-arc-ink-faint);
+    text-underline-offset: 2px;
+  }
+  .inline-player:hover {
+    color: var(--color-arc-green);
+    text-decoration-color: currentColor;
+  }
+
+  /* ---- keyframes ------------------------------------------------------- */
+  /* Banners unfurl from the beam on first paint, one after another. */
+  @keyframes banner-unfurl {
+    0% {
+      opacity: 0;
+      transform: scaleY(0.06);
+    }
+    55% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+  /* Each cloth swings a few degrees about its rod on its own period. */
+  @keyframes banner-sway {
+    0%,
+    100% {
+      transform: rotate(calc(var(--amp, 2deg) * -1));
+    }
+    50% {
+      transform: rotate(var(--amp, 2deg));
+    }
+  }
+  @keyframes champ-flash-a {
+    0% {
+      opacity: 0;
+    }
+    16% {
+      opacity: 0.4;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes champ-flash-b {
+    0% {
+      opacity: 0;
+    }
+    16% {
+      opacity: 0.4;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes race-count-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.55em);
+    }
+  }
+  @keyframes race-row-in {
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+  }
+  @keyframes digit-roll {
+    from {
+      opacity: 0;
+      transform: translateY(0.35em);
+    }
+  }
+  @keyframes verdict-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
 }
 
+/* Reduced motion is honoured unless the FX switch stamps data-motion="on":
+   banners hang still, the year and the table simply change. */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .almanac-placeholder-never-matches {
+  :root:not([data-motion='on']) .banner-slot,
+  :root:not([data-motion='on']) .banner-cloth,
+  :root:not([data-motion='on']) .race-digit,
+  :root:not([data-motion='on']) .race-verdict-line,
+  :root:not([data-motion='on']) .race-count,
+  :root:not([data-motion='on']) .race-row,
+  :root:not([data-motion='on']) .race-out tbody tr.is-champ td::after {
     animation: none !important;
+  }
+  :root:not([data-motion='on']) .banner,
+  :root:not([data-motion='on']) .banner-slot::before,
+  :root:not([data-motion='on']) .race-seg button,
+  :root:not([data-motion='on']) .race-swatch,
+  :root:not([data-motion='on']) .fold-jump,
+  :root:not([data-motion='on']) .rail-nudge {
+    transition: none !important;
+  }
+  :root:not([data-motion='on']) .banner-cloth {
+    will-change: auto;
   }
 }
