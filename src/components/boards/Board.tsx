@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -281,6 +282,15 @@ export function Board<T>({
   const body = useRef<HTMLTableSectionElement>(null)
   const lit = useRevealed(stage)
   useFlipList(body)
+  // Once the sweep has passed, the reveal is over. Re-sorting the board (an
+  // era switch, a fold) mounts fresh medal spans, and without this they
+  // replayed their entrance and the podium numerals blinked out mid-FLIP.
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    if (!lit) return
+    const timer = window.setTimeout(() => setSettled(true), 1200)
+    return () => window.clearTimeout(timer)
+  }, [lit])
   useLayoutEffect(() => {
     const host = stage.current
     const tbody = body.current
@@ -321,7 +331,12 @@ export function Board<T>({
   let lastGroup: string | null | undefined
   return (
     <Panel id={id} title={title} subtitle={subtitle} delay={delay} action={action}>
-      <div ref={stage} className="board-stage" data-lit={lit ? '' : undefined}>
+      <div
+        ref={stage}
+        className="board-stage"
+        data-lit={lit ? '' : undefined}
+        data-settled={settled ? '' : undefined}
+      >
         <span className="board-sweep" aria-hidden />
         <table className="out">
           <thead>
@@ -344,8 +359,11 @@ export function Board<T>({
               const seam = groupOf && line.group !== lastGroup && !line.pinned
               lastGroup = line.group
               const manager = managerOf?.(row)
-              const isLead = index === 0 && line.qualified && !line.pinned
+              // A row printing faint is out of the current window (or short
+              // of the minimum): it keeps its true rank, but it does not get
+              // the leader's wash — otherwise a 2014 game leads a Last-3 view.
               const dim = (muted?.(row) ?? false) || !line.qualified
+              const isLead = index === 0 && !dim && !line.pinned
               const href = rowHref(row)
               const rowClass = [
                 isLead ? 'lead board-lead' : '',
