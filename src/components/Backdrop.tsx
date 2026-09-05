@@ -25,6 +25,8 @@ precision highp float;
 precision mediump float;
 #endif
 uniform vec2 R; uniform float T;
+// stadium hours (0 day, 1 dusk, 2 late) and the seat-holder's colour
+uniform float H; uniform vec3 ME; uniform float MEON;
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p){
   vec2 i = floor(p), f = fract(p);
@@ -54,16 +56,26 @@ void main(){
   vec3 green = vec3(0.33, 0.83, 0.22);
   vec3 amber = vec3(1.00, 0.71, 0.21);
   vec3 teal  = vec3(0.17, 0.85, 0.82);
+  // dusk warms the green toward the amber; after eleven the teal goes deep
+  float dusk = step(0.5, H) * (1.0 - step(1.5, H));
+  float late = step(1.5, H);
+  green = mix(green, amber * 0.85, 0.35 * dusk);
+  teal  = mix(teal, vec3(0.09, 0.42, 0.60), late);
   vec2 c1 = vec2(0.5 + 0.4 * sin(T * 0.10), 0.5 + 0.4 * cos(T * 0.13));
   vec2 c2 = vec2(0.5 + 0.4 * cos(T * 0.07 + 2.0), 0.5 + 0.4 * sin(T * 0.09 + 2.0));
   vec2 c3 = vec2(0.5 + 0.4 * sin(T * 0.05 + 4.0), 0.5 + 0.4 * cos(T * 0.06 + 4.0));
   vec3 base = green * exp(-3.2 * distance(uv, c1))
             + amber * exp(-3.4 * distance(uv, c2))
             + teal  * exp(-3.8 * distance(uv, c3));
+  // your seat: a fourth, fainter colour centre drifting with the others,
+  // so the room is subtly yours once you have picked one
+  vec2 c4 = vec2(0.5 + 0.42 * cos(T * 0.08 + 1.0), 0.5 + 0.42 * sin(T * 0.11 + 3.0));
+  base += ME * exp(-3.0 * distance(uv, c4)) * 0.85 * MEON;
 
+  float dim = 1.0 - 0.32 * late;                    // late: the house lights come down
   vec3 col = vec3(0.043, 0.055, 0.071);            // charcoal floor
-  col += base * (0.14 + 0.55 * vein + speck * 0.6); // veins carry the light, dimmed
-  col += vein * base * base * 0.25;                 // hot cores kept below text-level
+  col += base * (0.14 + 0.55 * vein + speck * 0.6) * dim; // veins carry the light, dimmed
+  col += vein * base * base * 0.25 * dim;           // hot cores kept below text-level
   gl_FragColor = vec4(col, 1.0);
 }`
 
@@ -112,6 +124,27 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
       const uR = gl.getUniformLocation(program, 'R')
       const uT = gl.getUniformLocation(program, 'T')
+      const uH = gl.getUniformLocation(program, 'H')
+      const uMe = gl.getUniformLocation(program, 'ME')
+      const uMeOn = gl.getUniformLocation(program, 'MEON')
+
+      // The room reads the Shell's stamps: data-hours on the root and the
+      // seat-holder's --me-color. Sampled once a second, not every frame.
+      let sampledAt = -1
+      let hours = 0
+      let me: [number, number, number] | null = null
+      const sample = (time: number) => {
+        if (time - sampledAt < 1000) return
+        sampledAt = time
+        const stamp = document.documentElement.dataset.hours
+        hours = stamp === 'late' ? 2 : stamp === 'dusk' ? 1 : 0
+        const raw = getComputedStyle(document.documentElement).getPropertyValue('--me-color').trim()
+        const hex = /^#([0-9a-f]{6})$/i.exec(raw)
+        if (hex) {
+          const n = parseInt(hex[1], 16)
+          me = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
+        } else me = null
+      }
 
       let lastDraw = 0
       const tick = (time: number) => {
@@ -125,8 +158,12 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
           canvas.height = h
         }
         gl.viewport(0, 0, w, h)
+        sample(time)
         gl.uniform2f(uR, w, h)
         gl.uniform1f(uT, time / 1000)
+        gl.uniform1f(uH, hours)
+        gl.uniform3f(uMe, me?.[0] ?? 0, me?.[1] ?? 0, me?.[2] ?? 0)
+        gl.uniform1f(uMeOn, me ? 1 : 0)
         gl.drawArrays(gl.TRIANGLES, 0, 3)
       }
       raf = requestAnimationFrame(tick)
