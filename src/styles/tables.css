@@ -1,18 +1,593 @@
 /*
-  tables.css — page-level styles for the Standings + Managers.
+  tables.css — page-level styles for Standings + Managers.
 
   Uses the tokens from the @theme block in src/index.css (var(--color-arc-*),
-  var(--font-display), ...) — never raw hex. Anything that moves must also be
-  listed in the reduced-motion guard at the bottom of this file, and any
-  canvas / rAF work must check animationsDisabled() in JS.
+  var(--font-display), ...) — never raw hex. Anything that moves is listed in
+  the reduced-motion guard at the bottom of this file; every transform here is
+  a transform or an opacity, nothing that lays out.
+
+  --champ  the shown season's champion colour (set on the scrubber)
+  --c      a manager colour on one tick / chip / pin
 */
 
 @layer components {
-  /* styles */
+  /* ---- the season scrubber -------------------------------------------- */
+
+  .scrub {
+    isolation: isolate;
+  }
+  /* The board tints toward the champion's colour, washing in from the dial. */
+  .scrub-tint {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--champ) 13%, transparent);
+    mask-image: linear-gradient(105deg, #000 0%, transparent 64%);
+    transition: background-color 0.7s ease;
+  }
+  .scrub-head,
+  .scrub-track,
+  .scrub-axis,
+  .scrub-roll {
+    position: relative;
+    z-index: 1;
+  }
+
+  .scrub-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px 24px;
+    padding: 14px 14px 4px;
+  }
+  .scrub-dial {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+  @media (min-width: 640px) {
+    .scrub-head {
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      padding: 16px 18px 6px;
+    }
+    .scrub-dial {
+      justify-content: flex-start;
+      gap: 16px;
+    }
+  }
+
+  /* The year: four odometer reels in a chrome fill, the glow in the
+     champion's colour. Chrome (background-clip: text) is reserved for hero
+     numerals, and this is the page's. */
+  .scrub-year {
+    display: inline-flex;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-style: italic;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(3.6rem, 16vw, 6.4rem);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    padding: 0.06em 0.12em 0.02em 0.04em;
+    text-shadow: none;
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--champ) 42%, transparent))
+      drop-shadow(0 2px 1px var(--color-arc-bg-deep));
+    transition: filter 0.7s ease;
+  }
+  .scrub-digit {
+    display: block;
+    height: 1em;
+    /* Clip the reel top and bottom only: italic glyphs overhang sideways. */
+    clip-path: inset(0 -0.25em);
+  }
+  .scrub-reel {
+    display: block;
+    will-change: transform;
+    transition: transform 0.62s cubic-bezier(0.25, 1.25, 0.4, 1);
+  }
+  .scrub-reel > span {
+    display: block;
+    height: 1em;
+    line-height: 1;
+    text-align: center;
+    color: transparent;
+    background: linear-gradient(
+      180deg,
+      var(--color-arc-ink) 0%,
+      var(--color-arc-ink) 36%,
+      var(--color-arc-ink-faint) 50%,
+      var(--color-arc-ink-soft) 60%,
+      var(--color-arc-ink) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .scrub-arrow {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0 0 4px;
+    border: 1px solid var(--color-arc-line);
+    border-radius: 8px;
+    background: var(--color-arc-raised);
+    color: var(--color-arc-ink-soft);
+    font-family: var(--font-display);
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      border-color 0.12s,
+      color 0.12s;
+  }
+  .scrub-arrow:hover:not(:disabled) {
+    border-color: var(--champ);
+    color: var(--color-arc-ink);
+  }
+  .scrub-arrow:disabled {
+    opacity: 0.28;
+    cursor: default;
+  }
+
+  .scrub-cap {
+    min-width: 0;
+  }
+  .scrub-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin-top: 4px;
+  }
+  .scrub-champ {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    text-transform: uppercase;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: 0.015em;
+    padding-right: 0.1em;
+    text-decoration: none;
+  }
+  .scrub-champ:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  @media (min-width: 640px) {
+    .scrub-champ {
+      font-size: 36px;
+    }
+    .scrub-meta {
+      font-size: 13px;
+    }
+  }
+  .scrub-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--color-arc-ink-soft);
+  }
+  .scrub-you {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--color-arc-ink);
+  }
+  .scrub-you i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--c);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--c) 70%, transparent);
+  }
+  /* The caption re-mounts with the year and arrives: data landing, once. */
+  @keyframes scrub-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .scrub-in {
+    animation: scrub-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  /* The timeline: one slider, a tick per season in its champion's colour. */
+  .scrub-track {
+    display: flex;
+    align-items: flex-end;
+    height: 56px;
+    margin: 6px 14px 0;
+    padding-bottom: 6px;
+    border-radius: 6px;
+    touch-action: pan-y;
+    cursor: ew-resize;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  @media (min-width: 640px) {
+    .scrub-track {
+      margin-inline: 18px;
+    }
+  }
+  .scrub-track::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--color-arc-line);
+  }
+  .scrub-track:focus-visible {
+    outline: 3px solid var(--color-arc-green);
+    outline-offset: 4px;
+  }
+  .scrub-tick {
+    flex: 1 1 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 100%;
+    min-width: 0;
+  }
+  .scrub-tick i {
+    display: block;
+    width: 4px;
+    height: 20px;
+    border-radius: 2px 2px 0 0;
+    background: var(--c);
+    opacity: 0.42;
+    transform-origin: 50% 100%;
+    transition:
+      transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1),
+      opacity 0.35s ease;
+  }
+  .scrub-tick[data-past] i {
+    opacity: 0.62;
+  }
+  @media (hover: hover) {
+    .scrub-track:hover .scrub-tick i {
+      opacity: 0.8;
+    }
+  }
+  .scrub-tick[data-on] i {
+    opacity: 1;
+    transform: scaleY(1.9);
+    box-shadow:
+      0 0 10px var(--c),
+      0 0 26px color-mix(in srgb, var(--c) 55%, transparent);
+  }
+
+  .scrub-axis {
+    margin: 4px 14px 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--color-arc-ink-faint);
+  }
+  @media (min-width: 640px) {
+    .scrub-axis {
+      margin-inline: 18px;
+    }
+  }
+  .scrub-years {
+    display: flex;
+  }
+  .scrub-years > span {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    line-height: 1.4;
+  }
+  /* On a phone only the ends are labelled; they still sit over their ticks. */
+  .scrub-years > span:first-child {
+    flex: 1 1 0;
+  }
+  .scrub-era {
+    position: relative;
+    margin-top: 3px;
+    height: 16px;
+    border-top: 1px solid color-mix(in srgb, var(--color-arc-ink-faint) 55%, transparent);
+    text-align: center;
+  }
+  .scrub-era::before,
+  .scrub-era::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    width: 1px;
+    height: 5px;
+    background: color-mix(in srgb, var(--color-arc-ink-faint) 55%, transparent);
+  }
+  .scrub-era::before {
+    left: 0;
+  }
+  .scrub-era::after {
+    right: 0;
+  }
+  .scrub-era span {
+    position: relative;
+    top: 1px;
+    padding: 0 6px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: var(--color-arc-panel);
+  }
+
+  /* The roll of champions: a strip of chips, the shown year lit in its
+     champion's colour, never a fill the name cannot be read against. */
+  .scrub-roll {
+    display: flex;
+    gap: 6px;
+    /* Room past the last chip so the shown year can scroll clear of the fade. */
+    padding: 10px 40px 14px 14px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 26px), transparent);
+  }
+  .scrub-roll::-webkit-scrollbar {
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .scrub-roll {
+      padding-left: 18px;
+      padding-right: 44px;
+    }
+  }
+  .scrub-chip {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    min-height: 44px;
+    min-width: 66px;
+    padding: 5px 10px 6px;
+    border: 1px solid var(--color-arc-line);
+    border-radius: 8px;
+    background: var(--color-arc-bg-deep);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      background-color 0.15s;
+  }
+  .scrub-chip-year {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    line-height: 1.3;
+    letter-spacing: 0.12em;
+    color: var(--color-arc-ink-faint);
+  }
+  .scrub-chip-name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--c);
+  }
+  .scrub-chip:hover {
+    border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  }
+  .scrub-chip[aria-current] {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 14%, var(--color-arc-bg-deep));
+    box-shadow: inset 0 -2px 0 var(--c);
+  }
+  .scrub-chip[aria-current] .scrub-chip-year {
+    color: var(--color-arc-ink);
+  }
+
+  /* ---- the final table ------------------------------------------------- */
+
+  .out.final tbody tr {
+    transition: opacity 0.45s ease;
+  }
+  /* A manager who was not in the league that year: still in the grid so the
+     rows can slide, but sat out. */
+  .out.final tbody tr.sit-out {
+    opacity: 0.38;
+  }
+  .out.final tbody tr.sit-out td {
+    color: var(--color-arc-ink-faint);
+    font-weight: 400;
+  }
+  .out.final tbody tr.sit-first td {
+    border-top: 1px dashed var(--color-arc-line);
+  }
+  .pennant {
+    display: inline-block;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  @media (max-width: 639.98px) {
+    .out.final thead th,
+    .out.final tbody td {
+      padding-inline: 10px;
+    }
+    .out.final thead th.n {
+      padding-right: calc(10px - 0.1em);
+    }
+    .out.final thead th:first-child,
+    .out.final tbody td:first-child {
+      padding-inline: 8px 6px;
+    }
+  }
+
+  /* ---- the leaderboard ------------------------------------------------- */
+
+  .out.lb thead th {
+    padding-block: 2px;
+  }
+  .sorter {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    margin: 0 -8px;
+    padding: 0 10px 0 8px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.12s;
+  }
+  .sorter:hover,
+  .sorter.is-on {
+    color: var(--color-arc-ink);
+  }
+  /* The arrow sits in the header's own padding, out of the column's width,
+     so the grid never shifts when the sort moves. */
+  .sorter-arrow {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    opacity: 0;
+    color: var(--color-arc-green);
+    transform: translateY(-50%);
+    transition:
+      opacity 0.12s,
+      transform 0.18s;
+  }
+  .sorter-arrow.is-asc {
+    transform: translateY(-50%) rotate(180deg);
+  }
+  .sorter.is-on .sorter-arrow {
+    opacity: 1;
+  }
+  .titles {
+    letter-spacing: 0.04em;
+    padding-right: 0.05em;
+    text-shadow: 0 0 10px color-mix(in srgb, currentColor 45%, transparent);
+  }
+  @media (max-width: 639.98px) {
+    .out.lb thead th,
+    .out.lb tbody td {
+      padding-inline: 10px;
+    }
+    .out.lb thead th.n {
+      padding-right: calc(10px - 0.1em);
+    }
+    .out.lb thead th:first-child,
+    .out.lb tbody td:first-child {
+      padding-inline: 8px 6px;
+    }
+  }
+
+  /* Your seat, pinned above the leaderboard: where you stand by the current
+     sort, and a door straight to your row. */
+  .you-pin {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    min-height: 46px;
+    margin-bottom: 16px;
+    padding: 5px 12px 5px 8px;
+    border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--c) 9%, var(--color-arc-panel));
+    color: var(--color-arc-ink);
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: var(--shadow-hard-sm);
+    transition: border-color 0.15s;
+  }
+  .you-pin:hover {
+    border-color: var(--c);
+  }
+  .you-pin .label {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    color: var(--c);
+    line-height: 1.2;
+  }
+  .you-pin-line {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .you-pin-line b {
+    font-weight: 700;
+  }
+  .you-pin-go {
+    margin-left: 4px;
+    padding-left: 10px;
+    border-left: 1px solid var(--color-arc-line);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-arc-ink-soft);
+    white-space: nowrap;
+  }
+  /* The row answers the pin: two quick blinks, then still. */
+  @keyframes row-ping {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    22% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+    72% {
+      opacity: 0.45;
+    }
+  }
+  .row-ping {
+    animation: row-ping 0.9s ease both;
+  }
 }
 
+/* Reduced motion is honoured unless the user flips the in-app FX switch,
+   which stamps data-motion="on" on the root. Everything above that moves is
+   listed here; the same information stays on screen, still. */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .tables-placeholder-never-matches {
+  :root:not([data-motion='on']) .scrub-in,
+  :root:not([data-motion='on']) .row-ping {
     animation: none !important;
+  }
+  :root:not([data-motion='on']) .scrub-tint,
+  :root:not([data-motion='on']) .scrub-year,
+  :root:not([data-motion='on']) .scrub-reel,
+  :root:not([data-motion='on']) .scrub-arrow,
+  :root:not([data-motion='on']) .scrub-tick i,
+  :root:not([data-motion='on']) .scrub-chip,
+  :root:not([data-motion='on']) .out.final tbody tr,
+  :root:not([data-motion='on']) .sorter,
+  :root:not([data-motion='on']) .sorter-arrow,
+  :root:not([data-motion='on']) .you-pin {
+    transition: none !important;
   }
 }
