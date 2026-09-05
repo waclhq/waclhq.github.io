@@ -810,8 +810,12 @@
   .marquee {
     animation: marquee var(--marquee-duration, 60s) linear infinite;
   }
-  .marquee-host:hover .marquee {
+  .marquee-host:hover .marquee,
+  .marquee-host[data-paused] .marquee {
     animation-play-state: paused;
+  }
+  .marquee-host {
+    cursor: pointer;
   }
 
   @keyframes grow-x {
@@ -1833,6 +1837,13 @@
       max-width: 100%;
     }
     :root:not([data-motion='on']) .win::after {
+      display: none;
+    }
+    /* A still tape is a scrollable strip, with the looping duplicate hidden. */
+    :root:not([data-motion='on']) .marquee-host {
+      overflow-x: auto;
+    }
+    :root:not([data-motion='on']) .marquee > [aria-hidden='true'] {
       display: none;
     }
     :root:not([data-motion='on'])::view-transition-group(*),

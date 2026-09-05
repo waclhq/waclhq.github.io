@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom'
 import { useLeague } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { setMe, useMe } from '../lib/me'
+import { useDialog } from '../lib/dialog'
 import type { Manager } from '../lib/types'
 import PixelMugshot from './PixelMugshot'
 import { usePendingTrades } from '../lib/derive'
@@ -397,7 +398,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const closeMenu = () => {
+  const closeMenu = useCallback(() => {
     if (animationsDisabled()) {
       setMenuOpen(false)
       return
@@ -407,7 +408,9 @@ export default function Shell({ children }: { children: ReactNode }) {
       setMenuOpen(false)
       setMenuClosing(false)
     }, 230)
-  }
+  }, [])
+  const sheetRef = useRef<HTMLDivElement>(null)
+  useDialog(sheetRef, closeMenu, { active: menuOpen })
 
   // The room keeps stadium hours: daytime graphite, warmer at dusk, and the
   // low-lit book after 11pm. Re-stamped every ten minutes so a long session
@@ -551,6 +554,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           its own colour with a one-line scent. */}
       {menuOpen && (
         <div
+          ref={sheetRef}
           className={`menu-scrim fixed inset-0 z-50 flex flex-col justify-end bg-arc-bg-deep/80 backdrop-blur-sm lg:hidden ${
             menuClosing ? 'menu-leaving' : ''
           }`}

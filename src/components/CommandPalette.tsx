@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLeagueData } from '../lib/data'
 import { buildResults, type ResultKind } from '../lib/search'
+import { useDialog } from '../lib/dialog'
 
 const KIND_LABEL: Record<ResultKind, string> = {
   page: 'go',
@@ -28,6 +29,8 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const host = useRef<HTMLDivElement>(null)
+  useDialog(host, onClose, { initialFocus: inputRef })
 
   const results = useMemo(() => buildResults(data, query), [data, query])
 
@@ -66,6 +69,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      ref={host}
       className="fixed inset-0 z-[80] flex items-start justify-center bg-arc-bg-deep/85 px-3 pt-[8vh] backdrop-blur-sm sm:px-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()

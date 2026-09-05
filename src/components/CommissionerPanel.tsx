@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDialog } from '../lib/dialog'
 import { useNavigate } from 'react-router-dom'
 import { clearOverlay, useLeague } from '../lib/data'
 import {
@@ -38,6 +39,8 @@ export default function CommissionerPanel({ onClose }: { onClose: () => void }) 
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const host = useRef<HTMLDivElement>(null)
+  useDialog(host, onClose)
 
   const finish = (message: string) => {
     setStatus(message)
@@ -215,6 +218,7 @@ export default function CommissionerPanel({ onClose }: { onClose: () => void }) 
 
   return (
     <div
+      ref={host}
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-arc-bg-deep/85 p-4 backdrop-blur-sm sm:p-8"
       role="dialog"
       aria-modal="true"
