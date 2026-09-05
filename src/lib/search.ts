@@ -129,7 +129,12 @@ function fuzzyScore(query: string, target: string): number | null {
 
   const direct = t.indexOf(q)
   if (direct === 0) return 0
-  if (direct > 0) return 1 + direct * 0.01
+  // A hit that starts a word beats one buried inside another: typing "lab"
+  // should find The Lab before it finds the draft BOARD.
+  if (direct > 0) {
+    const startsWord = t[direct - 1] === ' ' || t[direct - 1] === '-'
+    return (startsWord ? 0.5 : 3) + direct * 0.01
+  }
 
   let index = 0
   let score = 0

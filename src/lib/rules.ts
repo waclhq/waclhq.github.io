@@ -1,3 +1,4 @@
+import { money } from './format'
 import type {
   ContractYear,
   FaabEntry,
@@ -170,9 +171,9 @@ export function effectiveKeeperCost(
   if (auctionCost !== null && fromWaiver !== null) {
     return auctionCost >= fromWaiver
       ? { cost: auctionCost, basis: 'Auction value (greater of the two)' }
-      : { cost: fromWaiver, basis: `Waiver scale on $${waiverBid} bid (greater of the two)` }
+      : { cost: fromWaiver, basis: `Waiver scale on ${money(waiverBid)} bid (greater of the two)` }
   }
-  if (fromWaiver !== null) return { cost: fromWaiver, basis: `Waiver scale on $${waiverBid} bid` }
+  if (fromWaiver !== null) return { cost: fromWaiver, basis: `Waiver scale on ${money(waiverBid)} bid` }
   if (auctionCost !== null) return { cost: auctionCost, basis: 'Auction draft value' }
   return { cost: 5, basis: 'Undrafted free agent — flat $5' }
 }
@@ -239,13 +240,13 @@ export function antiDumpingCheck(trade: Pick<Trade, 'obligations'>): AntiDumping
     return {
       triggered: true,
       firstYearAmount: first.amount,
-      summary: `$${first.amount} in ${first.year} is below the $10 trigger — market check available.`,
+      summary: `${money(first.amount)} in ${first.year} is below the ${money(10)} trigger — market check available.`,
     }
   }
   return {
     triggered: false,
     firstYearAmount: first.amount,
-    summary: `$${first.amount} in ${first.year} clears the $10 trigger.`,
+    summary: `${money(first.amount)} in ${first.year} clears the ${money(10)} trigger.`,
   }
 }
 
@@ -308,7 +309,7 @@ export function validateTrade(
       if (after < 0) {
         issues.push({
           level: 'warning',
-          message: `Buyer would sit at −$${Math.abs(after)} for the ${first.year} draft.`,
+          message: `Buyer would sit at ${money(after)} for the ${first.year} draft.`,
         })
       }
     }

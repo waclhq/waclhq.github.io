@@ -283,7 +283,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <button
         type="button"
         onClick={toggleMusic}
-        className={compact ? 'btn min-h-[36px] px-2.5 py-1' : 'btn shrink-0 px-3'}
+        className={compact ? 'btn min-h-[40px] px-2.5 py-1' : 'btn shrink-0 px-3'}
         style={
           music
             ? { background: 'var(--color-arc-pink)', borderColor: 'var(--color-arc-pink)', color: '#1a0512' }
@@ -572,7 +572,11 @@ export default function Shell({ children }: { children: ReactNode }) {
         style={{ viewTransitionName: 'chrome-top' }}
       >
         <div className="flex min-w-0 items-center gap-3" onClick={onLogoTap}>
-          <Link to="/" className="relative -my-1 shrink-0" aria-label="Ledger">
+          <Link
+            to="/"
+            className="relative -my-1 grid min-h-[40px] min-w-[40px] shrink-0 place-items-center"
+            aria-label="Ledger"
+          >
             <Crest size={38} glow={false} />
           </Link>
           <span className="arcade truncate text-[12px] text-arc-ink-soft">
@@ -584,7 +588,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="btn min-h-[36px] px-2.5 py-1"
+            className="btn min-h-[40px] px-2.5 py-1"
             aria-label="Search"
           >
             Find
@@ -760,7 +764,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                     style={{ background: isActive ? item.color : 'transparent' }}
                   />
                   <span
-                    className="arcade truncate text-[10px] tracking-[0.08em] uppercase"
+                    className="arcade truncate text-[11px] tracking-[0.08em] uppercase"
                     style={{ color: isActive ? item.color : 'var(--color-arc-ink-soft)' }}
                   >
                     {item.label === 'The Book' ? 'Book' : item.label}
@@ -778,7 +782,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           aria-label="All pages"
         >
           <span className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1">
-            <span className="arcade text-[10px] tracking-[0.08em] text-arc-ink-soft uppercase">
+            <span className="arcade text-[11px] tracking-[0.08em] text-arc-ink-soft uppercase">
               More
             </span>
             {pending.length > 0 && (
@@ -804,7 +808,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             </Link>
             <Sparkles count={5} />
           </div>
-          <div className="arcade mt-2 text-[10px] text-arc-yellow">EST. 2004</div>
+          <div className="arcade mt-2 text-[11px] text-arc-yellow">EST. 2004</div>
         </div>
 
         <div className="mx-3 mt-3 flex gap-2">

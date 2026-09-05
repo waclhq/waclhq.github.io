@@ -20,7 +20,7 @@ import { money, num, pct, record } from '../lib/format'
 import { managerColor } from '../lib/identity'
 import { useMe } from '../lib/me'
 import { playerSlugOf } from '../lib/profile-player'
-import { storyLine, tablePosition, titleYears } from '../lib/profile-story'
+import { careerOrder, storyLine, tablePosition, titleYears } from '../lib/profile-story'
 import { bookCareerTable, eraOptions, managerSeasons, rollingWinPct } from '../lib/stats'
 
 export default function ManagerDetail() {
@@ -68,11 +68,14 @@ export default function ManagerDetail() {
 
   // ---- wayfinding: prev / next follow the career table ----
   const position = tablePosition(table, id)
+  // The same order the Managers list uses, so "3 of 16" and the arrows agree
+  // with the page you came from.
+  const order = careerOrder(table)
   const nameOf = (who: string) => managers.find((m) => m.id === who)?.displayName ?? who
   const neighbour = (offset: number): Neighbour | null => {
-    if (position.index < 0 || table.length < 2) return null
-    const at = (position.index + offset + table.length) % table.length
-    const who = table[at].manager
+    if (position.index < 0 || order.length < 2) return null
+    const at = (position.index + offset + order.length) % order.length
+    const who = order[at].manager
     return { id: who, name: nameOf(who) }
   }
   const prev = neighbour(-1)

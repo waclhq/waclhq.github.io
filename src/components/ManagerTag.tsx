@@ -34,8 +34,9 @@ export default function ManagerTag({
           width: size,
           height: size,
           // Two initials should fill their tile, not float in it: at a third
-          // of the badge they read as specks on a phone.
-          fontSize: Math.max(9, Math.round(size * 0.42)),
+          // of the badge they read as specks on a phone. Eleven pixels is the
+          // site's floor for type a person is meant to read.
+          fontSize: Math.max(11, Math.round(size * 0.42)),
         }}
         aria-hidden
       >
@@ -47,7 +48,13 @@ export default function ManagerTag({
 
   if (!link || !id) return inner
   return (
-    <Link to={`/managers/${id}`} className="inline-flex min-w-0 hover:underline">
+    <Link
+      to={`/managers/${id}`}
+      // A name in a table is a door, and a door needs a thumb's worth of
+      // height. The negative margin gives the band back to the row, so
+      // nothing moves; the row is taller than 40px nearly everywhere.
+      className="my-[-7px] inline-flex min-h-[40px] min-w-0 items-center hover:underline"
+    >
       {inner}
     </Link>
   )

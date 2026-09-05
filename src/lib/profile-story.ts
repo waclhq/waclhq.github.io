@@ -169,6 +169,19 @@ export function storyLine({ id, career, table, seasons, book, luck, active = tru
 }
 
 /** Position in the career table, for "3rd of 16" wayfinding. */
+/**
+ * The order the league is listed in — titles, then win percentage, then wins,
+ * exactly as /managers ranks it by default. The profile's "3 of 16" and its
+ * prev/next arrows walk this order, so stepping through the league from a
+ * profile matches the list you stepped in from.
+ */
+export function careerOrder(table: CareerLine[]): CareerLine[] {
+  return [...table].sort(
+    (a, b) => b.titles - a.titles || b.winPct - a.winPct || b.wins - a.wins,
+  )
+}
+
 export function tablePosition(table: CareerLine[], id: ManagerId): { index: number; total: number } {
-  return { index: table.findIndex((line) => line.manager === id), total: table.length }
+  const order = careerOrder(table)
+  return { index: order.findIndex((line) => line.manager === id), total: order.length }
 }

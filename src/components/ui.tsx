@@ -112,7 +112,9 @@ function ScrollHint({ children, className = '' }: { children: ReactNode; classNa
           {!touched && (
             <span
               aria-hidden
-              className="arcade pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full border border-arc-line bg-arc-bg-deep/90 px-2 py-0.5 text-[10px] text-arc-ink-soft"
+              // Pinned to the top edge rather than the middle: sitting on the
+              // vertical centre it covered a value in whichever row it landed.
+              className="arcade pointer-events-none absolute top-1 right-1.5 rounded-full border border-arc-line bg-arc-bg-deep/90 px-2 py-0.5 text-[10.5px] text-arc-ink-soft"
             >
               swipe ›
             </span>
@@ -376,7 +378,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(option.id)}
             aria-pressed={value === option.id}
-            className={`arcade min-h-[38px] px-3 py-1 text-[11px] whitespace-nowrap transition-colors ${
+            className={`arcade min-h-[40px] min-w-[40px] px-3 py-1 text-[11px] whitespace-nowrap transition-colors ${
               value === option.id
                 ? 'bg-arc-blue text-arc-panel'
                 : 'bg-arc-panel text-arc-ink hover:bg-arc-yellow hover:text-arc-bg'
@@ -490,8 +492,12 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) seen.set(entry.target.id, entry.isIntersecting)
-        const current = sections.find((section) => seen.get(section.id))
-        if (current) setActive(current.id)
+        // The last section that is on screen, not the first: reading down a
+        // page, the chip should follow you. Picking the first intersecting
+        // one left the rail stuck on an early section whose panel is tall
+        // enough to stay in view forever.
+        const showing = sections.filter((section) => seen.get(section.id))
+        if (showing.length) setActive(showing[showing.length - 1].id)
       },
       { rootMargin: '-120px 0px -55% 0px' },
     )
@@ -521,7 +527,7 @@ export function SectionNav({ sections }: { sections: { id: string; label: string
               })
               window.history.replaceState(null, '', linkTo(section.id))
             }}
-            className={`arcade inline-flex min-h-[36px] shrink-0 items-center rounded-full border px-3.5 text-[11px] whitespace-nowrap transition-colors ${
+            className={`arcade inline-flex min-h-[40px] shrink-0 items-center rounded-full border px-3.5 text-[11px] whitespace-nowrap transition-colors ${
               active === section.id
                 ? 'border-arc-green bg-arc-green text-[#06210a]'
                 : 'border-arc-line bg-arc-panel text-arc-ink-soft hover:border-arc-ink-faint hover:text-arc-ink'
