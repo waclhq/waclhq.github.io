@@ -1,4 +1,4 @@
-import type { ManagerId, Season, TeamSeason } from './types'
+import type { CareerAverages, ManagerId, Season, TeamSeason } from './types'
 
 export const KEEPER_ERA_START = 2014
 
@@ -138,6 +138,51 @@ export function careerTable(seasons: Season[], era: EraFilter): CareerLine[] {
   }
 
   return [...lines.values()].sort((a, b) => b.winPct - a.winPct)
+}
+
+/**
+ * The career table as the record book prints it.
+ *
+ * For the two book eras (All-Time and Keeper Era) the workbook's career
+ * scoring averages come from an adjusted matrix — 2004–2006 are re-scored
+ * for era inflation — that no season-level arithmetic can reproduce, and
+ * CLAUDE.md rule 2 says the book wins. This overlays those figures, and the
+ * best/worst season they imply, onto the computed table so every page prints
+ * one number per manager. Other eras (Last 5, Last 3) have no book column
+ * and fall through to the computed table unchanged.
+ */
+export function bookCareerTable(
+  seasons: Season[],
+  era: EraFilter,
+  book: CareerAverages | null | undefined,
+): CareerLine[] {
+  const table = careerTable(seasons, era)
+  const overlay = era.id === 'all' ? book?.allTime : era.id === 'keeper' ? book?.keeperEra : undefined
+  if (!overlay) return table
+  return table.map((line) => {
+    const averages = overlay[line.manager]
+    if (!averages) return line
+    let bestSeason = line.bestSeason
+    let worstSeason = line.worstSeason
+    const years = book?.seasons?.[line.manager]
+    if (years) {
+      bestSeason = null
+      worstSeason = null
+      for (const [year, values] of Object.entries(years)) {
+        if (values.pointsFor === undefined || !inEra(Number(year), era)) continue
+        const point = { year: Number(year), avg: values.pointsFor }
+        if (!bestSeason || point.avg > bestSeason.avg) bestSeason = point
+        if (!worstSeason || point.avg < worstSeason.avg) worstSeason = point
+      }
+    }
+    return {
+      ...line,
+      avgPointsFor: averages.pointsFor,
+      avgPointsAgainst: averages.pointsAgainst,
+      bestSeason,
+      worstSeason,
+    }
+  })
 }
 
 export interface SeasonExtreme {
