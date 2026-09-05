@@ -20,7 +20,9 @@ export default function Standings() {
   const { seasons, managers } = useLeagueData()
   const me = useMe()
   const latest = seasons[0]?.year ?? 0
-  const [param, setParam] = useUrlParam('season')
+  const [param, setParam] = useUrlParam('season', (value) =>
+    seasons.some((candidate) => candidate.year === Number(value)),
+  )
   const season = seasons.find((candidate) => candidate.year === Number(param)) ?? seasons[0]
   const year = season.year
   const setYear = (next: number) => setParam(next === latest ? null : String(next))
@@ -79,7 +81,7 @@ export default function Standings() {
                 </th>
                 <th className="n hidden md:table-cell">Win %</th>
                 <th className="n hidden md:table-cell">PF</th>
-                <th className="n hidden lg:table-cell">PA</th>
+                <th className="n hidden xl:table-cell">PA</th>
               </tr>
             </thead>
             <tbody ref={body}>
@@ -156,7 +158,7 @@ export default function Standings() {
                     <td className="n hidden text-arc-ink-soft md:table-cell">
                       {team ? num(team.pointsFor, 0) : '—'}
                     </td>
-                    <td className="n hidden text-arc-ink-faint lg:table-cell">
+                    <td className="n hidden text-arc-ink-faint xl:table-cell">
                       {team ? num(team.pointsAgainst, 0) : '—'}
                     </td>
                   </tr>

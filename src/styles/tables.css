@@ -153,6 +153,10 @@
     line-height: 1;
     letter-spacing: 0.015em;
     padding-right: 0.1em;
+    /* A 40px band for a thumb. The negative margin gives the padding back to
+       the line, so the caption's baseline and height do not move. */
+    padding-block: 6px;
+    margin-block: -6px;
     text-decoration: none;
   }
   .scrub-champ:hover {
@@ -394,6 +398,21 @@
   }
   .scrub-chip[aria-current] .scrub-chip-year {
     color: var(--color-arc-ink);
+  }
+
+  /* ---- rows are doors --------------------------------------------------
+     A name in a row opens that manager's page, and the badge and name it is
+     made of stand 26px tall. The overlay hands a thumb the 40px band the row
+     already has, without touching the grid the table computed. */
+  .out.lb tbody a,
+  .out.final tbody a {
+    position: relative;
+  }
+  .out.lb tbody a::after,
+  .out.final tbody a::after {
+    content: '';
+    position: absolute;
+    inset: -7px 0;
   }
 
   /* ---- the final table ------------------------------------------------- */
