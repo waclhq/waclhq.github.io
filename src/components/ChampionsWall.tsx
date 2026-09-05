@@ -1,78 +1,105 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ManagerTag from './ManagerTag'
 import { managerName, useLeagueData } from '../lib/data'
-import { managerColor, managerInitials } from '../lib/identity'
-import { Confetti, PixelPlayer } from './effects'
+import { managerColor } from '../lib/identity'
+import { titleLedger } from '../lib/rafters-history'
 
 /**
- * High-score table. Twenty-two title seasons, each tagged with which title it
- * was for that manager, so a dynasty reads as a run rather than a list.
+ * The wall of champions, in the book's own table idiom: year, champion, who
+ * they beat, and which title it was for them — so a dynasty reads as a run
+ * (TITLE 4) rather than a list. The year is a door into the rafters.
+ *
+ * Shows the recent run by default with the full wall one tap away, so on a
+ * phone the panel is a table, not a scroll trap.
  */
-export default function ChampionsWall() {
+export default function ChampionsWall({ limit }: { limit?: number }) {
   const { seasons, managers } = useLeagueData()
+  const [all, setAll] = useState(false)
+  // Beside the trade flow on a wide screen the panel has room for a decade;
+  // on a phone six rows keep the page scrolling as one surface.
+  const [shownByDefault] = useState(() => {
+    if (limit !== undefined) return limit
+    try {
+      return window.matchMedia('(min-width: 1024px)').matches ? 11 : 6
+    } catch {
+      return 6
+    }
+  })
 
-  const rows = useMemo(() => {
-    const running = new Map<string, number>()
-    return [...seasons]
-      .sort((a, b) => a.year - b.year)
-      .map((season) => {
-        const count = (running.get(season.champion) ?? 0) + 1
-        running.set(season.champion, count)
-        return { season, nth: count }
-      })
-      .reverse()
-  }, [seasons])
+  const rows = useMemo(() => [...titleLedger(seasons)].reverse(), [seasons])
+  const shown = all ? rows : rows.slice(0, shownByDefault)
 
   return (
-    <div className="p-3">
-      {rows.map(({ season, nth }, index) => {
-        const manager = managers.find((candidate) => candidate.id === season.champion)
-        const color = managerColor(season.champion)
-        return (
-          <Link
-            key={season.year}
-            to={`/managers/${season.champion}`}
-            className="hover-wiggle relative mb-2 flex items-center gap-3 overflow-hidden border-[3px] border-arc-line bg-arc-panel px-3 py-2 no-underline shadow-hard-sm last:mb-0"
-          >
-            {index === 0 && <Confetti />}
-            <span className="arcade w-11 shrink-0 text-[11px] text-arc-ink-soft">
-              {season.year}
-            </span>
-            <span
-              className="badge"
-              style={{ background: color, width: 30, height: 30, fontSize: 10 }}
-              aria-hidden
-            >
-              {managerInitials(manager, season.champion)}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="arcade block truncate text-[12px]" style={{ color }}>
-                {managerName(managers, season.champion)}
-              </span>
-              <span className="block truncate text-[13px] text-arc-ink-soft">
-                beat {managerName(managers, season.runnerUp)}
-              </span>
-            </span>
-            {nth > 1 && (
-              <span
-                className="arcade shrink-0 border-2 border-arc-line px-1.5 py-1 text-[8px]"
-                style={{ background: 'var(--color-arc-yellow)' }}
-                title={`Title number ${nth} for this manager`}
+    <div>
+      <table className="out">
+        <thead>
+          <tr>
+            <th className="n">Year</th>
+            <th>Champion</th>
+            <th className="hidden sm:table-cell">Final</th>
+            <th className="n">Title</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((row, index) => {
+            const color = managerColor(row.champion)
+            return (
+              <tr
+                key={row.year}
+                className={index === 0 ? 'lead' : undefined}
+                style={
+                  index === 0
+                    ? {
+                        backgroundImage: `linear-gradient(90deg, color-mix(in srgb, ${color} 10%, transparent), transparent 60%)`,
+                        boxShadow: `inset 2px 0 0 ${color}`,
+                      }
+                    : undefined
+                }
               >
-                ×{nth}
-              </span>
-            )}
-            <span
-              className="glint flex shrink-0 items-center gap-1"
-              style={{ ['--glint-delay' as string]: `${(index % 6) * 1.4}s` }}
-              aria-hidden
-            >
-              {index === 0 && <PixelPlayer size={28} color={color} />}
-              <span className="text-[16px]">{index === 0 ? '👑' : '🏆'}</span>
-            </span>
-          </Link>
-        )
-      })}
+                <td className="n">
+                  <Link
+                    to={`/almanac?year=${row.year}`}
+                    className="tnum text-arc-ink-faint transition-colors hover:text-arc-green"
+                    title={`Read the ${row.year} season`}
+                  >
+                    {row.year}
+                  </Link>
+                </td>
+                <td>
+                  <ManagerTag id={row.champion} size={24} />
+                </td>
+                <td className="hidden text-arc-ink-soft sm:table-cell">
+                  beat {managerName(managers, row.runnerUp)}
+                </td>
+                <td className="n">
+                  {row.nth > 1 ? (
+                    <span
+                      className="tag"
+                      style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-bg)' }}
+                      title={`Title number ${row.nth} for this manager`}
+                    >
+                      Title {row.nth}
+                    </span>
+                  ) : (
+                    <span className="text-[12px] text-arc-ink-faint">first</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {rows.length > shownByDefault && (
+        <button
+          type="button"
+          className="block min-h-[44px] w-full border-t border-arc-line px-4 py-2.5 text-left text-[12px] tracking-[0.08em] text-arc-ink-faint uppercase transition-colors hover:text-arc-green"
+          onClick={() => setAll((current) => !current)}
+          aria-expanded={all}
+        >
+          {all ? '− Recent champions only' : `+ All ${rows.length} seasons`}
+        </button>
+      )}
     </div>
   )
 }
