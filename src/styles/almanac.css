@@ -360,7 +360,7 @@
     background: var(--color-arc-bg-deep);
   }
   .race-seg button {
-    min-height: 36px;
+    min-height: 40px;
     padding: 0 12px;
     border: 0;
     border-radius: 6px;
@@ -636,6 +636,12 @@
     color: var(--color-arc-ink-faint);
   }
 
+  .race-lead {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
   .race-table {
     min-width: 0;
     overflow-x: auto;
@@ -756,6 +762,89 @@
     text-decoration-color: currentColor;
   }
 
+  /* The champion's engine room: one player a line, name left, production
+     right. The type stays small — the row is what a thumb aims at, and the
+     rows are a full 40px apart so no two hit areas overlap. */
+  .fold-stars {
+    border-top: 1px solid var(--color-arc-line);
+  }
+  .fold-star {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 40px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--color-arc-line);
+    font-size: 11.5px;
+    line-height: 1.2;
+  }
+  .fold-star-line {
+    color: var(--color-arc-ink-faint);
+    white-space: nowrap;
+  }
+  .fold-star:hover .inline-player {
+    color: var(--color-arc-green);
+    text-decoration-color: currentColor;
+  }
+
+  /* Second, third and the season's top scorer. Each item owns a 40px band so
+     the manager links are tappable and a wrapped line never lands on top of
+     the one above it. */
+  .fold-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    column-gap: 20px;
+    font-size: 12px;
+    color: var(--color-arc-ink-faint);
+  }
+  .fold-meta > * {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+  }
+  .fold-meta .inline-manager {
+    display: inline-flex;
+    align-self: stretch;
+    align-items: center;
+    padding-inline: 6px;
+    margin-inline: -6px;
+  }
+
+  /* A manager tag in these tables is a door as well as a label: the badge and
+     the name keep their size, the link band fills the row it sits in. */
+  .fold-champ a,
+  .race-champ a,
+  .race-out tbody td a,
+  .champ-wall tbody td a:not(.champ-year) {
+    align-items: center;
+    min-height: 40px;
+  }
+  .race-out tbody td a,
+  .champ-wall tbody td a:not(.champ-year) {
+    margin-block: -7px;
+  }
+
+  /* ---- the wall of champions ------------------------------------------- */
+  /* The year is the door into the almanac. The digits keep their place in the
+     numeric column; the hit area quietly fills the row around them. */
+  .champ-year {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 40px;
+    margin: -8px -6px;
+    padding: 0 6px;
+    color: var(--color-arc-ink-faint);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.15s;
+  }
+  .champ-year:hover {
+    color: var(--color-arc-green);
+  }
+
   /* ---- keyframes ------------------------------------------------------- */
   /* Banners unfurl from the beam on first paint, one after another. */
   @keyframes banner-unfurl {
@@ -846,6 +935,7 @@
   :root:not([data-motion='on']) .race-seg button,
   :root:not([data-motion='on']) .race-swatch,
   :root:not([data-motion='on']) .fold-jump,
+  :root:not([data-motion='on']) .champ-year,
   :root:not([data-motion='on']) .rail-nudge {
     transition: none !important;
   }

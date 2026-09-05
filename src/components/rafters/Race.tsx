@@ -7,9 +7,9 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from 'react'
-import ManagerTag from '../ManagerTag'
+import ManagerTag, { ManagerSwatch } from '../ManagerTag'
 import { useFlipList } from '../ui'
-import { useLeagueData } from '../../lib/data'
+import { managerName, useLeagueData } from '../../lib/data'
 import { num } from '../../lib/format'
 import { managerColor } from '../../lib/identity'
 import { animationsDisabled } from '../../lib/motion'
@@ -35,7 +35,7 @@ const SECOND = 1000
  * reduced motion it is a year selector over the same table.
  */
 export default function Race({ verdicts }: { verdicts: Map<number, string> }) {
-  const { seasons } = useLeagueData()
+  const { seasons, managers } = useLeagueData()
   const still = useMemo(() => animationsDisabled(), [])
   const [metric, setMetric] = useState<RaceMetric>('titles')
   const frames = useMemo(() => raceFrames(seasons, metric), [seasons, metric])
@@ -320,8 +320,13 @@ export default function Race({ verdicts }: { verdicts: Map<number, string> }) {
               return (
                 <>
                   Leads after {frame.year}:{' '}
-                  <span className="text-arc-ink">
-                    <ManagerTag id={leader.manager} size={16} />
+                  {/* A legend, not a door — the table below is where the
+                      leader is tappable, so the caption reads as a caption. */}
+                  <span className="race-lead">
+                    <ManagerSwatch id={leader.manager} />
+                    <span className="text-arc-ink">
+                      {managerName(managers, leader.manager)}
+                    </span>
                   </span>{' '}
                   with {lead}
                   {tied > 1 ? `, tied ${tied} ways` : ''}.
@@ -361,7 +366,7 @@ export default function Race({ verdicts }: { verdicts: Map<number, string> }) {
                     <td className={`n w-8 ${podium ?? 'text-arc-ink-faint'}`}>{index + 1}</td>
                     <td>
                       <span className="inline-flex min-w-0 items-center gap-2">
-                        <ManagerTag id={row.manager} size={22} />
+                        <ManagerTag id={row.manager} size={26} />
                         {row.champion && <span className="race-champ-pip">Champ</span>}
                       </span>
                     </td>
