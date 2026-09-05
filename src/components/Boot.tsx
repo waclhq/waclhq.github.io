@@ -7,11 +7,27 @@ import { play } from '../lib/sfx'
 
 /**
  * Title screen: King of the Heap. Eleven players brawl onto a dogpile and the
- * reigning champion climbs it to hoist the trophy. Plays once per browser
- * session (the tenth open of the evening lands straight on the desk),
- * skippable by tap or any key, absent entirely when animations are off.
+ * reigning champion climbs it to hoist the trophy. Skippable by tap or any
+ * key, absent entirely when animations are off — and rationed, because five
+ * and a half seconds is a ceremony on arrival and a toll on return.
+ *
+ * The ration is kept in localStorage rather than per session: iOS discards a
+ * home-screen app the moment it needs the memory, so every launch from the
+ * icon was a brand new session and the desk was five seconds away every time.
+ * An installed app should open like an app, so it gets the title screen once
+ * a day; a browser visit, which is more often someone's first look at the
+ * league, gets it once every six hours.
  */
-const BOOTED_KEY = 'wacl.booted'
+const BOOTED_KEY = 'wacl.bootedAt'
+const HOURS = 3_600_000
+
+function installed(): boolean {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches || 'standalone' in navigator
+  } catch {
+    return false
+  }
+}
 export default function Boot({
   onDone,
   championColor,
@@ -24,7 +40,7 @@ export default function Boot({
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(BOOTED_KEY, '1')
+      localStorage.setItem(BOOTED_KEY, String(Date.now()))
     } catch {
       /* private browsing: it will simply play again next load */
     }
@@ -107,7 +123,8 @@ export default function Boot({
 export function shouldBoot(): boolean {
   try {
     if (animationsDisabled()) return false
-    return !sessionStorage.getItem(BOOTED_KEY)
+    const last = Number(localStorage.getItem(BOOTED_KEY) ?? 0)
+    return Date.now() - last > (installed() ? 24 : 6) * HOURS
   } catch {
     return false
   }

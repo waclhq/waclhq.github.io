@@ -36,7 +36,7 @@ float n(vec2 p){
 }
 float fbm(vec2 p){
   float v = 0.0, a = 0.5;
-  for (int k = 0; k < 5; k++) { v += a * n(p); p = p * 2.03 + 7.7; a *= 0.5; }
+  for (int k = 0; k < OCTAVES; k++) { v += a * n(p); p = p * 2.03 + 7.7; a *= 0.5; }
   return v;
 }
 void main(){
@@ -79,13 +79,14 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`
 
-/** Render scale — caustics are soft; 2/3 on desktop, half on phones. The
- *  governor below can halve it again on a device that cannot keep up. */
-const BASE_SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.5 : 0.66
+/** Render scale — caustics are soft; 2/3 on desktop, less than half on a
+ *  phone. The governor below can cut it again on a device that cannot keep
+ *  up, and retire the shader entirely if that is still not enough. */
+const BASE_SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.42 : 0.66
 /** Sustained frame interval that means the room is costing more than it is
- *  worth: ~24fps. Two strikes and the shader gives way to the CSS aurora. */
-const STRUGGLING_MS = 42
-const PATIENCE = 90
+ *  worth: ~26fps. Two strikes and the shader gives way to the CSS aurora. */
+const STRUGGLING_MS = 38
+const PATIENCE = 60
 /**
  * The glass moves slowly; 30 frames a second is indistinguishable and halves
  * the GPU bill. The margin matters: on a device already delivering frames at
@@ -95,6 +96,15 @@ const PATIENCE = 90
  */
 const FRAME_MS = 1000 / 30
 const FRAME_SLACK = 6
+
+/**
+ * Octaves are where the whole shader's cost lives: each one is another noise
+ * sample per pixel, three times over for the domain warp. Five gives the
+ * glass its finest filigree on a desktop; three is indistinguishable at arm's
+ * length on a phone and costs a little over half as much.
+ */
+const PHONE = typeof window !== 'undefined' && window.innerWidth < 700
+const OCTAVES = PHONE ? 3 : 5
 
 export default function Backdrop({ enabled }: { enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -108,6 +118,7 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
     if (!canvas) return
 
     let raf = 0
+    let scrollStandDown: () => void = () => undefined
     // A phone under memory pressure takes the GL context away mid-scroll and
     // the room simply freezes. Ask to keep the canvas (preventDefault), stop
     // drawing into a dead context, and rebuild when it comes back.
@@ -121,7 +132,7 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
     canvas.addEventListener('webglcontextrestored', onRestored)
 
     try {
-      const gl = canvas.getContext('webgl', { antialias: false })
+      const gl = canvas.getContext('webgl', { antialias: false, powerPreference: 'low-power' })
       if (!gl) throw new Error('WebGL unavailable')
 
       const compile = (type: number, source: string) => {
@@ -135,7 +146,7 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       }
       const program = gl.createProgram()!
       gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT))
-      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG))
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, `#define OCTAVES ${OCTAVES}\n${FRAG}`))
       gl.linkProgram(program)
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         throw new Error(gl.getProgramInfoLog(program) ?? 'link failed')
@@ -172,6 +183,17 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
         } else me = null
       }
 
+      // A flick is the one moment a phone has nothing to spare, and a room
+      // that holds still for the length of a scroll is a room nobody notices
+      // holding still. The shader stands down while the page moves and comes
+      // back a beat after it stops.
+      let scrollingUntil = 0
+      scrollStandDown = () => {
+        scrollingUntil = performance.now() + 140
+      }
+      window.addEventListener('scroll', scrollStandDown, { passive: true })
+      window.addEventListener('touchmove', scrollStandDown, { passive: true })
+
       let lastDraw = 0
       let lastFrame = 0
       let cadence = 16.7
@@ -189,6 +211,12 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
         const gap = lastFrame ? time - lastFrame : 0
         lastFrame = time
         if (gap > 200) {
+          judged = 0
+          return
+        }
+        // Scrolling frames are the page's, not ours — and they must not count
+        // against the room in the governor either.
+        if (time < scrollingUntil) {
           judged = 0
           return
         }
@@ -241,6 +269,8 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       cancelAnimationFrame(raf)
       canvas.removeEventListener('webglcontextlost', onLost)
       canvas.removeEventListener('webglcontextrestored', onRestored)
+      window.removeEventListener('scroll', scrollStandDown)
+      window.removeEventListener('touchmove', scrollStandDown)
     }
   }, [enabled, generation])
 
