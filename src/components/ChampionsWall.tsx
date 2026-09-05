@@ -31,7 +31,7 @@ export default function ChampionsWall({ limit }: { limit?: number }) {
   const shown = all ? rows : rows.slice(0, shownByDefault)
 
   return (
-    <div>
+    <div className="champ-wall">
       <table className="out">
         <thead>
           <tr>
@@ -60,14 +60,14 @@ export default function ChampionsWall({ limit }: { limit?: number }) {
                 <td className="n">
                   <Link
                     to={`/almanac?year=${row.year}`}
-                    className="tnum text-arc-ink-faint transition-colors hover:text-arc-green"
+                    className="champ-year"
                     title={`Read the ${row.year} season`}
                   >
                     {row.year}
                   </Link>
                 </td>
                 <td>
-                  <ManagerTag id={row.champion} size={24} />
+                  <ManagerTag id={row.champion} size={26} />
                 </td>
                 <td className="hidden text-arc-ink-soft sm:table-cell">
                   beat {managerName(managers, row.runnerUp)}

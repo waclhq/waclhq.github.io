@@ -265,7 +265,7 @@ export default function Almanac() {
                 <>
                   <span className="fold-year w-14 shrink-0">{entry.year}</span>
                   <span className="pointer-events-none min-w-0">
-                    <ManagerTag id={entry.champion} link={false} size={24} />
+                    <ManagerTag id={entry.champion} link={false} size={26} />
                   </span>
                   <span className="truncate text-[12px] text-arc-ink-faint">
                     def. {name(entry.runnerUp)}
@@ -274,7 +274,7 @@ export default function Almanac() {
                     {entry.champWins}–{entry.champLosses}
                   </span>
                   {!entry.keeperEra && (
-                    <span className="hidden text-[10px] tracking-[0.1em] text-arc-ink-faint uppercase md:inline">
+                    <span className="hidden text-[11px] tracking-[0.1em] text-arc-ink-faint uppercase md:inline">
                       pre-keeper
                     </span>
                   )}
@@ -284,31 +284,31 @@ export default function Almanac() {
               <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:gap-6">
                 <div className="shrink-0 sm:w-40">
                   <div className="fold-year-big">{entry.year}</div>
-                  <div className="mt-2">
+                  <div className="fold-champ mt-2">
                     <ManagerTag id={entry.champion} size={30} />
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="arcade text-[10px] text-arc-yellow">CHAMPION</span>
+                    <span className="arcade text-[11px] text-arc-yellow">CHAMPION</span>
                     {banner && banner.nth > 1 && (
                       <span className="tag fold-title-tag">Title {banner.nth}</span>
                     )}
                   </div>
                   {entry.champStars.length > 0 && (
-                    <div className="mt-3 space-y-1">
+                    <ul className="fold-stars mt-3">
                       {entry.champStars.map((star) => (
-                        <div key={star.player} className="text-[11.5px] leading-tight">
+                        <li key={star.player}>
                           <Link
                             to={`/players/${playerSlug(star.player)}`}
-                            className="inline-player"
+                            className="fold-star"
                           >
-                            {star.player}
-                          </Link>{' '}
-                          <span className="tnum text-arc-ink-faint">
-                            {star.position} · {num(star.points, 0)}
-                          </span>
-                        </div>
+                            <span className="inline-player">{star.player}</span>
+                            <span className="tnum fold-star-line">
+                              {star.position} · {num(star.points, 0)}
+                            </span>
+                          </Link>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
                   {!entry.keeperEra && (
                     <div className="mt-2 text-[11px] leading-snug text-arc-ink-faint">
@@ -320,22 +320,24 @@ export default function Almanac() {
                   <p className="text-[14.5px] leading-relaxed text-arc-ink-soft">
                     {stories.get(entry.year)}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-arc-ink-faint">
+                  <div className="fold-meta mt-2">
                     {entry.runnerUp && (
                       <span>
-                        2nd: <InlineManager id={entry.runnerUp} name={name(entry.runnerUp)} />
+                        <span>2nd:</span>
+                        <InlineManager id={entry.runnerUp} name={name(entry.runnerUp)} />
                       </span>
                     )}
                     {entry.third && (
                       <span>
-                        3rd: <InlineManager id={entry.third} name={name(entry.third)} />
+                        <span>3rd:</span>
+                        <InlineManager id={entry.third} name={name(entry.third)} />
                       </span>
                     )}
                     {entry.topScorer && (
                       <span>
-                        Top scorer:{' '}
-                        <span className="text-arc-ink-soft">{name(entry.topScorer.manager)}</span>{' '}
-                        ({num(entry.topScorer.avg, 1)}/wk)
+                        <span>Top scorer:</span>
+                        <span className="text-arc-ink-soft">{name(entry.topScorer.manager)}</span>
+                        <span className="tnum">({num(entry.topScorer.avg, 1)}/wk)</span>
                       </span>
                     )}
                   </div>
