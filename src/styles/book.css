@@ -1,5 +1,6 @@
 /*
-  book.css — page-level styles for the Book (Bets).
+  book.css — page-level styles for the Book (Bets), and the rooms that share
+  its receipts: the trade desk, the Rules and the Manual.
 
   Uses the tokens from the @theme block in src/index.css (var(--color-arc-*),
   var(--font-display), ...) — never raw hex. Anything that moves must also be
@@ -8,11 +9,294 @@
 */
 
 @layer components {
-  /* styles */
+  /* ---- your seat on the board ------------------------------------------
+     A tile with the picked seat on either side carries a thin ring in that
+     colour and a YOU pip, so a member finds their own action on a board of
+     twelve without reading twelve names. */
+  .bet-tile.is-me {
+    box-shadow:
+      0 0 0 2px var(--me-ring, var(--color-arc-green)),
+      0 0 18px color-mix(in srgb, var(--me-ring, var(--color-arc-green)) 35%, transparent),
+      var(--shadow-hard-sm);
+  }
+  .bet-tile.is-me:hover {
+    box-shadow:
+      0 0 0 2px var(--me-ring, var(--color-arc-green)),
+      0 0 22px color-mix(in srgb, var(--me-ring, var(--color-arc-green)) 45%, transparent),
+      var(--shadow-hard);
+  }
+  .tile-you {
+    position: absolute;
+    top: 6%;
+    right: 5%;
+    padding: 1px 7px;
+    font-size: 11px;
+    line-height: 1.4;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-arc-bg) 82%, transparent);
+  }
+  .stub.is-me {
+    box-shadow: inset 3px 0 0 var(--me-ring, var(--color-arc-green));
+  }
+
+  /* Portraits on a phone-width slip step down so a nine-letter name fits. */
+  .slip-face img,
+  .slip-face canvas {
+    display: block;
+    width: 44px !important;
+    height: 44px !important;
+  }
+  @media (min-width: 640px) {
+    .slip-face img,
+    .slip-face canvas {
+      width: 52px !important;
+      height: 52px !important;
+    }
+  }
+
+  /* ---- the receipt ---------------------------------------------------------
+     The strip along the bottom of every slip: ticket number, the paper trail,
+     and the Share button. A perforation separates it from the bet proper —
+     this is the part you tear off and hand to someone. */
+  .receipt-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 9px 12px;
+    border-top: 1px dashed color-mix(in srgb, var(--color-arc-ink-faint) 55%, transparent);
+    background: color-mix(in srgb, var(--color-arc-bg-deep) 55%, transparent);
+  }
+  .receipt-serial {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-arc-ink-soft);
+  }
+
+  /* The stub's receipt tears off beneath it, keeping the stub's own slight
+     lean so the pair reads as one torn ticket. */
+  .stub-wrap {
+    transform: rotate(var(--rot, 0deg));
+  }
+  .stub-wrap .stub {
+    transform: none;
+  }
+  .stub-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: stretch;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+  }
+  .stub-body:focus-visible {
+    outline: 2px solid var(--color-arc-green);
+    outline-offset: -2px;
+  }
+  /* The story column carries the stamp: under the date line on a phone, so
+     the terms keep the full width; pressed on the right from sm up. */
+  .stub-story {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    padding: 10px 12px;
+  }
+  .stub-story .stamp {
+    align-self: flex-end;
+    margin: 5px 0 0;
+    padding: 2px 7px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  @media (min-width: 640px) {
+    .stub-story {
+      padding-right: 148px;
+    }
+    .stub-story .stamp {
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      margin: -13px 0 0;
+      padding: 3px 9px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+    }
+  }
+  .stub-receipt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 11px;
+    padding: 9px 12px;
+    border: 1px dashed color-mix(in srgb, var(--color-arc-ink-faint) 55%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--color-arc-bg-deep) 70%, transparent);
+    transform-origin: 50% 0;
+  }
+  @keyframes receipt-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scaleY(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .receipt-in {
+    animation: receipt-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  /* Arrived at by link: the stamp comes down again so the eye lands on it. */
+  @keyframes stub-flash {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--stamp-rot, -8deg)) scale(1.7);
+    }
+    55% {
+      opacity: 1;
+      transform: rotate(var(--stamp-rot, -8deg)) scale(0.94);
+    }
+    100% {
+      opacity: 0.92;
+      transform: rotate(var(--stamp-rot, -8deg)) scale(1);
+    }
+  }
+  .stub-wrap.is-linked .stamp {
+    animation: stub-flash 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.35s both;
+  }
+
+  /* ---- two taps to rule -------------------------------------------------------
+     The first tap turns the button amber and into a question; the second
+     commits. Overrides the .btn hover so the question stays amber. */
+  .btn.book-confirm,
+  .btn.book-confirm:hover:not(:disabled) {
+    border-color: var(--color-arc-yellow);
+    color: var(--color-arc-yellow);
+    background: color-mix(in srgb, var(--color-arc-yellow) 14%, var(--color-arc-raised));
+  }
+
+  /* A 40px thumb target around an 18px glyph, without moving the layout. */
+  .book-hit {
+    display: inline-grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 40px;
+    margin: -8px;
+    padding: 0;
+    border-radius: 8px;
+  }
+
+  /* The Sharps at 360px: five columns need every pixel of padding back. */
+  .book-tight .out thead th,
+  .book-tight .out tbody td {
+    padding-inline: 8px;
+  }
+  .book-tight .out thead th:first-child,
+  .book-tight .out tbody td:first-child {
+    padding-inline-start: 12px;
+  }
+  .book-tight .out thead th:last-child,
+  .book-tight .out tbody td:last-child {
+    padding-inline-end: 12px;
+  }
+
+  /* ---- the trade desk ---------------------------------------------------------
+     Recorded trades group under their batch; on a phone the terms fold under
+     the players so the dollars are never behind a swipe. */
+  .desk-group td {
+    padding: 12px 12px 5px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-arc-ink-faint);
+    background: color-mix(in srgb, var(--color-arc-bg-deep) 55%, transparent) !important;
+    border-bottom: 1px solid var(--color-arc-line);
+  }
+  /* On a phone the recorded table shares the track by fixed shares, so the
+     total is always on screen; wider screens size by content as usual. */
+  @media (max-width: 767px) {
+    .desk-fixed {
+      table-layout: fixed;
+    }
+    .desk-fixed .desk-col-deal {
+      width: 35%;
+    }
+    .desk-fixed .desk-col-total {
+      width: 23%;
+    }
+    /* Outranks .out's own nowrap, which sits later in the cascade. */
+    .out.desk-fixed tbody td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
+  .desk-terms {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--color-arc-ink-faint);
+  }
+  .desk-flag {
+    border-left: 3px solid var(--color-arc-orange);
+  }
+  /* A queue card with your seat on either side. */
+  .desk-mine {
+    box-shadow:
+      inset 3px 0 0 var(--me-color, transparent),
+      var(--shadow-hard);
+  }
+
+  /* ---- the constitution --------------------------------------------------------
+     A clause that runs on from the bullet above it hangs under that bullet
+     rather than shouting as a heading. */
+  .rule-heading {
+    padding-top: 10px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-arc-ink);
+  }
+  .rule-heading:first-child {
+    padding-top: 0;
+  }
+  .rule-cont {
+    padding-left: 24px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--color-arc-ink-soft);
+  }
+  .rule-note {
+    padding-left: 24px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    font-style: italic;
+    color: var(--color-arc-ink-faint);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .book-placeholder-never-matches {
+  :root:not([data-motion='on']) .receipt-in,
+  :root:not([data-motion='on']) .stub-wrap.is-linked .stamp {
     animation: none !important;
   }
 }

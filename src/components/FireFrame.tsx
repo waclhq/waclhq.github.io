@@ -15,15 +15,22 @@ import { animationsDisabled } from '../lib/motion'
  * opaque slip and erupts out of the top — what you see is flame licking up
  * the outside of all four edges.
  *
- * The grid is one cell per three CSS pixels and the canvas is left at grid
- * resolution: the browser's own bilinear upscale is the soft edge, so a frame
- * costs one putImageData of about twenty thousand cells. It runs at 36fps,
+ * The grid is one cell per two CSS pixels on a phone tile and one per three
+ * on anything wider, and the canvas is left at grid resolution: the browser's
+ * own bilinear upscale is the soft edge, so a frame costs one putImageData of
+ * ten to twenty thousand cells. It runs at 36fps,
  * stops when the card scrolls out of view or the tab is hidden, and never
  * starts at all under reduced motion.
  */
 
-/** CSS pixels per heat cell. Coarse on purpose — fire has no fine detail. */
-const CELL = 2
+/**
+ * CSS pixels per heat cell, chosen per host. Coarse on purpose — fire has no
+ * fine detail — and coarser still on anything wider than a phone tile, where
+ * the same look costs a third of the cells.
+ */
+function cellFor(width: number): number {
+  return width > 200 ? 3 : 2
+}
 /** Room for the flames to climb outside the card, in CSS pixels. */
 const MARGIN = { top: 56, side: 30, bottom: 26 }
 /** Simulation rate. Fire reads fine below 60 and halves the work. */
@@ -118,6 +125,7 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
 
     let cols = 0
     let rows = 0
+    let cell = 2
     let heat = new Uint8Array(0)
     let image: ImageData | null = null
     let pixels: Uint32Array | null = null
@@ -132,9 +140,11 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
       if (!rect.width || !rect.height) return false
       const width = rect.width + MARGIN.side * 2
       const height = rect.height + MARGIN.top + MARGIN.bottom
-      const nextCols = Math.max(8, Math.ceil(width / CELL))
-      const nextRows = Math.max(8, Math.ceil(height / CELL))
-      if (nextCols === cols && nextRows === rows) return true
+      const nextCell = cellFor(rect.width)
+      const nextCols = Math.max(8, Math.ceil(width / nextCell))
+      const nextRows = Math.max(8, Math.ceil(height / nextCell))
+      if (nextCols === cols && nextRows === rows && nextCell === cell) return true
+      cell = nextCell
       cols = nextCols
       rows = nextRows
       heat = new Uint8Array(cols * rows)
@@ -149,10 +159,10 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
       fadeY = new Float32Array(rows)
       for (let y = 0; y < rows; y += 1) fadeY[y] = Math.min(1, y / FADE)
       card = {
-        left: Math.round(MARGIN.side / CELL),
-        right: Math.round((MARGIN.side + rect.width) / CELL),
-        top: Math.round(MARGIN.top / CELL),
-        bottom: Math.round((MARGIN.top + rect.height) / CELL),
+        left: Math.round(MARGIN.side / cell),
+        right: Math.round((MARGIN.side + rect.width) / cell),
+        top: Math.round(MARGIN.top / cell),
+        bottom: Math.round((MARGIN.top + rect.height) / cell),
       }
       return true
     }
@@ -215,8 +225,8 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
       // it, so the flame is plainly coming out of the border rather than
       // floating alongside it. The hottest cell is always the edge itself.
       for (let x = card.left - 1; x <= card.right; x += 1) {
-        const top = hot(x * CELL * 0.5, GATE)
-        const bottom = hot(x * CELL * 0.5 + 40, GATE)
+        const top = hot(x * cell * 0.5, GATE)
+        const bottom = hot(x * cell * 0.5 + 40, GATE)
         for (let b = 0; b < BURNER; b += 1) {
           set(card.top - b, x, (top * (1 - (b / BURNER) * 0.45)) | 0)
         }
@@ -227,8 +237,8 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
         }
       }
       for (let y = card.top; y < card.bottom + 2; y += 1) {
-        const left = hot(y * CELL * 0.43 + 90, SIDE_GATE)
-        const right = hot(y * CELL * 0.43 + 150, SIDE_GATE)
+        const left = hot(y * cell * 0.43 + 90, SIDE_GATE)
+        const right = hot(y * cell * 0.43 + 150, SIDE_GATE)
         for (let b = 0; b < BURNER + 1; b += 1) {
           const falloff = (1 - b / (BURNER + 1)) ** 1.2
           set(y, card.left - b, (left * falloff) | 0)

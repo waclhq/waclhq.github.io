@@ -1,31 +1,67 @@
-import { useMemo, useState } from 'react'
-import { Chip, Empty, Panel, PageHeader, SegmentedControl } from '../components/ui'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Chip, Empty, Panel, PageHeader, SectionNav, SegmentedControl } from '../components/ui'
 import TradeForm from '../components/TradeForm'
+import ConfirmButton from '../components/receipts/ConfirmButton'
+import { useMedia } from '../components/receipts/useMedia'
 import { PlayMoment, type MomentKind } from '../components/effects'
 import { animationsDisabled } from '../lib/motion'
 import { play } from '../lib/sfx'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { useTrades } from '../lib/derive'
 import { countdown, money, shortDate } from '../lib/format'
+import { friendlySaveError } from '../lib/github'
+import { useMe } from '../lib/me'
 import { antiDumpingCheck, marketCheckDeadline, tradeImpact } from '../lib/rules'
 import { applyTradeRoster } from '../lib/roster'
 import type { LeagueData, Trade, TradeQueueFile, TradeStatus } from '../lib/types'
 
 type Tab = 'queue' | 'ledger' | 'archive'
 
+/**
+ * Approvals are two commits — the ruling, then the roster move. When the
+ * second one fails the trade is approved and the players have not moved, so
+ * the half that is owed is kept here, on this device, with a button to
+ * finish it. Cleared the moment the roster commit lands.
+ */
+const PENDING_KEY = 'wacl.pendingRosterMoves'
+
+function readPendingMoves(): Record<string, Trade> {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Record<string, Trade>) : {}
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePendingMoves(moves: Record<string, Trade>): void {
+  try {
+    if (Object.keys(moves).length) localStorage.setItem(PENDING_KEY, JSON.stringify(moves))
+    else localStorage.removeItem(PENDING_KEY)
+  } catch {
+    /* private browsing — the chip still shows for this page view */
+  }
+}
+
 export default function Trades() {
   const data = useLeagueData()
   const { managers, legacyTrades, league } = data
   const { commissioner, save } = useLeague()
   const trades = useTrades()
+  const me = useMe()
+  const wide = useMedia('(min-width: 768px)')
 
   const [tab, setTab] = useState<Tab>('queue')
   const [composing, setComposing] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [moment, setMoment] = useState<MomentKind | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // A failure is pinned to the trade it happened on; 'page' for anything else.
+  const [fault, setFault] = useState<{ id: string; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [seasonFilter, setSeasonFilter] = useState<'all' | number>('all')
+  const [pendingMoves, setPendingMoves] = useState<Record<string, Trade>>(readPendingMoves)
 
   const pending = trades.filter(
     (trade) => trade.status === 'pending' || trade.status === 'market-check',
@@ -40,18 +76,57 @@ export default function Trades() {
   const visible =
     seasonFilter === 'all' ? decided : decided.filter((trade) => trade.season === seasonFilter)
 
+  // The market-check countdown ticks by the minute while one is running, so
+  // an open tab sees the window close instead of a frozen "Closes in 7h".
+  const hasCheck = pending.some((trade) => trade.status === 'market-check')
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!hasCheck) return
+    const id = window.setInterval(() => tick((n) => n + 1), 60_000)
+    return () => window.clearInterval(id)
+  }, [hasCheck])
+
+  const faultFor = (id: string) => (fault?.id === id ? fault.message : null)
+
+  const setPending = (next: Record<string, Trade>) => {
+    setPendingMoves(next)
+    writePendingMoves(next)
+  }
+
+  /** The roster half of an approval, on its own so it can be retried alone. */
+  async function moveRosters(trade: Trade) {
+    const preview = applyTradeRoster(data.keepers, trade)
+    if (preview.moved.length > 0) {
+      await save<LeagueData['keepers']>(
+        'keepers.json',
+        (current) => applyTradeRoster(current, trade).keepers,
+        `Trade ${trade.id}: roster moves (${preview.moved
+          .map((move) => `${move.player} → ${managerName(managers, move.to)}`)
+          .join(', ')})`,
+      )
+    }
+    const movedLine = preview.moved
+      .map((move) => `${move.player} → ${managerName(managers, move.to)}'s roster`)
+      .join(' · ')
+    const unmatchedLine =
+      preview.unmatched.length > 0
+        ? `Couldn't find ${preview.unmatched.join(', ')} on either roster — fix via Keepers → Edit keepers if a move is owed.`
+        : ''
+    return [movedLine, unmatchedLine].filter(Boolean).join('  ') || null
+  }
+
   /** Every ruling is a commit; the queue file is the single source of truth. */
   async function rule(trade: Trade, status: TradeStatus, extra: Partial<Trade> = {}) {
     setBusyId(trade.id)
-    setError(null)
+    setFault(null)
     setNotice(null)
+    const updated: Trade = {
+      ...trade,
+      ...extra,
+      status,
+      decidedAt: status === 'market-check' ? undefined : new Date().toISOString(),
+    }
     try {
-      const updated: Trade = {
-        ...trade,
-        ...extra,
-        status,
-        decidedAt: status === 'market-check' ? undefined : new Date().toISOString(),
-      }
       await save<TradeQueueFile>(
         'trade-queue.json',
         (current) => {
@@ -62,36 +137,43 @@ export default function Trades() {
         },
         `Trade ${trade.id}: ${status} (${managerName(managers, trade.seller)} → ${managerName(managers, trade.buyer)})`,
       )
-
-      // Approval moves the named players between the season's keeper blocks,
-      // so the buyer's roster (and the war room) reflect the deal immediately.
-      if (status === 'approved') {
-        const preview = applyTradeRoster(data.keepers, updated)
-        if (preview.moved.length > 0) {
-          await save<LeagueData['keepers']>(
-            'keepers.json',
-            (current) => applyTradeRoster(current, updated).keepers,
-            `Trade ${trade.id}: roster moves (${preview.moved
-              .map((move) => `${move.player} → ${managerName(managers, move.to)}`)
-              .join(', ')})`,
-          )
-        }
-        const movedLine = preview.moved
-          .map((move) => `${move.player} → ${managerName(managers, move.to)}'s roster`)
-          .join(' · ')
-        const unmatchedLine =
-          preview.unmatched.length > 0
-            ? `Couldn't find ${preview.unmatched.join(', ')} on either roster — fix via Keepers → Edit keepers if a move is owed.`
-            : ''
-        setNotice([movedLine, unmatchedLine].filter(Boolean).join('  ') || null)
-      }
-
-      play(status === 'approved' ? 'roar' : status === 'rejected' ? 'trombone' : 'whistle')
-      if (!animationsDisabled()) {
-        setMoment(status === 'approved' ? 'td' : status === 'rejected' ? 'flag' : 'review')
-      }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not record the ruling.')
+      setFault({ id: trade.id, message: `Nothing was saved — ${friendlySaveError(cause)}` })
+      setBusyId(null)
+      return
+    }
+
+    // Approval moves the named players between the season's keeper blocks,
+    // so the buyer's roster (and the war room) reflect the deal immediately.
+    if (status === 'approved') {
+      try {
+        setNotice(await moveRosters(updated))
+      } catch (cause) {
+        setPending({ ...pendingMoves, [trade.id]: updated })
+        setFault({
+          id: trade.id,
+          message: `Approved, but the roster move didn't save (${friendlySaveError(cause)}). Retry the roster move from the Recorded tab.`,
+        })
+      }
+    }
+
+    play(status === 'approved' ? 'roar' : status === 'rejected' ? 'trombone' : 'whistle')
+    if (!animationsDisabled()) {
+      setMoment(status === 'approved' ? 'td' : status === 'rejected' ? 'flag' : 'review')
+    }
+    setBusyId(null)
+  }
+
+  async function retryRoster(trade: Trade) {
+    setBusyId(trade.id)
+    setFault(null)
+    try {
+      setNotice(await moveRosters(trade))
+      const next = { ...pendingMoves }
+      delete next[trade.id]
+      setPending(next)
+    } catch (cause) {
+      setFault({ id: trade.id, message: `The roster move still didn't save — ${friendlySaveError(cause)}` })
     } finally {
       setBusyId(null)
     }
@@ -106,6 +188,23 @@ export default function Trades() {
     setComposing(false)
     setTab('queue')
   }
+
+  // Archive: one chip per year, pointing at that year's first group.
+  const archiveYears = useMemo(() => {
+    const seen = new Map<string, string>()
+    legacyTrades.forEach((group, index) => {
+      const year = group.heading.match(/\d{4}/)?.[0] ?? String(index)
+      if (!seen.has(year)) seen.set(year, `archive-${year}`)
+    })
+    return [...seen.entries()].map(([year, id]) => ({ id, label: year }))
+  }, [legacyTrades])
+  const archiveIdFor = (heading: string, index: number) => {
+    const year = heading.match(/\d{4}/)?.[0] ?? String(index)
+    const first = legacyTrades.findIndex((group) => (group.heading.match(/\d{4}/)?.[0] ?? '') === year)
+    return first === index ? `archive-${year}` : undefined
+  }
+
+  const involvesMe = (trade: Trade) => me !== null && (trade.seller === me || trade.buyer === me)
 
   return (
     <>
@@ -140,6 +239,7 @@ export default function Trades() {
             onChange={(event) =>
               setSeasonFilter(event.target.value === 'all' ? 'all' : Number(event.target.value))
             }
+            aria-label="Season"
           >
             <option value="all">All seasons</option>
             {seasons.map((season) => (
@@ -151,13 +251,13 @@ export default function Trades() {
         )}
       </div>
 
-      {error && (
-        <p className="mb-5 border-l-2 border-[var(--color-arc-red)] pl-3 text-[12px] text-[var(--color-arc-red)]">
-          {error}
+      {faultFor('page') && (
+        <p role="alert" className="mb-5 border-l-2 border-[var(--color-arc-red)] pl-3 text-[12.5px] text-[var(--color-arc-red)]">
+          {faultFor('page')}
         </p>
       )}
       {notice && (
-        <p className="mb-5 border-l-2 border-[var(--color-arc-green)] pl-3 text-[12px] text-arc-ink-soft">
+        <p role="status" className="mb-5 border-l-2 border-[var(--color-arc-green)] pl-3 text-[12.5px] text-arc-ink-soft">
           {notice}
         </p>
       )}
@@ -189,16 +289,20 @@ export default function Trades() {
                 onMarketCheck && trade.marketCheckUntil
                   ? new Date(trade.marketCheckUntil).getTime() <= Date.now()
                   : false
+              const busy = busyId === trade.id
 
               return (
-                <Panel key={trade.id} delay={index * 60}>
+                <Panel key={trade.id} delay={index * 60} className={involvesMe(trade) ? 'desk-mine' : ''}>
                   <div className="px-5 py-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-[26px] leading-tight text-arc-ink">
                           {managerName(managers, trade.seller)}
                           <span className="mx-2.5 text-arc-green">→</span>
                           {managerName(managers, trade.buyer)}
+                          {involvesMe(trade) && (
+                            <span className="arcade ml-2 align-middle text-[11px] text-arc-ink-soft">you</span>
+                          )}
                         </div>
                         <div className="mt-1.5 text-[13px] text-arc-ink-soft">{trade.players}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -208,8 +312,16 @@ export default function Trades() {
                           {verdict.triggered && !onMarketCheck && (
                             <Chip tone="flag">Anti-dumping trigger</Chip>
                           )}
+                          {(verdict.triggered || onMarketCheck) && (
+                            <Link
+                              to="/rules#anti-dumping"
+                              className="text-[11px] text-arc-ink-faint underline underline-offset-2 hover:text-arc-ink"
+                            >
+                              the rule
+                            </Link>
+                          )}
                           {onMarketCheck && trade.marketCheckUntil && (
-                            <span className="tnum text-[11px] text-arc-ink-faint">
+                            <span className="tnum text-[11px] text-arc-ink-faint" role="status">
                               {checkOver
                                 ? 'Window closed — ROFR to the original buyer'
                                 : `Closes in ${countdown(trade.marketCheckUntil)}`}
@@ -253,9 +365,7 @@ export default function Trades() {
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="text-arc-ink-soft">
-                              {managerName(managers, trade.seller)}
-                            </td>
+                            <td className="text-arc-ink-soft">{managerName(managers, trade.seller)}</td>
                             {impact.map((row) => (
                               <td key={row.year} className="n text-[var(--color-arc-green)]">
                                 {money(row.seller, { sign: true })}
@@ -263,9 +373,7 @@ export default function Trades() {
                             ))}
                           </tr>
                           <tr>
-                            <td className="text-arc-ink-soft">
-                              {managerName(managers, trade.buyer)}
-                            </td>
+                            <td className="text-arc-ink-soft">{managerName(managers, trade.buyer)}</td>
                             {impact.map((row) => (
                               <td key={row.year} className="n text-[var(--color-arc-red)]">
                                 {money(row.buyer, { sign: true })}
@@ -277,41 +385,46 @@ export default function Trades() {
                     </div>
 
                     {commissioner ? (
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        <button
-                          type="button"
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <ConfirmButton
                           className="btn btn-primary"
-                          disabled={busyId === trade.id}
-                          onClick={() => void rule(trade, 'approved')}
+                          confirm="Approve this trade?"
+                          disabled={busy}
+                          onConfirm={() => void rule(trade, 'approved')}
                         >
-                          Approve
-                        </button>
+                          {busy ? 'Working…' : 'Approve'}
+                        </ConfirmButton>
                         {verdict.triggered && !onMarketCheck && (
-                          <button
-                            type="button"
+                          <ConfirmButton
                             className="btn"
-                            disabled={busyId === trade.id}
-                            onClick={() =>
+                            confirm="Start the 24h clock?"
+                            disabled={busy}
+                            onConfirm={() =>
                               void rule(trade, 'market-check', {
                                 marketCheckUntil: marketCheckDeadline(),
                               })
                             }
                           >
                             Hold 24h for market check
-                          </button>
+                          </ConfirmButton>
                         )}
-                        <button
-                          type="button"
+                        <ConfirmButton
                           className="btn btn-danger"
-                          disabled={busyId === trade.id}
-                          onClick={() => void rule(trade, 'rejected')}
+                          confirm="Reject this trade?"
+                          disabled={busy}
+                          onConfirm={() => void rule(trade, 'rejected')}
                         >
                           Reject
-                        </button>
+                        </ConfirmButton>
                       </div>
                     ) : (
                       <p className="mt-5 text-[12px] text-arc-ink-faint">
                         Awaiting a ruling from {league.commissioner}.
+                      </p>
+                    )}
+                    {faultFor(trade.id) && (
+                      <p role="alert" className="mt-3 border-l-2 border-[var(--color-arc-red)] pl-3 text-[12.5px] leading-snug text-[var(--color-arc-red)]">
+                        {faultFor(trade.id)}
                       </p>
                     )}
                   </div>
@@ -325,40 +438,103 @@ export default function Trades() {
       {tab === 'ledger' && (
         <Panel
           title="Recorded trades"
-          subtitle={`${visible.length} of ${decided.length} trades. Amounts are auction dollars owed by the buyer in each listed season.`}
+          subtitle={`${visible.length} of ${decided.length} trades, grouped by the batch they were filed under. Amounts are auction dollars owed by the buyer in each listed season.`}
         >
-          <div>
-            <table className="out">
-              <thead>
-                <tr>
-                  <th>Batch</th>
-                  <th>Seller</th>
-                  <th>Buyer</th>
-                  <th>Players</th>
-                  <th>Terms</th>
-                  <th className="n">Total</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((trade) => (
-                  <tr key={trade.id}>
-                    <td className="tnum whitespace-nowrap text-arc-ink-faint">{trade.batch}</td>
-                    <td className="whitespace-nowrap">{managerName(managers, trade.seller)}</td>
-                    <td className="whitespace-nowrap">{managerName(managers, trade.buyer)}</td>
-                    <td className="max-w-[280px] text-arc-ink-soft">{trade.players}</td>
-                    <td className="max-w-[220px] text-[12px] text-arc-ink-faint">
-                      {trade.terms}
-                    </td>
-                    <td className="n text-arc-green">{money(trade.totalDollars)}</td>
-                    <td>
-                      <Chip tone={trade.status === 'approved' ? 'up' : 'down'}>{trade.status}</Chip>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className="out desk-fixed">
+            <colgroup>
+              <col className="desk-col-deal" />
+              <col className="desk-col-players" />
+              <col className="desk-col-terms hidden md:table-column" />
+              <col className="desk-col-total" />
+              <col className="hidden sm:table-column" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Deal</th>
+                <th>Players</th>
+                <th className="hidden md:table-cell">Terms</th>
+                <th className="n">Total</th>
+                <th className="hidden sm:table-cell">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((trade, index) => {
+                const previous = visible[index - 1]
+                const newBatch = !previous || previous.batch !== trade.batch
+                const owed = pendingMoves[trade.id]
+                const mine = involvesMe(trade)
+                return (
+                  <Fragment key={trade.id}>
+                    {newBatch && (
+                      <tr className="desk-group">
+                        <td colSpan={wide ? 5 : 3}>{trade.batch}</td>
+                      </tr>
+                    )}
+                    <tr
+                      className={owed ? 'desk-flag' : undefined}
+                      style={
+                        mine
+                          ? {
+                              background: 'color-mix(in srgb, var(--me-color, transparent) 9%, transparent)',
+                              boxShadow: 'inset 3px 0 0 var(--me-color, transparent)',
+                            }
+                          : undefined
+                      }
+                    >
+                      <td className="sm:whitespace-nowrap">
+                        {managerName(managers, trade.seller)}
+                        <span className="mx-1.5 text-arc-green">→</span>
+                        <span className="whitespace-nowrap">{managerName(managers, trade.buyer)}</span>
+                        {mine && <span className="arcade ml-1.5 text-[11px] text-arc-ink-soft">you</span>}
+                      </td>
+                      <td className="max-w-[170px] text-arc-ink-soft md:max-w-[280px]">
+                        {trade.players}
+                        {/* Terms restate the obligations the total sums; below
+                            md they fold under the players. */}
+                        {trade.terms && <span className="desk-terms md:hidden">{trade.terms}</span>}
+                        {owed && (
+                          <span className="mt-1.5 flex flex-wrap items-center gap-2">
+                            <Chip tone="flag">Roster move pending</Chip>
+                            {commissioner && (
+                              <button
+                                type="button"
+                                className="btn min-h-[34px] px-3 py-1 text-[12px]"
+                                disabled={busyId === trade.id}
+                                onClick={() => void retryRoster(owed)}
+                              >
+                                {busyId === trade.id ? 'Working…' : 'Retry roster move'}
+                              </button>
+                            )}
+                          </span>
+                        )}
+                        {faultFor(trade.id) && (
+                          <span role="alert" className="mt-1 block text-[12px] text-[var(--color-arc-red)]">
+                            {faultFor(trade.id)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="hidden max-w-[220px] text-[12px] text-arc-ink-faint md:table-cell">
+                        {trade.terms}
+                      </td>
+                      <td className="n text-arc-green">
+                        {money(trade.totalDollars)}
+                        <span
+                          className={`block text-[11px] leading-snug sm:hidden ${
+                            trade.status === 'approved' ? 'text-arc-lime' : 'text-[var(--color-arc-red)]'
+                          }`}
+                        >
+                          {trade.status}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell">
+                        <Chip tone={trade.status === 'approved' ? 'up' : 'down'}>{trade.status}</Chip>
+                      </td>
+                    </tr>
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
         </Panel>
       )}
 
@@ -369,9 +545,16 @@ export default function Trades() {
           <p className="text-[13px] text-arc-ink-soft">
             The written trade log kept before the structured ledger began, preserved verbatim.
           </p>
+          <SectionNav sections={archiveYears} />
           {legacyTrades.map((group, index) => (
-            <Panel key={group.heading} title={group.heading} delay={index * 40}>
-              <ul className="divide-y divide-arc-ink">
+            <Panel
+              key={group.heading}
+              id={archiveIdFor(group.heading, index)}
+              title={group.heading}
+              subtitle={`${group.entries.length} trade${group.entries.length === 1 ? '' : 's'}`}
+              delay={Math.min(index, 6) * 40}
+            >
+              <ul className="divide-y divide-arc-line">
                 {group.entries.map((entry, entryIndex) => (
                   <li key={entryIndex} className="px-5 py-2.5 text-[13px] text-arc-ink-soft">
                     {entry}
