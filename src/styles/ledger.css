@@ -341,7 +341,10 @@
 
   /* ---- the scoreboard strip -------------------------------------------- */
 
-  .desk-tile {
+  /* Two classes, on purpose: index.css's own .win sits later in this layer,
+     so a single-class rule here loses the box-shadow race and the lamp bar
+     never paints. Every tile is a .win, so the extra class costs nothing. */
+  .win.desk-tile {
     display: block;
     padding: 12px 14px 13px;
     color: inherit;
@@ -390,14 +393,27 @@
     color: var(--color-arc-ink-soft);
   }
 
+  /* ---- the budget table ------------------------------------------------ */
+
+  /* A manager chip is 26px tall, which is no target for a thumb. The row is
+     already 65 — the bar column sets it — so the name can take a 40px band
+     without moving anything. (The chip itself is shared chrome; this only
+     pads the door it sits in.) */
+  .desk-budgets tbody td:first-child a {
+    min-height: 40px;
+    align-items: center;
+  }
+
   /* ---- your desk ------------------------------------------------------- */
 
-  .desk-mine {
+  /* The seat ring, on the same two-class footing as the tiles above — and
+     under its own name, because the Book's queue cards claim .desk-mine. */
+  .win.desk-seat {
     box-shadow:
       var(--shadow-hard),
       inset 3px 0 0 var(--c);
   }
-  .desk-mine-head {
+  .desk-seat-head {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -409,7 +425,7 @@
     );
     border-bottom: 1px solid var(--color-arc-line);
   }
-  .desk-mine-name {
+  .desk-seat-name {
     font-family: var(--font-display);
     font-weight: 800;
     font-style: italic;
@@ -419,7 +435,7 @@
     letter-spacing: 0.02em;
     padding-right: 0.08em;
   }
-  .desk-mine-team {
+  .desk-seat-team {
     font-style: normal;
     font-weight: 700;
     font-size: 13px;
@@ -427,7 +443,7 @@
     text-transform: none;
     color: var(--color-arc-ink-soft);
   }
-  .desk-mine-grid {
+  .desk-seat-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
@@ -437,11 +453,11 @@
     background: var(--color-arc-line);
   }
   @media (min-width: 1024px) {
-    .desk-mine-grid {
+    .desk-seat-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
-  .desk-mine-item {
+  .desk-seat-item {
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -453,14 +469,14 @@
     background: var(--color-arc-panel);
     transition: background 0.15s ease;
   }
-  .desk-mine-item:hover {
+  .desk-seat-item:hover {
     background: color-mix(in srgb, var(--c) 10%, var(--color-arc-panel));
   }
-  .desk-mine-item .label {
+  .desk-seat-item .label {
     font-size: 11px;
     letter-spacing: 0.14em;
   }
-  .desk-mine-val {
+  .desk-seat-val {
     font-family: var(--font-display);
     font-weight: 800;
     font-style: italic;
@@ -469,7 +485,7 @@
     padding-right: 0.06em;
     color: var(--color-arc-ink);
   }
-  .desk-mine-sub {
+  .desk-seat-sub {
     font-size: 12px;
     line-height: 1.3;
     color: var(--color-arc-ink-soft);
@@ -539,6 +555,13 @@
 }
 
 @layer utilities {
+  /* index.css gives every marquee host a pointer, because a tap pauses it.
+     A stilled tape has nothing to pause — it is a strip you scroll. The rule
+     it answers lives in this layer, so this one has to as well. */
+  .marquee-host.tape-still {
+    cursor: auto;
+  }
+
   /* The field-goal attempt fires every fourteen seconds: the flight fills the
      first quarter of the cycle and the ball is off the field for the rest, so
      the kick is an event next to the money number rather than a metronome.
@@ -614,7 +637,7 @@
   }
   :root:not([data-motion='on']) .odo-strip,
   :root:not([data-motion='on']) .desk-tile,
-  :root:not([data-motion='on']) .desk-mine-item,
+  :root:not([data-motion='on']) .desk-seat-item,
   :root:not([data-motion='on']) .desk-tape-btn {
     transition: none !important;
   }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PixelMugshot from '../PixelMugshot'
 import { applyResults, type Bet } from '../../lib/bets'
 import { readBets } from '../../lib/betsRepo'
+import { minSeasonsToRank } from '../../lib/boards-facts'
 import { useLeagueData } from '../../lib/data'
 import { useBudgets } from '../../lib/derive'
 import { duesRows } from '../../lib/dues'
@@ -26,11 +27,16 @@ interface DeskItem {
   tone?: string
 }
 
-function rankOf(rows: CareerLine[], id: string, key: (line: CareerLine) => number): number | null {
-  const mine = rows.find((row) => row.manager === id)
-  if (!mine) return null
-  const value = key(mine)
-  return 1 + rows.filter((row) => key(row) > value).length
+/**
+ * Where a seat sits on one of the Records boards. A board ranks by position
+ * in its own order — ties broken the way that board breaks them, short
+ * careers held out of the rate boards — so the desk sorts the table the same
+ * way rather than counting rows above. Otherwise the tile and the door it
+ * opens quote different ranks.
+ */
+function boardRank(order: CareerLine[], id: string): number | null {
+  const at = order.findIndex((line) => line.manager === id)
+  return at < 0 ? null : at + 1
 }
 
 export default function YourDesk({ season }: { season: number }) {
@@ -55,6 +61,21 @@ export default function YourDesk({ season }: { season: number }) {
     () => bookCareerTable(seasons, eraOptions(seasons)[0], careerAverages),
     [seasons, careerAverages],
   )
+  // The two Records boards these tiles quote, ordered exactly as they are
+  // there: titles with podium finishes as the tiebreaker, points per game
+  // over the careers long enough to rank.
+  const titlesOrder = useMemo(
+    () => [...career].sort((a, b) => b.titles - a.titles || b.topThree - a.topThree),
+    [career],
+  )
+  const minSeasons = minSeasonsToRank(seasons.length)
+  const ppgOrder = useMemo(
+    () =>
+      career
+        .filter((line) => line.avgPointsFor !== null && line.seasonsPlayed >= minSeasons)
+        .sort((a, b) => (b.avgPointsFor ?? 0) - (a.avgPointsFor ?? 0)),
+    [career, minSeasons],
+  )
 
   if (!me) {
     return (
@@ -75,8 +96,8 @@ export default function YourDesk({ season }: { season: number }) {
     0
   const dues = duesRows(cash.entries, league, season).find((row) => row.manager === me)
   const line = career.find((row) => row.manager === me)
-  const titlesRank = rankOf(career, me, (row) => row.titles)
-  const ppgRank = rankOf(career, me, (row) => row.avgPointsFor ?? Number.NEGATIVE_INFINITY)
+  const titlesRank = boardRank(titlesOrder, me)
+  const ppgRank = boardRank(ppgOrder, me)
 
   const mine = bets?.filter(
     (bet) =>
@@ -88,7 +109,21 @@ export default function YourDesk({ season }: { season: number }) {
     mine
       ?.filter((bet) => bet.status === 'live' && bet.stakeKind === 'cash')
       .reduce((total, bet) => total + bet.stake, 0) ?? 0
+  const onTable =
+    mine
+      ?.filter((bet) => bet.status === 'proposed' && bet.stakeKind === 'cash')
+      .reduce((total, bet) => total + bet.stake, 0) ?? 0
   const waitingOnMe = mine?.filter((bet) => bet.status === 'proposed' && bet.opponent === me).length ?? 0
+  // Only the true parts, in the Book's own words: cash on accepted bets is
+  // riding, cash on a bet nobody has taken yet is on the table.
+  const bookSub =
+    [
+      waitingOnMe ? `${waitingOnMe} waiting on you` : '',
+      riding ? `${money(riding)} riding` : '',
+      onTable ? `${money(onTable)} on the table` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ') || (openCount ? 'Pride only' : 'Nothing riding')
 
   const items: DeskItem[] = [
     {
@@ -113,16 +148,7 @@ export default function YourDesk({ season }: { season: number }) {
     {
       label: 'On the Book',
       value: bets === null ? '—' : `${openCount} open`,
-      sub:
-        bets === null
-          ? 'Reading the book…'
-          : waitingOnMe
-            ? `${waitingOnMe} waiting on you · ${money(riding)} riding`
-            : riding
-              ? `${money(riding)} riding`
-              : openCount
-                ? 'Pride only'
-                : 'Nothing riding',
+      sub: bets === null ? 'Reading the book…' : bookSub,
       to: '/bets',
       tone: waitingOnMe ? 'var(--color-arc-yellow)' : undefined,
     },
@@ -143,48 +169,54 @@ export default function YourDesk({ season }: { season: number }) {
       label: 'Titles',
       value: line ? String(line.titles) : '—',
       sub: titlesRank ? `${ordinal(titlesRank)} all-time` : 'No seasons on record',
-      to: '/records',
+      // All-Time, on the board the number came from — Records itself opens
+      // in the Keeper Era.
+      to: '/records?era=all&s=titles',
       tone: line?.titles ? 'var(--color-arc-yellow)' : undefined,
     },
     {
       label: 'Career PPG',
       value: line?.avgPointsFor != null ? num(line.avgPointsFor) : '—',
-      sub: ppgRank ? `${ordinal(ppgRank)} all-time` : 'No seasons on record',
-      to: '/records',
+      sub: ppgRank
+        ? `${ordinal(ppgRank)} all-time`
+        : line
+          ? `${line.seasonsPlayed} of ${minSeasons} seasons to rank`
+          : 'No seasons on record',
+      to: '/records?era=all&s=points',
     },
   ]
 
   return (
     <section
-      className="win desk-mine pop-in"
+      className="win desk-seat pop-in"
       style={{ '--c': color } as CSSProperties}
-      aria-labelledby="desk-mine-title"
+      aria-labelledby="desk-seat-title"
     >
-      <header className="desk-mine-head">
+      <header className="desk-seat-head">
         <span className="seat-face shrink-0" style={{ '--c': color } as CSSProperties}>
           <PixelMugshot seed={me} scale={2} />
         </span>
         <div className="min-w-0">
-          <h2 id="desk-mine-title" className="label">
+          <h2 id="desk-seat-title" className="label">
             Your desk
           </h2>
-          <div className="desk-mine-name truncate" style={{ color }}>
+          <div className="desk-seat-name truncate" style={{ color }}>
             {manager?.displayName ?? me}
             {(block?.team ?? manager?.team) && (
-              <span className="desk-mine-team"> · {block?.team ?? manager?.team}</span>
+              <span className="desk-seat-team"> · {block?.team ?? manager?.team}</span>
             )}
           </div>
         </div>
       </header>
-      <ul className="desk-mine-grid">
+      <ul className="desk-seat-grid">
         {items.map((item, index) => (
           <li key={item.label} className="pop-in" style={{ animationDelay: `${140 + index * 55}ms` }}>
-            <Link to={item.to} className="desk-mine-item">
+            <Link to={item.to} className="desk-seat-item">
               <span className="label">{item.label}</span>
-              <span className="desk-mine-val tnum" style={item.tone ? { color: item.tone } : undefined}>
+              <span className="desk-seat-val tnum" style={item.tone ? { color: item.tone } : undefined}>
                 {item.value}
               </span>
-              <span className="desk-mine-sub">{item.sub}</span>
+              <span className="desk-seat-sub">{item.sub}</span>
             </Link>
           </li>
         ))}

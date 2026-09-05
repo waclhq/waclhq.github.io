@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import ManagerTag from '../components/ManagerTag'
-import Ticker from '../components/Ticker'
+import Ticker from '../components/desk/Ticker'
 import Crest from '../components/Crest'
 import { Confetti, FieldGoalStrip, FieldStripes } from '../components/effects'
 import { managerColor } from '../lib/identity'
@@ -83,7 +83,10 @@ export default function Dashboard() {
         >
           <span className="label text-arc-yellow">No page at</span>
           <code className="text-arc-ink">{missing}</code>
-          <span className="text-arc-ink-soft">
+          {/* The keycap is a lie on a touch device, where the Find button in
+              the top bar is the only way in. */}
+          <span className="text-arc-ink-soft lg:hidden">— tap Find to search.</span>
+          <span className="hidden text-arc-ink-soft lg:inline">
             — press Find (<kbd>⌘K</kbd>) to search.
           </span>
         </div>
@@ -263,7 +266,7 @@ export default function Dashboard() {
           className={queueFirst ? 'order-2 lg:order-none' : ''}
         >
           <div>
-            <table className="out">
+            <table className="out desk-budgets">
               <thead>
                 <tr>
                   <th>Manager</th>
@@ -427,9 +430,11 @@ export default function Dashboard() {
                   <tr key={team.manager}>
                     <td className="tnum w-8 text-arc-ink-faint">{team.rank}</td>
                     <td>
+                      {/* The cell is the target: a 16px name is nothing to
+                          hit with a thumb. */}
                       <Link
                         to={`/managers/${team.manager}`}
-                        className="transition-colors hover:text-arc-green"
+                        className="-my-2 flex min-h-[40px] items-center py-2 transition-colors hover:text-arc-green"
                       >
                         {managerName(managers, team.manager)}
                       </Link>
@@ -440,11 +445,13 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
-            <div className="border-t border-arc-line px-5 py-3">
-              <Link to="/standings" className="label hover:text-arc-green">
-                All {seasons.length} seasons →
-              </Link>
-            </div>
+            {/* The whole footer bar is the door, so it is a thumb-sized one. */}
+            <Link
+              to="/standings"
+              className="label flex min-h-[44px] items-center border-t border-arc-line px-5 hover:text-arc-green"
+            >
+              All {seasons.length} seasons →
+            </Link>
           </Panel>
         </div>
       </div>
