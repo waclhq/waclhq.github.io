@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { useLeague } from '../lib/data'
 import { MANAGER_COLOR } from '../lib/identity'
+import { animationsDisabled } from '../lib/motion'
 
 /**
  * King of the Heap — the league, animated.
@@ -8,9 +10,13 @@ import { MANAGER_COLOR } from '../lib/identity'
  * dogpile; the pile squirms; the champion arrives last, scrambles up the
  * bodies in three hops, plants at the summit, and hoists a golden trophy to a
  * confetti burst. In idle mode the finished tableau breathes: the pile
- * twitches, the champion sways, the trophy glints.
+ * twitches, the champion sways, the trophy glints — and the pile is only as
+ * tall as the league's open cash: everyone square, a low heap; half the dues
+ * outstanding, the full dogpile.
  *
- * Deterministic timeline on one canvas — no Math.random, no libraries.
+ * Deterministic timeline on one canvas — no Math.random, no libraries. The
+ * loop runs only while the canvas is on screen and the tab is visible, and
+ * under reduced motion it paints the assembled still once and stops.
  */
 
 interface Props {
@@ -19,6 +25,11 @@ interface Props {
   width?: number
   height?: number
   className?: string
+  /**
+   * How much of the pile to build, 0–1. Omitted, idle mode reads it from the
+   * league's open cash for the current season; boot mode always builds all.
+   */
+  pile?: number
 }
 
 /* ---- pixel poses: J jersey · S skin · D dark · W shoe ---------------- */
@@ -129,16 +140,48 @@ interface PileActor {
   lieRot: number
 }
 
+/** Rows of bodies, bottom up, for a given share of open cash. */
+function pileRows(share: number): number[] {
+  if (share <= 0) return [3, 2]
+  if (share < 0.34) return [4, 3]
+  if (share < 0.67) return [4, 3, 2]
+  return [4, 3, 2, 1]
+}
+
+/**
+ * Open cash as a share of everything billed this season, netted per manager
+ * the way the Ledger's "cash open" tile nets it. Null before data lands.
+ */
+function useOpenCashShare(): number | null {
+  const { data } = useLeague()
+  if (!data) return null
+  const season = data.league.currentSeason
+  const entries = data.cash.entries.filter((entry) => entry.season === season)
+  if (entries.length === 0) return 0
+  const billed = entries.reduce((sum, entry) => sum + Math.abs(entry.amount), 0)
+  const net = new Map<string, number>()
+  for (const entry of entries) {
+    if (entry.settled) continue
+    net.set(entry.manager, (net.get(entry.manager) ?? 0) + entry.amount)
+  }
+  const open = [...net.values()].reduce((sum, value) => sum + Math.abs(value), 0)
+  return billed > 0 ? Math.min(1, open / billed) : 0
+}
+
 export default function HeapScene({
   mode,
   championColor,
   width = 380,
   height = 240,
   className = '',
+  pile,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const champRef = useRef(championColor)
   champRef.current = championColor
+  const openShare = useOpenCashShare()
+  const share = mode === 'boot' ? 1 : (pile ?? openShare ?? 0.5)
+  const rowsKey = pileRows(share).join('/')
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -156,10 +199,11 @@ export default function HeapScene({
     const cx = width / 2
     const ground = height - 14
 
-    // Pyramid slots: 4 / 3 / 2, champion stands on top.
+    // Pyramid slots, bottom row first; the champion stands on top.
+    const rows = mode === 'boot' ? [4, 3, 2] : rowsKey.split('/').map(Number)
     const rowGap = bodyH * 0.62
     const slots: { x: number; y: number }[] = []
-    for (const [row, count] of [4, 3, 2].entries()) {
+    for (const [row, count] of rows.entries()) {
       for (let k = 0; k < count; k++) {
         slots.push({
           x: cx + (k - (count - 1) / 2) * bodyH * 1.15,
@@ -167,10 +211,10 @@ export default function HeapScene({
         })
       }
     }
-    const summit = { x: cx, y: ground - 3 * rowGap - 2 }
+    const summit = { x: cx, y: ground - rows.length * rowGap - 2 }
 
     const colors = Object.values(MANAGER_COLOR).slice(0, 12)
-    const pile: PileActor[] = slots.map((slot, i) => ({
+    const pileActors: PileActor[] = slots.map((slot, i) => ({
       color: colors[i % colors.length],
       side: (i % 2 === 0 ? 1 : -1) as 1 | -1,
       spawnT: mode === 'boot' ? 0.1 + i * 0.17 : -10,
@@ -181,14 +225,16 @@ export default function HeapScene({
       lieRot: (Math.PI / 2) * (i % 2 ? 1 : -1) + jitter(i, 1) * 0.35,
     }))
 
-    const champSpawn = mode === 'boot' ? 0.1 + pile.length * 0.17 + 0.25 : -10
-    // Climb path: pile edge, mid, summit.
-    const climbPath = [
-      { x: cx + bodyH * 1.6, y: ground },
-      { x: cx + bodyH * 0.9, y: ground - rowGap },
-      { x: cx + bodyH * 0.45, y: ground - 2 * rowGap },
-      summit,
-    ]
+    const champSpawn = mode === 'boot' ? 0.1 + pileActors.length * 0.17 + 0.25 : -10
+    // Climb path: pile edge, then a hop per row, to the summit.
+    const climbPath = [{ x: cx + bodyH * 1.6, y: ground }]
+    for (let row = 1; row < rows.length; row++) {
+      climbPath.push({
+        x: cx + bodyH * (1.6 - (row / rows.length) * 1.2),
+        y: ground - row * rowGap,
+      })
+    }
+    climbPath.push(summit)
     const hopT = 0.3
     const trophyT = champSpawn + 0.55 + (climbPath.length - 1) * hopT + 0.15
 
@@ -206,8 +252,12 @@ export default function HeapScene({
 
     const start = performance.now()
     let frame = 0
+    let running = false
+    let onScreen = true
+    // Reduced motion: one still of the finished tableau, no loop.
+    const still = animationsDisabled()
 
-    const step = (now: number) => {
+    const paint = (now: number, live: boolean) => {
       // idle mode starts fully assembled, two seconds past the trophy
       const t = (now - start) / 1000 + (mode === 'idle' ? trophyT + 2 : 0)
       ctx.clearRect(0, 0, width, height)
@@ -229,7 +279,7 @@ export default function HeapScene({
       }
 
       // ---- the pile ----
-      pile.forEach((actor, i) => {
+      pileActors.forEach((actor, i) => {
         const local = t - actor.spawnT
         if (local < 0) return
         const startX = actor.side > 0 ? -20 : width + 20
@@ -252,8 +302,8 @@ export default function HeapScene({
         } else {
           // settled: damped impact wobble, then occasional squirm
           const settled = local - actor.runT - actor.diveT
-          const wobble = Math.sin(settled * 18) * 0.2 * Math.exp(-settled * 3)
-          const squirmPhase = Math.sin(t * 1.7 + i * 2.4)
+          const wobble = live ? Math.sin(settled * 18) * 0.2 * Math.exp(-settled * 3) : 0
+          const squirmPhase = live ? Math.sin(t * 1.7 + i * 2.4) : 0
           const squirm = squirmPhase > 0.93 ? Math.sin(t * 30) * 0.08 : 0
           drawSprite(ctx, squirmPhase > 0.965 ? RUN_B : RUN_A, actor.slotX, actor.slotY, CELL, actor.color, {
             rot: actor.lieRot + wobble + squirm,
@@ -283,7 +333,7 @@ export default function HeapScene({
             drawSprite(ctx, CLIMB, x, y, CELL, champColor, { flip: true })
           } else {
             // summit: sway, hoist, shine
-            const sway = Math.sin(t * 1.4) * 0.05
+            const sway = live ? Math.sin(t * 1.4) * 0.05 : 0
             drawSprite(ctx, VICTORY, summit.x, summit.y, CELL, champColor, { rot: sway })
             const hoist = clamp01((t - trophyT) / 0.25)
             if (hoist > 0) {
@@ -295,7 +345,7 @@ export default function HeapScene({
               ctx.restore()
               // glint: a sweeping sparkle every couple of seconds
               const glint = (t * 0.55) % 1
-              if (glint < 0.12) {
+              if (live && glint < 0.12) {
                 ctx.fillStyle = GLINT
                 const gx = summit.x - 8 + glint * 130
                 ctx.fillRect(gx, summit.y - 9 * CELL - 16, CELL, CELL)
@@ -327,12 +377,46 @@ export default function HeapScene({
         }
         ctx.globalAlpha = 1
       }
+    }
 
+    if (still) {
+      paint(start, false)
+      return
+    }
+
+    const step = (now: number) => {
+      paint(now, true)
       frame = requestAnimationFrame(step)
     }
-    frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
-  }, [mode, width, height])
+    // Frames are only spent while someone could see them: off-screen (the
+    // Ledger scrolled past the strip) or in a background tab, the loop rests.
+    const sync = () => {
+      const should = onScreen && !document.hidden
+      if (should && !running) {
+        running = true
+        frame = requestAnimationFrame(step)
+      } else if (!should && running) {
+        running = false
+        cancelAnimationFrame(frame)
+      }
+    }
+    const observer =
+      mode === 'idle' && typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver(([entry]) => {
+            onScreen = entry.isIntersecting
+            sync()
+          })
+        : null
+    observer?.observe(canvas)
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => {
+      running = false
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+    }
+  }, [mode, width, height, rowsKey])
 
   return (
     <canvas
