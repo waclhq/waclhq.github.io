@@ -93,7 +93,11 @@ export default function Trades() {
     writePendingMoves(next)
   }
 
-  /** The roster half of an approval, on its own so it can be retried alone. */
+  /**
+   * The roster half of an approval, on its own so it can be retried alone —
+   * and safe to run twice: applyTradeRoster reports players already on the
+   * buyer as settled rather than carrying them back.
+   */
   async function moveRosters(trade: Trade) {
     const preview = applyTradeRoster(data.keepers, trade)
     if (preview.moved.length > 0) {
@@ -108,11 +112,14 @@ export default function Trades() {
     const movedLine = preview.moved
       .map((move) => `${move.player} → ${managerName(managers, move.to)}'s roster`)
       .join(' · ')
+    const settledLine = preview.settled.length
+      ? `${preview.settled.join(', ')} ${preview.settled.length === 1 ? 'was' : 'were'} already moved — nothing to do.`
+      : ''
     const unmatchedLine =
       preview.unmatched.length > 0
         ? `Couldn't find ${preview.unmatched.join(', ')} on either roster — fix via Keepers → Edit keepers if a move is owed.`
         : ''
-    return [movedLine, unmatchedLine].filter(Boolean).join('  ') || null
+    return [movedLine, settledLine, unmatchedLine].filter(Boolean).join('  ') || null
   }
 
   /** Every ruling is a commit; the queue file is the single source of truth. */

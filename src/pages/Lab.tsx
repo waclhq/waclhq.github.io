@@ -172,7 +172,9 @@ export default function Lab() {
         lede={`${spell(seasons.length)[0].toUpperCase()}${spell(seasons.length).slice(1)} seasons put under the microscope: who was lucky, who was robbed, who was actually great, and who Vegas would take in ${league.currentSeason}.`}
       />
 
-      <div onClickCapture={rail.onClickCapture}>
+      {/* display:contents — the wrapper only catches chip clicks; giving it
+          a box of its own would trap the sticky rail inside 53 pixels. */}
+      <div className="contents" onClickCapture={rail.onClickCapture}>
         <SectionNav sections={SECTIONS} />
       </div>
 

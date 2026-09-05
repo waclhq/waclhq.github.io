@@ -375,7 +375,7 @@ export function Board<T>({
                     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
                       {primary ? primary(row) : <ManagerTag id={manager} size={22} />}
                       {!line.qualified && unqualifiedNote && (
-                        <span className="shrink-0 text-[11px] text-arc-ink-faint">
+                        <span className="hidden shrink-0 text-[11px] text-arc-ink-faint sm:inline">
                           {unqualifiedNote(row)}
                         </span>
                       )}

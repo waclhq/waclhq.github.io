@@ -78,6 +78,9 @@ function clockTime(at: number): string {
  * Pages deploy. Every slip carries its own receipt and its own address:
  * /#/bets?bet=<id> opens it.
  */
+/** How long the settle ceremony owns the slip: the burn plus the flood. */
+const CEREMONY_MS = 2300
+
 export default function Bets() {
   const { league, managers, leagueVault, betResults } = useLeagueData()
   const { commissioner, save } = useLeague()
@@ -157,9 +160,13 @@ export default function Bets() {
   const bets = useMemo(() => applyResults(file?.bets ?? [], betResults.results), [file, betResults])
   const season = league.currentSeason
   const proposed = bets.filter((b) => b.status === 'proposed')
-  const live = bets.filter((b) => b.status === 'live')
+  // A bet being burned stays on the live board until its ceremony ends. The
+  // commit answers in a few hundred milliseconds; the fire takes two seconds,
+  // and moving the slip to Settled the instant the write lands unmounts the
+  // burn mid-climb — the ruling's whole moment, gone in a flicker.
+  const live = bets.filter((b) => b.status === 'live' || b.id === pyre?.betId)
   const settled = bets
-    .filter((b) => b.status === 'settled')
+    .filter((b) => b.status === 'settled' && b.id !== pyre?.betId)
     .sort((a, b) => (b.settledAt ?? '').localeCompare(a.settledAt ?? ''))
   const records = useMemo(() => betRecords(bets), [bets])
   const h2h = useMemo(() => headToHead(bets), [bets])
@@ -221,6 +228,13 @@ export default function Bets() {
         window.removeEventListener(type, cancel)
     }
   }, [file, linked])
+
+  // The ceremony, visible to CSS and to tests: while a slip is burning the
+  // body carries the bet it belongs to.
+  useEffect(() => {
+    if (pyre) document.body.dataset.ceremony = pyre.betId
+    else delete document.body.dataset.ceremony
+  }, [pyre])
 
   const faultFor = (id: string) => (fault?.id === id ? fault.message : null)
 
@@ -307,7 +321,14 @@ export default function Bets() {
         `Bet settled: ${nameOf(winner)} wins`,
       )
       play('roar')
-      if (!animationsDisabled()) setCelebrate((n) => n + 1)
+      if (animationsDisabled()) {
+        setBusy(null)
+        return
+      }
+      // Let it burn: the front needs ~1.6s to climb and the winner's flood
+      // runs 2.2s. Only then does the slip cross over to the kept stubs.
+      setCelebrate((n) => n + 1)
+      window.setTimeout(() => setPyre(null), CEREMONY_MS)
     } catch (cause) {
       setPyre(null)
       setFault({ id: bet.id, message: friendlySaveError(cause) })

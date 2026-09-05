@@ -122,7 +122,11 @@ export default function Keepers() {
       )}
 
       <div className="mb-6">
+        {/* flush: the panel's horizontal-scroll wrapper is a scroll container,
+            and the budget strip inside cannot stick to a box that scrolls. */}
         <Panel
+          flush
+          className="ops-clip"
           title="war room"
           subtitle="Try any keeper combination and watch the draft budget move. Costs and contract years follow the league rules automatically."
         >

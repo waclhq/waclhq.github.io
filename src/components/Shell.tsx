@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom'
+import { flushSync } from 'react-dom'
+import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useLeague } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { setMe, useMe } from '../lib/me'
@@ -307,6 +308,31 @@ export default function Shell({ children }: { children: ReactNode }) {
   // the broadcast replay wipe. Neither runs when animations are off.
   const viewTransitions =
     typeof document !== 'undefined' && 'startViewTransition' in document && !animationsDisabled()
+  const navigate = useNavigate()
+
+  /**
+   * React Router only wires its own `viewTransition` prop through a data
+   * router; under HashRouter the prop is quietly ignored, which left every
+   * navigation a hard cut with the wipe suppressed on its behalf. So the
+   * Shell drives the transition itself: one capture-phase handler for every
+   * in-app link on the page, wrapping the route change in a snapshot so the
+   * chrome holds still and the title morphs (see ::view-transition in
+   * index.css). Anything the browser should own — a new tab, a modified
+   * click, an anchor, an outside link — is left alone.
+   */
+  const onLinkCapture = (event: React.MouseEvent) => {
+    if (!viewTransitions || event.defaultPrevented) return
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const anchor = (event.target as HTMLElement | null)?.closest?.('a')
+    if (!anchor || (anchor.target && anchor.target !== '_self') || anchor.hasAttribute('download')) return
+    const href = anchor.getAttribute('href')
+    // HashRouter writes routes as "#/standings"; "#odds" is a section anchor.
+    if (!href || !href.startsWith('#/')) return
+    const to = href.slice(1)
+    if (to === `${location.pathname}${location.search}${location.hash}`) return
+    event.preventDefault()
+    document.startViewTransition(() => flushSync(() => navigate(to)))
+  }
   const [wipe, setWipe] = useState(0)
   const firstNav = useRef(true)
   // Every page opens at its top (a back/forward pop keeps the browser's
@@ -496,7 +522,6 @@ export default function Shell({ children }: { children: ReactNode }) {
           key={item.to}
           to={item.to}
           end={item.end}
-          viewTransition={viewTransitions}
           className="block no-underline"
           onClick={() => play('blip')}
         >
@@ -528,7 +553,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10">
+    <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10" onClickCapture={onLinkCapture}>
       <Backdrop enabled={!animationsDisabled()} />
       {/* Mobile top bar */}
       <div
@@ -536,7 +561,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         style={{ viewTransitionName: 'chrome-top' }}
       >
         <div className="flex min-w-0 items-center gap-3" onClick={onLogoTap}>
-          <Link to="/" className="relative -my-1 shrink-0" aria-label="Ledger" viewTransition={viewTransitions}>
+          <Link to="/" className="relative -my-1 shrink-0" aria-label="Ledger">
             <Crest size={38} glow={false} />
           </Link>
           <span className="arcade truncate text-[12px] text-arc-ink-soft">
@@ -592,7 +617,6 @@ export default function Shell({ children }: { children: ReactNode }) {
                   key={item.to}
                   to={item.to}
                   end={item.end}
-                  viewTransition={viewTransitions}
                   className="menu-tile block no-underline"
                   style={{ ['--i' as string]: index }}
                   onClick={() => {
@@ -714,7 +738,6 @@ export default function Shell({ children }: { children: ReactNode }) {
               key={to}
               to={to}
               end={item.end}
-              viewTransition={viewTransitions}
               className="min-w-0 flex-1 no-underline"
               onClick={() => play('blip')}
             >
@@ -765,7 +788,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       >
         <div className="border-b-[3px] border-arc-line bg-arc-bg-deep px-4 py-5 text-center">
           <div className="relative inline-block" onClick={onLogoTap}>
-            <Link to="/" aria-label="Ledger" viewTransition={viewTransitions} className="block">
+            <Link to="/" aria-label="Ledger" className="block">
               <Crest size={140} />
             </Link>
             <Sparkles count={5} />

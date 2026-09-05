@@ -65,7 +65,26 @@ export default function WarRoom({ year }: { year: number }) {
         : (blocks[0]?.manager ?? null)
   const block = blocks.find((candidate) => candidate.manager === teamId)
 
-  const eligibility = useMemo(() => (block ? keeperEligibility(block) : []), [block])
+  // The sheet is the truth about who is kept; the ending roster is the truth
+  // about who is eligible. A player can be on the first and not the second
+  // (kept from a trade, or a roster the workbook trimmed), and dropping them
+  // made the war room's total contradict the team card on the same page.
+  const eligibility = useMemo(() => {
+    if (!block) return []
+    const rows = keeperEligibility(block)
+    const known = new Set(rows.map((row) => row.player.trim().toLowerCase()))
+    const offSheet = block.keepers
+      .filter((pick) => !known.has(pick.player.trim().toLowerCase()))
+      .map((pick) => ({
+        player: pick.player,
+        cost: pick.salary,
+        contractYear: pick.contractYear,
+        eligible: true,
+        reason: 'On the keeper sheet, not on the ending roster',
+        nextYear: pick.contractYear,
+      }))
+    return [...rows, ...offSheet]
+  }, [block])
 
   if (!block) return null
   const manager = block.manager!

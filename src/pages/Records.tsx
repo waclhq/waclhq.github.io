@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import ChampionsWall from '../components/ChampionsWall'
 import TradeFlow from '../components/TradeFlow'
 import { ScoringChart } from '../components/charts'
@@ -97,7 +97,6 @@ export default function Records() {
       ? "Points per game across a full regular season, from the record book's re-scored matrix (2004–06 sit on the modern baseline)."
       : 'Points per game across a full regular season.'
 
-  const [allChamps, setAllChamps] = useState(false)
 
   const seasonKey = (row: SeasonExtreme) => `${row.manager}-${row.year}`
   const gameKey = (row: GameRecordEntry) => `${row.manager}-${row.points}-${row.year}`
@@ -118,7 +117,9 @@ export default function Records() {
         }
       />
 
-      <div onClickCapture={rail.onClickCapture}>
+      {/* display:contents — the wrapper only catches chip clicks; giving it
+          a box of its own would trap the sticky rail inside 53 pixels. */}
+      <div className="contents" onClickCapture={rail.onClickCapture}>
         <SectionNav sections={SECTIONS} />
       </div>
 
@@ -299,19 +300,10 @@ export default function Records() {
           subtitle={`${seasons.length} seasons. Repeat winners grow with each title.`}
           delay={320}
         >
-          <div className={allChamps ? undefined : 'champs-fold'}>
-            <ChampionsWall />
-          </div>
-          {!allChamps && (
-            <button
-              type="button"
-              className="block min-h-[42px] w-full border-t border-arc-line px-4 text-left text-[12px] tracking-[0.08em] text-arc-ink-faint uppercase transition-colors hover:text-arc-green lg:hidden"
-              onClick={() => setAllChamps(true)}
-              aria-expanded={false}
-            >
-              + All {seasons.length} seasons
-            </button>
-          )}
+          {/* The wall owns its own fold — six rows on a phone, eleven on a
+              desktop, one toggle. A second fold here stacked two identical
+              buttons and only the inner one worked. */}
+          <ChampionsWall />
         </Panel>
       </div>
 
