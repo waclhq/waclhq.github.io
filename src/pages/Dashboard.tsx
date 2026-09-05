@@ -1,17 +1,55 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import ManagerTag from '../components/ManagerTag'
 import Ticker from '../components/Ticker'
 import Crest from '../components/Crest'
-import { Confetti, FieldGoalStrip, FieldStripes, Sparkles } from '../components/effects'
+import { Confetti, FieldGoalStrip, FieldStripes } from '../components/effects'
 import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
-import { Bar, Chip, Empty, Hero, Panel, PageHeader, Stat } from '../components/ui'
+import { Bar, Chip, Panel, useRevealed } from '../components/ui'
+import KickoffClock from '../components/desk/KickoffClock'
+import { DeskHero } from '../components/desk/Odometer'
+import { ScoreTile } from '../components/desk/ScoreTile'
+import Tape from '../components/desk/Tape'
+import WhenVisible from '../components/desk/WhenVisible'
+import YourDesk from '../components/desk/YourDesk'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { useBudgets, useCash, useObligationHorizon, usePendingTrades, useTrades } from '../lib/derive'
-import { money, num, record, shortDate } from '../lib/format'
+import { countdown, money, num, record, shortDate } from '../lib/format'
 import { antiDumpingCheck } from '../lib/rules'
 import { duesRows } from '../lib/dues'
 import DuesBoard from '../components/DuesBoard'
+
+/**
+ * Championship tapes on file, by the season they celebrate. The champion's
+ * name comes from seasons.json; the tape is a media asset that has to be cut
+ * and dropped into public/media first, so a season without one simply has no
+ * film room and the hero takes the row.
+ */
+const TAPES: Record<number, { src: string; poster: string }> = {
+  2025: { src: 'media/stu-2025.mp4', poster: 'media/desk/stu-2025-poster.jpg' },
+}
+
+/** How long the champion's confetti falls after the tile is first seen. */
+const CONFETTI_MS = 4200
+
+/** Confetti that rains once when the tile comes into view, then stops. */
+function ChampionRain() {
+  const frame = useRef<HTMLSpanElement>(null)
+  const revealed = useRevealed(frame)
+  const [raining, setRaining] = useState(false)
+  useEffect(() => {
+    if (!revealed || animationsDisabled()) return
+    setRaining(true)
+    const timer = setTimeout(() => setRaining(false), CONFETTI_MS)
+    return () => clearTimeout(timer)
+  }, [revealed])
+  return (
+    <span ref={frame} className="pointer-events-none absolute inset-0" aria-hidden>
+      {raining && <Confetti count={10} />}
+    </span>
+  )
+}
 
 export default function Dashboard() {
   const data = useLeagueData()
@@ -23,118 +61,138 @@ export default function Dashboard() {
   const cash = useCash(season)
   const horizon = useObligationHorizon(season)
   const allTrades = useTrades()
+  const location = useLocation()
+  const missing = (location.state as { missing?: string } | null)?.missing
 
   const lastSeason = seasons[0]
   const champion = lastSeason?.champion
+  const tape = lastSeason ? TAPES[lastSeason.year] : undefined
   const unpaidDues = duesRows(data.cash.entries, league, season).filter((row) => !row.settled).length
   const underwater = budgets.filter((budget) => budget.overCommitted)
   const cashOutstanding = cash.reduce((total, row) => total + Math.abs(row.outstanding), 0)
   const committed = horizon.reduce((total, row) => total + row.gross, 0)
   const maxBudget = Math.max(...budgets.map((budget) => budget.available), 1)
+  const queueFirst = pending.length > 0
 
   return (
     <>
-      {/* The big sign — desktop gets it in the sidebar, phones get it here.
-          Pure CSS, so it shows even when animations are switched off. */}
-      <div className="mb-6 flex justify-center lg:hidden">
-        <div className="relative inline-block text-center">
-          <Crest size={128} />
-          <Sparkles count={8} />
+      {missing && (
+        <div
+          role="status"
+          className="win mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-[13px]"
+        >
+          <span className="label text-arc-yellow">No page at</span>
+          <code className="text-arc-ink">{missing}</code>
+          <span className="text-arc-ink-soft">
+            — press Find (<kbd>⌘K</kbd>) to search.
+          </span>
         </div>
+      )}
+
+      {/* The crest, for phones only — desktop carries it in the sidebar. */}
+      <div className="mb-4 flex justify-center lg:hidden">
+        <Crest size={104} />
       </div>
 
-      <PageHeader
-        path="~"
-        eyebrow={`${season} Pre-Season · Commissioner's Desk`}
-        title="The Ledger"
-        lede={`Every dollar, contract, and ruling from ${seasons.length} seasons of ${league.name}, in one book.`}
-      />
+      <header className="pop-in mb-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0 max-w-2xl">
+            <KickoffClock season={season} />
+            <h1
+              className="display cursor neon-soft mt-4 text-arc-ink"
+              style={{ viewTransitionName: 'page-title' }}
+            >
+              The Ledger
+            </h1>
+            <div aria-hidden className="dotbar mt-3 w-full max-w-md text-arc-purple" />
+            <p className="mt-3 text-[14px] leading-relaxed text-arc-ink-soft">
+              Every dollar, contract and ruling from {seasons.length} seasons of {league.name},
+              in one book.
+            </p>
+          </div>
+        </div>
+      </header>
 
       <div className="-mx-4 mb-8 sm:-mx-6 lg:-mx-9">
         <Ticker trades={allTrades} />
       </div>
 
       <div className="mb-10 grid min-w-0 items-end gap-8 lg:grid-cols-[1.05fr_1fr]">
-        <div>
+        <div className={`desk-hero ${tape ? '' : 'lg:col-span-2'}`}>
           <div className="relative isolate">
             <FieldStripes />
-            <Hero
-          label={`Committed through ${horizon.at(-1)?.year ?? season}`}
-          countTo={committed}
-          format={(value) => money(value)}
-          value={money(committed)}
-          accent
-            caption={`Auction dollars already promised across future drafts by trades that are on the books. Every dollar here is one a manager cannot spend on draft day.`}
+            <DeskHero
+              label={`Committed through ${horizon.at(-1)?.year ?? season}`}
+              value={money(committed)}
+              caption="Auction dollars already promised across future drafts by trades that are on the books. Every dollar here is one a manager cannot spend on draft day."
             />
           </div>
-          <FieldGoalStrip championColor={managerColor(champion)} />
+          {/* The canvas under the kick only draws while this slot is on screen. */}
+          <WhenVisible className="desk-field h-[132px]">
+            <FieldGoalStrip championColor={managerColor(champion)} />
+          </WhenVisible>
         </div>
 
-        {/* The champion's film room — sits directly above the Defending champ
-            card. Muted loop so phones allow inline autoplay; tap for sound. */}
-        <div className="win mx-auto w-full max-w-xl">
-          <div className="win-head">
-            <span className="label">Championship tape</span>
-            <span className="label">
-              {managerName(managers, champion)}
-              {lastSeason ? ` · ${lastSeason.year}` : ''}
-            </span>
-          </div>
-          <video
-            className="block max-h-[62vh] w-full bg-black object-contain"
-            src={`${import.meta.env.BASE_URL}media/stu-2025.mp4`}
-            autoPlay={!animationsDisabled()}
-            muted
-            loop
-            playsInline
-            controls
-            preload="metadata"
-            aria-label={`Video of ${managerName(managers, champion)}, the defending champion`}
+        {tape && lastSeason && (
+          <Tape
+            src={`${import.meta.env.BASE_URL}${tape.src}`}
+            poster={`${import.meta.env.BASE_URL}${tape.poster}`}
+            heading="Championship tape"
+            credit={`${managerName(managers, champion)} · ${lastSeason.year}`}
+            description={`${managerName(managers, champion)} with the ${lastSeason.year} trophy`}
+          />
+        )}
+
+        {/* The scoreboard: first thing on a phone, a full-width band under
+            the hero and the tape on desktop. */}
+        <div className="order-first grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:order-none lg:col-span-2">
+          <ScoreTile
+            label="Awaiting ruling"
+            countTo={pending.length}
+            value={pending.length}
+            hint={
+              pending.length
+                ? commissioner
+                  ? 'Needs your ruling'
+                  : 'Awaiting the commissioner'
+                : 'Queue clear'
+            }
+            tone={pending.length ? 'gold' : 'default'}
+            to="/trades"
+          />
+          <ScoreTile
+            label="Defending champ"
+            value={managerName(managers, champion)}
+            hint={lastSeason ? `${lastSeason.year} title` : undefined}
+            lamp={managerColor(champion)}
+            to={champion ? `/managers/${champion}` : undefined}
+            delay={60}
+            className="overflow-hidden"
+          >
+            <ChampionRain />
+          </ScoreTile>
+          <ScoreTile
+            label="Cash open"
+            countTo={cashOutstanding}
+            format={(value) => money(value)}
+            value={money(cashOutstanding)}
+            hint={
+              unpaidDues > 0
+                ? `${unpaidDues} still owe dues`
+                : cashOutstanding
+                  ? 'Dues, payouts, bets'
+                  : 'All square'
+            }
+            tone={cashOutstanding ? 'down' : 'default'}
+            to="/finances"
+            delay={120}
+            className="col-span-2 sm:col-span-1"
           />
         </div>
 
-        {/* The scoreboard strip: first thing on a phone, a full-width row
-            under the hero and the tape on desktop. */}
-        <div className="order-first grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:order-none lg:col-span-2">
-          <Link to="/trades" className="block no-underline">
-            <Stat
-              label="Awaiting ruling"
-              countTo={pending.length}
-              value={pending.length}
-              hint={
-                pending.length
-                  ? commissioner
-                    ? 'Needs your ruling'
-                    : 'Awaiting the commissioner'
-                  : 'Queue clear'
-              }
-              tone={pending.length ? 'gold' : 'default'}
-            />
-          </Link>
-          <div className="relative overflow-hidden">
-            <Confetti count={10} />
-            <Stat
-              label="Defending champ"
-              value={managerName(managers, champion)}
-              hint={lastSeason ? `${lastSeason.year} title` : undefined}
-            />
-          </div>
-          <Link to="/finances" className="col-span-2 block no-underline sm:col-span-1">
-            <Stat
-              label="Cash open"
-              countTo={cashOutstanding}
-              format={(value) => money(value)}
-              value={money(cashOutstanding)}
-              hint={
-                unpaidDues > 0
-                  ? `${unpaidDues} still owe dues`
-                  : cashOutstanding
-                    ? 'Dues, payouts, bets'
-                    : 'All square'
-              }
-              tone={cashOutstanding ? 'down' : 'default'}
-            />
-          </Link>
+        {/* Your desk, once a seat is picked. */}
+        <div className="order-first lg:order-none lg:col-span-2">
+          <YourDesk season={season} />
         </div>
       </div>
 
@@ -192,6 +250,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[1.55fr_1fr]">
+        {/* With a live queue, phones read the rulings before the budget table. */}
         <Panel
           title={`${season} Draft Budgets`}
           subtitle={`$${league.baseDraftBudget} base, less keeper salaries, plus or minus traded auction dollars.`}
@@ -201,6 +260,7 @@ export default function Dashboard() {
             </Link>
           }
           delay={120}
+          className={queueFirst ? 'order-2 lg:order-none' : ''}
         >
           <div>
             <table className="out">
@@ -271,7 +331,7 @@ export default function Dashboard() {
           )}
         </Panel>
 
-        <div className="space-y-6">
+        <div className={`space-y-6 ${queueFirst ? 'order-1 lg:order-none' : ''}`}>
           <Panel
             title="Trade queue"
             subtitle={pending.length ? 'Awaiting a commissioner ruling.' : undefined}
@@ -283,11 +343,19 @@ export default function Dashboard() {
             delay={180}
           >
             {pending.length === 0 ? (
-              <Empty>No trades awaiting a ruling.</Empty>
+              <div className="desk-empty">
+                <span className="label text-arc-green">Queue clear</span>
+                <p>Nothing awaiting a ruling. The books are current.</p>
+              </div>
             ) : (
-              <ul className="divide-y divide-arc-ink">
+              <ul className="divide-y divide-arc-line">
                 {pending.slice(0, 5).map((trade) => {
                   const verdict = antiDumpingCheck(trade)
+                  const onMarketCheck = trade.status === 'market-check'
+                  const checkOver =
+                    onMarketCheck && trade.marketCheckUntil
+                      ? new Date(trade.marketCheckUntil).getTime() <= Date.now()
+                      : false
                   return (
                     <li key={trade.id} className="px-5 py-4">
                       <div className="flex items-start justify-between gap-3">
@@ -309,11 +377,20 @@ export default function Dashboard() {
                           {money(trade.totalDollars)}
                         </div>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        <Chip tone={trade.status === 'market-check' ? 'flag' : 'gold'}>
-                          {trade.status === 'market-check' ? 'Market check' : 'Pending'}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Chip tone={onMarketCheck ? 'flag' : 'gold'}>
+                          {onMarketCheck ? 'Market check' : 'Pending'}
                         </Chip>
-                        {verdict.triggered && <Chip tone="flag">Anti-dumping trigger</Chip>}
+                        {verdict.triggered && !onMarketCheck && (
+                          <Chip tone="flag">Anti-dumping trigger</Chip>
+                        )}
+                        {onMarketCheck && trade.marketCheckUntil && (
+                          <span className="tnum text-[11px] text-arc-ink-soft">
+                            {checkOver
+                              ? 'Window closed — ROFR to the original buyer'
+                              : `Closes in ${countdown(trade.marketCheckUntil)}`}
+                          </span>
+                        )}
                       </div>
                     </li>
                   )
@@ -365,7 +442,7 @@ export default function Dashboard() {
             </table>
             <div className="border-t border-arc-line px-5 py-3">
               <Link to="/standings" className="label hover:text-arc-green">
-                All 22 seasons →
+                All {seasons.length} seasons →
               </Link>
             </div>
           </Panel>
