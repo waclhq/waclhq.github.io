@@ -1,4 +1,13 @@
-import { Component, Suspense, lazy, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
+import {
+  Component,
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  type ComponentType,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Boot, { shouldBoot } from './components/Boot'
 import Shell from './components/Shell'
@@ -10,19 +19,61 @@ import Bets from './pages/Bets'
 import Standings from './pages/Standings'
 import Managers from './pages/Managers'
 
+/**
+ * A room that arrives when you first open it — and survives a deploy.
+ *
+ * Every build names its files by content hash and publishing replaces the
+ * whole set, so a tab left open across a deploy (or a phone holding the old
+ * index.html for the ten minutes GitHub Pages caches it) asks for a room that
+ * no longer exists under that name. Left alone that is a dead page: the
+ * import rejects and the reader gets an error where a page should be. So the
+ * first failure reloads instead, which fetches the new index and its new
+ * names.
+ *
+ * What stops that from becoming a reload loop is WHICH build asked. The
+ * attempt is stamped with this build's id: if the id in storage is already
+ * ours, the reload has been tried under this exact build and the file is
+ * genuinely gone, so the error goes to the boundary below. A reload that
+ * lands on a newer build carries a different id and is allowed its own
+ * attempt. Nothing needs clearing, because a build id only appears once.
+ */
+const CHUNK_RELOAD = 'wacl.chunkReload'
+
+function room<T extends ComponentType<unknown>>(load: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    load().catch((error) => {
+      let tried: string | null = null
+      try {
+        tried = sessionStorage.getItem(CHUNK_RELOAD)
+      } catch {
+        /* private browsing: one reload attempt is still worth it */
+      }
+      if (tried === __BUILD_ID__) throw error
+      try {
+        sessionStorage.setItem(CHUNK_RELOAD, __BUILD_ID__)
+      } catch {
+        /* ignore */
+      }
+      window.location.reload()
+      // Hold the import open; the reload takes the page from here.
+      return new Promise<never>(() => {})
+    }),
+  )
+}
+
 // The four rooms people open most ship in the entry; the rest (and Recharts
 // with them) load on first visit, so the Ledger is on screen sooner.
-const Draft = lazy(() => import('./pages/Draft'))
-const Finances = lazy(() => import('./pages/Finances'))
-const Guide = lazy(() => import('./pages/Guide'))
-const Keepers = lazy(() => import('./pages/Keepers'))
-const Lab = lazy(() => import('./pages/Lab'))
-const Almanac = lazy(() => import('./pages/Almanac'))
-const ManagerDetail = lazy(() => import('./pages/ManagerDetail'))
-const PlayerDetail = lazy(() => import('./pages/PlayerDetail'))
-const Records = lazy(() => import('./pages/Records'))
-const Rules = lazy(() => import('./pages/Rules'))
-const Trades = lazy(() => import('./pages/Trades'))
+const Draft = room(() => import('./pages/Draft'))
+const Finances = room(() => import('./pages/Finances'))
+const Guide = room(() => import('./pages/Guide'))
+const Keepers = room(() => import('./pages/Keepers'))
+const Lab = room(() => import('./pages/Lab'))
+const Almanac = room(() => import('./pages/Almanac'))
+const ManagerDetail = room(() => import('./pages/ManagerDetail'))
+const PlayerDetail = room(() => import('./pages/PlayerDetail'))
+const Records = room(() => import('./pages/Records'))
+const Rules = room(() => import('./pages/Rules'))
+const Trades = room(() => import('./pages/Trades'))
 
 /** Unknown routes land on the Ledger, which says which door was missing. */
 function Missing() {
@@ -57,8 +108,9 @@ class RoomBoundary extends Component<{ children: ReactNode }, { error: Error | n
       <div className="win mx-auto mt-6 max-w-lg p-5" role="alert">
         <div className="label text-arc-red">this page broke</div>
         <p className="mt-2 text-[13.5px] leading-relaxed text-arc-ink-soft">
-          Something on this page threw an error. A reload usually clears it. If it keeps
-          happening right after a save, clear the local changes — the copy on GitHub is safe.
+          {/import|module|chunk|Loading/i.test(this.state.error.message)
+            ? 'The site updated while this tab was open, so this page went looking for a file that had already been replaced. A reload picks up the new one.'
+            : 'Something on this page threw an error. A reload usually clears it. If it keeps happening right after a save, clear the local changes — the copy on GitHub is safe.'}
         </p>
         <pre className="mt-3 overflow-x-auto border border-arc-line bg-arc-bg p-3 text-[11px] text-arc-ink-faint">
           {this.state.error.message}

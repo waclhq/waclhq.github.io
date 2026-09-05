@@ -334,7 +334,25 @@ export default function Shell({ children }: { children: ReactNode }) {
     const to = href.slice(1)
     if (to === `${location.pathname}${location.search}${location.hash}`) return
     event.preventDefault()
-    document.startViewTransition(() => flushSync(() => navigate(to)))
+    // The navigation is the point; the transition is decoration. Every way
+    // this can fail — a browser that rejects the callback, flushSync landing
+    // mid-render, a transition the browser abandons — ends with the page
+    // changing anyway. A link that does nothing is not an acceptable failure.
+    const go = () => navigate(to)
+    try {
+      const transition = document.startViewTransition(() => {
+        try {
+          flushSync(go)
+        } catch {
+          go()
+        }
+      })
+      transition?.finished?.catch(() => undefined)
+      transition?.ready?.catch(() => undefined)
+      transition?.updateCallbackDone?.catch(() => undefined)
+    } catch {
+      go()
+    }
   }
   const [wipe, setWipe] = useState(0)
   const firstNav = useRef(true)
