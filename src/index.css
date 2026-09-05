@@ -80,6 +80,28 @@
     overflow-x: hidden;
   }
 
+  /* ...but only there. Every opaque surface puts its own ground behind the
+     glyphs, and on one the halo is not protection, it is a smudge — worst on
+     small bold type like a badge's two dark initials on a bright fill, which
+     it wraps in grey fog. So the shadow stops at the edge of anything solid:
+     panels, chrome, chips, buttons, tiles, tickets. Page titles, ledes and
+     captions, which really do sit out on the glass, keep it. */
+  .win,
+  aside,
+  nav,
+  footer,
+  [role='dialog'],
+  .badge,
+  .tag,
+  .btn,
+  .bet-tile,
+  .stub,
+  .banner,
+  .no-halo,
+  kbd {
+    text-shadow: none;
+  }
+
   /* Ambient light off the board: signature green over the top-right, a
      faint amber wash low-left. A fixed layer so the glow holds still while
      the page scrolls past it. */
@@ -525,8 +547,12 @@
       0 0 0 3.5px var(--me-color, transparent),
       0 0 16px color-mix(in srgb, var(--me-color, transparent) 60%, transparent);
   }
-  .me-tag > span:last-child {
-    text-shadow: 0 0 14px color-mix(in srgb, var(--me-color, transparent) 70%, transparent);
+  /* The name, never the badge: a badge-only tag (the "You" pin) would
+     otherwise wear the glow on its two dark initials. */
+  .me-tag > span:last-child:not(.badge) {
+    text-shadow:
+      0 0 14px color-mix(in srgb, var(--me-color, transparent) 70%, transparent),
+      0 0 12px color-mix(in srgb, var(--me-color, transparent) 45%, transparent);
   }
   tr:has(.me-tag) {
     background: color-mix(in srgb, var(--me-color, transparent) 9%, transparent);
@@ -714,7 +740,12 @@
     font-family: var(--font-display);
     font-size: 12.5px;
     font-variant-numeric: tabular-nums;
+    /* Near-black on the manager's colour, with the initials sharpened rather
+       than shadowed: at 12.5px a halo eats the counters of the letters. */
     color: #06090d;
+    letter-spacing: 0.02em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
     border: none;
     border-radius: 6px;
     font-weight: 700;

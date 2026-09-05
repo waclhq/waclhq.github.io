@@ -29,7 +29,14 @@ export default function ManagerTag({
     <span className={`inline-flex min-w-0 items-center gap-2 ${isMe ? 'me-tag' : ''}`}>
       <span
         className="badge"
-        style={{ background: color, width: size, height: size, fontSize: size * 0.33 }}
+        style={{
+          background: color,
+          width: size,
+          height: size,
+          // Two initials should fill their tile, not float in it: at a third
+          // of the badge they read as specks on a phone.
+          fontSize: Math.max(9, Math.round(size * 0.42)),
+        }}
         aria-hidden
       >
         {managerInitials(manager, id ?? undefined)}
