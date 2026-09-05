@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * The room the site lives in: liquid-glass caustics — light through a
@@ -81,12 +81,21 @@ void main(){
 
 /** Render scale — caustics are soft; 2/3 on desktop, half on phones. */
 const SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.5 : 0.66
-/** The glass moves slowly; 30 frames a second is indistinguishable and halves the GPU bill. */
+/**
+ * The glass moves slowly; 30 frames a second is indistinguishable and halves
+ * the GPU bill. The margin matters: on a device already delivering frames at
+ * 30Hz — a busy page, Low Power Mode — a bare "skip anything under 33.3ms"
+ * test lands right on the cadence, so jitter drops every other frame and the
+ * room stutters at 15fps. Allow a frame that is nearly due.
+ */
 const FRAME_MS = 1000 / 30
+const FRAME_SLACK = 6
 
 export default function Backdrop({ enabled }: { enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const failedRef = useRef(false)
+  // Bumped to re-run the effect after the GPU hands the context back.
+  const [generation, setGeneration] = useState(0)
 
   useEffect(() => {
     if (!enabled || failedRef.current) return
@@ -94,6 +103,18 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
     if (!canvas) return
 
     let raf = 0
+    // A phone under memory pressure takes the GL context away mid-scroll and
+    // the room simply freezes. Ask to keep the canvas (preventDefault), stop
+    // drawing into a dead context, and rebuild when it comes back.
+    const onLost = (event: Event) => {
+      event.preventDefault()
+      cancelAnimationFrame(raf)
+      raf = 0
+    }
+    const onRestored = () => setGeneration((n) => n + 1)
+    canvas.addEventListener('webglcontextlost', onLost)
+    canvas.addEventListener('webglcontextrestored', onRestored)
+
     try {
       const gl = canvas.getContext('webgl', { antialias: false })
       if (!gl) throw new Error('WebGL unavailable')
@@ -147,9 +168,16 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       }
 
       let lastDraw = 0
+      let lastFrame = 0
+      let cadence = 16.7
       const tick = (time: number) => {
         raf = requestAnimationFrame(tick)
-        if (document.hidden || time - lastDraw < FRAME_MS) return
+        if (document.hidden) return
+        // What the display is actually giving us, smoothed. When it is
+        // already at or below the target rate, every frame gets drawn.
+        if (lastFrame) cadence += (Math.min(time - lastFrame, 100) - cadence) * 0.1
+        lastFrame = time
+        if (cadence < FRAME_MS - FRAME_SLACK && time - lastDraw < FRAME_MS - FRAME_SLACK) return
         lastDraw = time
         const w = Math.floor(window.innerWidth * SCALE)
         const h = Math.floor(window.innerHeight * SCALE)
@@ -173,8 +201,12 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       console.error('backdrop shader failed:', error)
     }
 
-    return () => cancelAnimationFrame(raf)
-  }, [enabled])
+    return () => {
+      cancelAnimationFrame(raf)
+      canvas.removeEventListener('webglcontextlost', onLost)
+      canvas.removeEventListener('webglcontextrestored', onRestored)
+    }
+  }, [enabled, generation])
 
   const shaderOn = enabled && !failedRef.current
 

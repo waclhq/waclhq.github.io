@@ -37,7 +37,13 @@ export default function BetBoard({
   h2h: HeadToHead[]
 }) {
   const still = animationsDisabled()
-  const burning = (bet: Bet) => bet.status === 'live' && isNewBet(bet) && !still
+  // One fire, always the newest money. Five tiles alight at once is five
+  // simulations competing for the same frame — and five things asking for
+  // the eye, which is none. The other fresh bets smoulder like the rest.
+  const freshest = bets
+    .filter((bet) => bet.status === 'live' && isNewBet(bet))
+    .sort((x, y) => (y.acceptedAt ?? y.proposedAt).localeCompare(x.acceptedAt ?? x.proposedAt))[0]
+  const burning = (bet: Bet) => !still && Boolean(freshest) && bet.id === freshest.id
   const dealt = [...bets].sort(
     (x, y) =>
       Number(isMine(y, me)) - Number(isMine(x, me)) || Number(burning(y)) - Number(burning(x)),
@@ -75,7 +81,11 @@ export default function BetBoard({
         return (
           <Fragment key={bet.id}>
             {burning(bet) ? <FireFrame>{tile}</FireFrame> : tile}
-            {open === bet.id && <Detail bet={bet}>{renderSlip(bet)}</Detail>}
+            {open === bet.id && (
+              <Detail bet={bet} burning={burning(bet)}>
+                {renderSlip(bet)}
+              </Detail>
+            )}
           </Fragment>
         )
       })}

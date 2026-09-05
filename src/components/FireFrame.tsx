@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { animationsDisabled } from '../lib/motion'
+import { subscribe } from '../lib/ticker'
 
 /**
  * A card actually on fire.
@@ -18,9 +19,10 @@ import { animationsDisabled } from '../lib/motion'
  * The grid is one cell per two CSS pixels on a phone tile and one per three
  * on anything wider, and the canvas is left at grid resolution: the browser's
  * own bilinear upscale is the soft edge, so a frame costs one putImageData of
- * ten to twenty thousand cells. It runs at 36fps,
- * stops when the card scrolls out of view or the tab is hidden, and never
- * starts at all under reduced motion.
+ * ten to twenty thousand cells. Every fire on a page draws from one shared
+ * clock (lib/ticker) at 36fps, halved automatically when the page cannot hold
+ * the pace; each stops when its card scrolls out of view or the tab is
+ * hidden, and none start at all under reduced motion.
  */
 
 /**
@@ -33,8 +35,6 @@ function cellFor(width: number): number {
 }
 /** Room for the flames to climb outside the card, in CSS pixels. */
 const MARGIN = { top: 56, side: 30, bottom: 26 }
-/** Simulation rate. Fire reads fine below 60 and halves the work. */
-const STEP_MS = 1000 / 36
 /** Heat lost per row climbed, at most. Lower burns taller. */
 const DECAY = 21
 /** Thickness of the burner band hugging the card, in cells. */
@@ -260,16 +260,9 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
       ctx.putImageData(image, 0, 0)
     }
 
-    let frame = 0
-    let last = 0
-    let clock = 0
-    let running = false
+    let leave: (() => void) | null = null
 
-    const tick = (now: number) => {
-      frame = requestAnimationFrame(tick)
-      if (now - last < STEP_MS) return
-      last = now
-      clock += STEP_MS / 1000
+    const step = (clock: number) => {
       if (!layout()) return
       climb(clock)
       clearInterior()
@@ -278,15 +271,12 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
     }
 
     const start = () => {
-      if (running) return
-      running = true
-      last = 0
-      frame = requestAnimationFrame(tick)
+      if (leave) return
+      leave = subscribe(step)
     }
     const stop = () => {
-      if (!running) return
-      running = false
-      cancelAnimationFrame(frame)
+      leave?.()
+      leave = null
     }
 
     // Fire off screen is heat nobody sees — and on a phone, battery.

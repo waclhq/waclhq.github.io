@@ -1,17 +1,26 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import FireFrame from '../FireFrame'
-import { isNewBet, type Bet } from '../../lib/bets'
+import { type Bet } from '../../lib/bets'
 import { managerColor } from '../../lib/identity'
 import { animationsDisabled } from '../../lib/motion'
 
 /**
  * The opened window. The grid row grows downward (0fr to 1fr) while the slip
  * unfolds from its top hinge in perspective; once the growth settles,
- * overflow opens so the border effects can breathe past the edges. Fresh
- * bets burn; standing bets get breathing coals inside a rim of the two
+ * overflow opens so the border effects can breathe past the edges. The slip
+ * burns when its tile does — the board decides which one bet that is — and
+ * every other standing bet gets breathing coals inside a rim of the two
  * managers' colours orbiting the card.
  */
-export default function Detail({ bet, children }: { bet: Bet; children: ReactNode }) {
+export default function Detail({
+  bet,
+  children,
+  burning: alight = false,
+}: {
+  bet: Bet
+  children: ReactNode
+  burning?: boolean
+}) {
   const still = animationsDisabled()
   const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>(still ? 'open' : 'closed')
   useEffect(() => {
@@ -20,7 +29,7 @@ export default function Detail({ bet, children }: { bet: Bet; children: ReactNod
     return () => cancelAnimationFrame(frame)
   }, [still])
 
-  const burning = bet.status === 'live' && isNewBet(bet) && !still
+  const burning = alight && !still
 
   return (
     <div
