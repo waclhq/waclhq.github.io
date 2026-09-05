@@ -88,6 +88,14 @@ the Shell offers a refresh when a newer build is live.
   (`HeapScene`, `FireFrame`, `BurnAway`, `TradingCard`), editors
   (`TradeForm`, `KeeperEditor`).
 - `src/styles/` — one stylesheet per room (see rule 6).
+- Room-level component folders, each owned by its page: `desk/` (Ledger:
+  split-flap kickoff clock, odometer, score tiles, Your desk), `rafters/`
+  (Almanac: hanging banners, the 22-seasons race), `profile/` (manager holo
+  header, tale of the tape, Book panel), `tables/` (season scrubber, sortable
+  leaderboard bits), `boards/` (the shared podium `Board`, Elo constellation,
+  odds board, roast teleprompter, shrine), `ops/` (stadium dues section),
+  `receipts/` (the Book: tiles, slip, stub, composer, editor, share). Their
+  pure helpers live beside them as `src/lib/<room>-*.ts`.
 - `scripts/` — Python ETL/extractors, `manager_icons.mjs` (exports every
   manager badge to `assets/manager-icons/`, read-only on league data), and the
   Yahoo sync (parked: Yahoo now gates its Fantasy API behind an application).
@@ -104,7 +112,11 @@ italic; hero numbers lean), **Inter** for body and table data with tabular
 figures, IBM Plex Mono only for chart axes and `kbd`. Tokens live in the
 `@theme` block of `src/index.css` — use them, never raw hex, so the palette
 stays swappable. Tables use the real `.out` table class (thead and tbody must
-share one column grid or headers drift).
+share one column grid or headers drift). Leaderboards use the shared
+`Board` in `components/boards/` (medal rank cells, lead wash, min–max bars,
+top-5 fold, one-shot spotlight) rather than bespoke tables. Panels wrap
+their content in a horizontal-scroll hint; a board whose effects bleed past
+its edges (the Book's fire) passes `flush`.
 
 ## Voice
 
