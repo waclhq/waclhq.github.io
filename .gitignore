@@ -3,3 +3,7 @@ dist
 .DS_Store
 *.local
 .env
+
+# TypeScript's incremental build cache: rewritten by every `npm run build`,
+# meaningless to anyone else, and a merge conflict waiting to happen.
+*.tsbuildinfo
