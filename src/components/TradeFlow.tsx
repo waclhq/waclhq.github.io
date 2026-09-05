@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { managerName, useLeagueData } from '../lib/data'
 import { animationsDisabled } from '../lib/motion'
 import { money } from '../lib/format'
@@ -20,6 +20,28 @@ export default function TradeFlow({ trades }: { trades: Trade[] }) {
   const [focus, setFocus] = useState<ManagerId | null>(null)
   // SMIL animation ignores the CSS reduced-motion rules, so gate it here.
   const reduceMotion = typeof window !== 'undefined' && animationsDisabled()
+  const svg = useRef<SVGSVGElement>(null)
+
+  // The balls only run while the diagram is on screen and the tab is visible.
+  useEffect(() => {
+    const node = svg.current
+    if (!node || reduceMotion) return
+    let seen = true
+    const apply = () => {
+      if (seen && !document.hidden) node.unpauseAnimations()
+      else node.pauseAnimations()
+    }
+    const watch = new IntersectionObserver(([entry]) => {
+      seen = entry.isIntersecting
+      apply()
+    })
+    watch.observe(node)
+    document.addEventListener('visibilitychange', apply)
+    return () => {
+      watch.disconnect()
+      document.removeEventListener('visibilitychange', apply)
+    }
+  }, [reduceMotion])
 
   const { nodes, links, max } = useMemo(() => {
     const totals = new Map<string, Link>()
@@ -78,6 +100,7 @@ export default function TradeFlow({ trades }: { trades: Trade[] }) {
   return (
     <div>
       <svg
+        ref={svg}
         viewBox={`0 0 ${size} ${size}`}
         className="mx-auto block h-auto w-full max-w-[460px]"
         role="img"
@@ -136,8 +159,8 @@ export default function TradeFlow({ trades }: { trades: Trade[] }) {
                     <ellipse
                       rx="5.4"
                       ry="3.4"
-                      fill="#c98d5f"
-                      stroke="#04030a"
+                      fill="var(--color-arc-brown)"
+                      stroke="var(--color-arc-bg-deep)"
                       strokeWidth="1.2"
                       opacity={lit ? 1 : 0.25}
                     >

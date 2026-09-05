@@ -1,23 +1,30 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import PixelMugshot from '../components/PixelMugshot'
-import { Chip, Panel, PageHeader, Stat } from '../components/ui'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import ManagerTag from '../components/ManagerTag'
+import { Chip, Panel, PageHeader, SectionNav, Stat } from '../components/ui'
 import { Confetti } from '../components/effects'
-import BurnAway from '../components/BurnAway'
-import FireFrame from '../components/FireFrame'
+import BetBoard from '../components/receipts/BetBoard'
+import BetEditor from '../components/receipts/BetEditor'
+import Composer from '../components/receipts/Composer'
+import ConfirmButton from '../components/receipts/ConfirmButton'
+import Slip, { Face, type Pyre } from '../components/receipts/Slip'
+import Stub from '../components/receipts/Stub'
+import { readLastGood, writeLastGood } from '../components/receipts/betsCache'
+import type { NameOf } from '../components/receipts/provenance'
+import { landOn } from '../components/receipts/land'
 import { play } from '../lib/sfx'
 import { animationsDisabled } from '../lib/motion'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
+import { friendlySaveError } from '../lib/github'
 import { managerColor } from '../lib/identity'
-import { money, pct, shortDate } from '../lib/format'
+import { useMe } from '../lib/me'
+import { money, pct } from '../lib/format'
 import {
   applyResults,
-  betEditOf,
   betRecords,
   editedBet,
   headToHead,
-  isNewBet,
   loserOf,
-  newBetId,
   openDebts,
   stakeLabel,
   venmoUrl,
@@ -25,7 +32,6 @@ import {
   type BetEdit,
   type BetsFile,
   type Debt,
-  type StakeKind,
 } from '../lib/bets'
 import {
   betsRepoUrl,
@@ -37,43 +43,118 @@ import {
 } from '../lib/betsRepo'
 import type { BetResultsFile, ManagerId } from '../lib/types'
 
+/** The commissioner's way into the editor. Icon-only — slip footers are tight. */
+function EditButton({ bet, busy, onEdit }: { bet: Bet; busy: boolean; onEdit: (bet: Bet) => void }) {
+  return (
+    <button
+      type="button"
+      className="btn min-h-[36px] min-w-[40px] px-2.5 py-1"
+      disabled={busy}
+      onClick={() => onEdit(bet)}
+      aria-label={`Edit or delete the bet: ${bet.terms}`}
+      title="Edit or delete this bet"
+    >
+      ✎
+    </button>
+  )
+}
+
+/** The bets repo speaks for itself on its own failures; GitHub's get translated. */
+function describe(cause: unknown, fallback: string): string {
+  const message = cause instanceof Error ? cause.message : ''
+  if (/league password|league token|bets repo|bets\.json|no longer valid|cannot write/i.test(message))
+    return message
+  return cause instanceof Error ? friendlySaveError(cause) : fallback
+}
+
+function clockTime(at: number): string {
+  return new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 /**
  * The book. Anyone with the league password can propose a bet and accept one
  * against them; only the commissioner settles. Bets live in their own repo,
  * so posting one shows up on the next refresh rather than waiting on a
- * Pages deploy.
+ * Pages deploy. Every slip carries its own receipt and its own address:
+ * /#/bets?bet=<id> opens it.
  */
 export default function Bets() {
   const { league, managers, leagueVault, betResults } = useLeagueData()
   const { commissioner, save } = useLeague()
+  const me = useMe()
   const active = useMemo(() => managers.filter((m) => m.active), [managers])
+  const nameOf = useCallback<NameOf>((id) => managerName(managers, id), [managers])
 
   const [file, setFile] = useState<BetsFile | null>(null)
+  // Set when the board on screen is this device's last good copy, not a fresh read.
+  const [boardAsOf, setBoardAsOf] = useState<number | null>(null)
   const [unlocked, setUnlocked] = useState(canPostBets)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // One failure at a time, pinned to the control that caused it.
+  const [fault, setFault] = useState<{ id: string; message: string } | null>(null)
   const [composing, setComposing] = useState(false)
-  // The bet the commissioner is correcting, if any.
+  // The bet the commissioner is correcting, and only that editor's own failure.
   const [editing, setEditing] = useState<Bet | null>(null)
-  // Which tile on the board is unfolded into a full slip.
-  const [open, setOpen] = useState<string | null>(null)
+  const [editorFault, setEditorFault] = useState<string | null>(null)
   // Bumped on a settle so the confetti remounts and fires again.
   const [celebrate, setCelebrate] = useState(0)
   // The execution in progress: whose half of which slip is burning away.
-  const [pyre, setPyre] = useState<{ betId: string; loser: ManagerId; winner: ManagerId } | null>(
-    null,
-  )
+  const [pyre, setPyre] = useState<Pyre | null>(null)
+  const [tapePaused, setTapePaused] = useState(false)
+  const passwordPanel = useRef<HTMLDivElement>(null)
+  const passwordField = useRef<HTMLInputElement>(null)
 
+  // Which bet is unfolded. It lives in the address (?bet=<id>) so a slip can
+  // be handed to someone; the route itself never changes. Opening a tile
+  // writes the address directly rather than navigating — a router navigation,
+  // even a replace, is a page change to the Shell, which scrolls to the top.
+  const [params] = useSearchParams()
+  const linked = params.get('bet')
+  const arrivedAt = useRef(linked)
+  const [open, setOpenState] = useState<string | null>(linked)
+  const setOpen = useCallback((id: string | null) => {
+    setOpenState(id)
+    const url = new URL(window.location.href)
+    const [path, query = ''] = url.hash.replace(/^#/, '').split('?')
+    const search = new URLSearchParams(query)
+    if (id) search.set('bet', id)
+    else search.delete('bet')
+    const qs = search.toString()
+    url.hash = `${path}${qs ? `?${qs}` : ''}`
+    window.history.replaceState(window.history.state, '', url.toString())
+  }, [])
   useEffect(() => {
-    void readBets().then(setFile)
+    if (linked) setOpenState(linked)
+  }, [linked])
+
+  const load = useCallback(async () => {
+    const fresh = await readBets()
+    const cached = readLastGood()
+    // An unreachable repo answers as an empty file. A board this device has
+    // seen bets on does not go blank on a bad connection — it shows the last
+    // copy, stamped with its age, until a read says otherwise.
+    if (fresh.bets.length === 0 && cached && cached.file.bets.length > 0) {
+      setFile(cached.file)
+      setBoardAsOf(cached.at)
+      return
+    }
+    setFile(fresh)
+    setBoardAsOf(null)
+    if (fresh.bets.length > 0) writeLastGood(fresh)
   }, [])
 
+  useEffect(() => {
+    void load()
+  }, [load])
+  useEffect(() => {
+    const again = () => void load()
+    window.addEventListener('online', again)
+    return () => window.removeEventListener('online', again)
+  }, [load])
+
   // Winners come only from the commissioner-only results file.
-  const bets = useMemo(
-    () => applyResults(file?.bets ?? [], betResults.results),
-    [file, betResults],
-  )
+  const bets = useMemo(() => applyResults(file?.bets ?? [], betResults.results), [file, betResults])
   const season = league.currentSeason
   const proposed = bets.filter((b) => b.status === 'proposed')
   const live = bets.filter((b) => b.status === 'live')
@@ -82,14 +163,19 @@ export default function Bets() {
     .sort((a, b) => (b.settledAt ?? '').localeCompare(a.settledAt ?? ''))
   const records = useMemo(() => betRecords(bets), [bets])
   const h2h = useMemo(() => headToHead(bets), [bets])
-  const debts = useMemo(() => openDebts(bets), [bets])
+  const debts = useMemo(() => {
+    const all = openDebts(bets)
+    if (!me) return all
+    const mine = (d: Debt) => d.from === me || d.to === me
+    return [...all].sort((x, y) => Number(mine(y)) - Number(mine(x)))
+  }, [bets, me])
   const handleOf = (id: ManagerId) => managers.find((m) => m.id === id)?.venmo
 
   const riding = live.reduce((sum, b) => sum + (b.stakeKind === 'cash' ? b.stake : 0), 0)
-  const biggest = [...bets]
-    .filter((b) => b.stakeKind === 'cash')
-    .sort((a, b) => b.stake - a.stake)[0]
-  const hottest = [...records].sort((a, b) => b.streak - a.streak)[0]
+  const biggest = [...bets].filter((b) => b.stakeKind === 'cash').sort((a, b) => b.stake - a.stake)[0]
+  const hottest = [...records].sort((a, b) => b.streak - a.streak || b.net - a.net)[0]
+  // One win is a win. Two straight is a hand.
+  const onARun = hottest && hottest.streak >= 2 ? hottest : null
 
   // Recent action, newest first, for the tape.
   const tape = [...bets]
@@ -97,13 +183,68 @@ export default function Bets() {
     .sort((a, b) => (b.settledAt ?? b.acceptedAt ?? '').localeCompare(a.settledAt ?? a.acceptedAt ?? ''))
     .slice(0, 18)
 
+  // A shared link lands on its slip, once, under the sticky bars. Web fonts
+  // and portraits can still move the board for a moment after the first
+  // pass, so it realigns twice more unless the reader has started scrolling.
+  useEffect(() => {
+    const target = arrivedAt.current
+    if (!file || !target || linked !== target) return
+    arrivedAt.current = null
+    let cancelled = false
+    const cancel = () => {
+      cancelled = true
+    }
+    const land = () => {
+      if (cancelled) return null
+      const node = document.querySelector<HTMLElement>(`[data-bet="${CSS.escape(target)}"]`)
+      if (node) landOn(node)
+      return node
+    }
+    for (const type of ['wheel', 'touchstart', 'keydown'] as const)
+      window.addEventListener(type, cancel, { passive: true, once: true })
+    const first = requestAnimationFrame(() => {
+      const node = land()
+      const control = node?.matches('button') ? node : node?.querySelector<HTMLElement>('button')
+      if (!control) return
+      // Focus so assistive tech lands on the bet too — without the keyboard
+      // ring, since nobody pressed a key to get here.
+      control.style.outline = 'none'
+      control.addEventListener('blur', () => control.style.removeProperty('outline'), { once: true })
+      control.focus({ preventScroll: true })
+    })
+    const again = [700, 1600].map((ms) => window.setTimeout(land, ms))
+    document.fonts?.ready.then(() => void land()).catch(() => undefined)
+    return () => {
+      cancelAnimationFrame(first)
+      again.forEach((id) => window.clearTimeout(id))
+      for (const type of ['wheel', 'touchstart', 'keydown'] as const)
+        window.removeEventListener(type, cancel)
+    }
+  }, [file, linked])
+
+  const faultFor = (id: string) => (fault?.id === id ? fault.message : null)
+
+  // Every write on the board announces itself the way lib/data's save() does,
+  // so the Shell's status strip reports it where the thumb already is.
+  const announce = (detail: Record<string, unknown>) =>
+    window.dispatchEvent(new CustomEvent('wacl:save', { detail: { file: 'bets.json', ...detail } }))
+
   async function mutate(update: (current: BetsFile) => BetsFile, message: string, id: string) {
     setBusy(id)
-    setError(null)
+    setFault(null)
+    announce({ phase: 'start', message })
     try {
-      setFile(await saveBets(update, message))
+      const next = await saveBets(update, message)
+      setFile(next)
+      setBoardAsOf(null)
+      writeLastGood(next)
+      announce({ phase: 'ok', message })
+      return true
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not save that.')
+      const error = describe(cause, 'Could not save that.')
+      setFault({ id, message: error })
+      announce({ phase: 'error', message, error, retry: () => void mutate(update, message, id) })
+      return false
     } finally {
       setBusy(null)
     }
@@ -112,19 +253,24 @@ export default function Bets() {
   async function unlock() {
     if (!leagueVault) return
     setBusy('unlock')
-    setError(null)
+    setFault(null)
     try {
       await unlockLeague(leagueVault, password)
       setUnlocked(true)
       setPassword('')
       // Now that we hold a token, re-read through the API — raw's CDN copy
       // can be up to five minutes behind.
-      setFile(await readBets())
+      await load()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not unlock.')
+      setFault({ id: 'unlock', message: describe(cause, 'Could not unlock.') })
     } finally {
       setBusy(null)
     }
+  }
+
+  const jumpToPassword = () => {
+    if (passwordPanel.current) landOn(passwordPanel.current, animationsDisabled() ? 'auto' : 'smooth')
+    passwordField.current?.focus({ preventScroll: true })
   }
 
   const accept = (bet: Bet) =>
@@ -135,7 +281,7 @@ export default function Bets() {
           b.id === bet.id ? { ...b, status: 'live', acceptedAt: new Date().toISOString() } : b,
         ),
       }),
-      `Bet accepted: ${managerName(managers, bet.opponent)} vs ${managerName(managers, bet.proposer)}`,
+      `Bet accepted: ${nameOf(bet.opponent)} vs ${nameOf(bet.proposer)}`,
       bet.id,
     )
 
@@ -145,13 +291,9 @@ export default function Bets() {
    */
   const settle = async (bet: Bet, winner: ManagerId) => {
     setBusy(bet.id)
-    setError(null)
+    setFault(null)
     if (!animationsDisabled()) {
-      setPyre({
-        betId: bet.id,
-        loser: winner === bet.proposer ? bet.opponent : bet.proposer,
-        winner,
-      })
+      setPyre({ betId: bet.id, loser: winner === bet.proposer ? bet.opponent : bet.proposer, winner })
     }
     try {
       await save<BetResultsFile>(
@@ -162,13 +304,13 @@ export default function Bets() {
             { betId: bet.id, winner, settledAt: new Date().toISOString() },
           ],
         }),
-        `Bet settled: ${managerName(managers, winner)} wins`,
+        `Bet settled: ${nameOf(winner)} wins`,
       )
       play('roar')
       if (!animationsDisabled()) setCelebrate((n) => n + 1)
     } catch (cause) {
       setPyre(null)
-      setError(cause instanceof Error ? cause.message : 'Could not record the result.')
+      setFault({ id: bet.id, message: friendlySaveError(cause) })
     } finally {
       setBusy(null)
     }
@@ -182,19 +324,23 @@ export default function Bets() {
           debt.betIds.includes(b.id) ? { ...b, paidAt: new Date().toISOString() } : b,
         ),
       }),
-      `Bet debt paid: ${managerName(managers, debt.from)} → ${managerName(managers, debt.to)} ${money(debt.amount)}`,
+      `Bet debt paid: ${nameOf(debt.from)} → ${nameOf(debt.to)} ${money(debt.amount)}`,
       `debt-${debt.from}-${debt.to}`,
     )
 
   const drop = (bet: Bet) =>
     mutate(
       (current) => ({ ...current, bets: current.bets.filter((b) => b.id !== bet.id) }),
-      `Bet withdrawn: ${managerName(managers, bet.proposer)} vs ${managerName(managers, bet.opponent)}`,
+      `Bet withdrawn: ${nameOf(bet.proposer)} vs ${nameOf(bet.opponent)}`,
       bet.id,
     )
 
-  const matchup = (bet: Bet) =>
-    `${managerName(managers, bet.proposer)} vs ${managerName(managers, bet.opponent)}`
+  const matchup = (bet: Bet) => `${nameOf(bet.proposer)} vs ${nameOf(bet.opponent)}`
+
+  const openEditor = (bet: Bet) => {
+    setEditorFault(null)
+    setEditing(bet)
+  }
 
   /**
    * A commissioner's correction to a bet already on the record.
@@ -206,22 +352,22 @@ export default function Bets() {
    */
   const correct = async (bet: Bet, edit: BetEdit, winner: ManagerId | null) => {
     setBusy(bet.id)
-    setError(null)
+    setEditorFault(null)
     try {
       const now = new Date().toISOString()
       // Edit the STORED bet, never the one applyResults has already folded a
       // winner into — the results file stays the only source of settlements.
       const stored = file?.bets.find((b) => b.id === bet.id)
       if (stored && JSON.stringify(editedBet(stored, edit, now)) !== JSON.stringify(stored)) {
-        setFile(
-          await saveBets(
-            (current) => ({
-              ...current,
-              bets: current.bets.map((b) => (b.id === bet.id ? editedBet(b, edit, now) : b)),
-            }),
-            `Bet corrected by the commissioner: ${matchup(bet)}`,
-          ),
+        const next = await saveBets(
+          (current) => ({
+            ...current,
+            bets: current.bets.map((b) => (b.id === bet.id ? editedBet(b, edit, now) : b)),
+          }),
+          `Bet corrected by the commissioner: ${matchup(bet)}`,
         )
+        setFile(next)
+        writeLastGood(next)
       }
 
       if (winner !== bet.winner) {
@@ -230,19 +376,15 @@ export default function Bets() {
           (current) => ({
             results: [
               ...current.results.filter((r) => r.betId !== bet.id),
-              ...(winner
-                ? [{ betId: bet.id, winner, settledAt: bet.settledAt ?? now }]
-                : []),
+              ...(winner ? [{ betId: bet.id, winner, settledAt: bet.settledAt ?? now }] : []),
             ],
           }),
-          winner
-            ? `Bet result corrected: ${managerName(managers, winner)} wins`
-            : `Bet reopened: ${matchup(bet)}`,
+          winner ? `Bet result corrected: ${nameOf(winner)} wins` : `Bet reopened: ${matchup(bet)}`,
         )
       }
       setEditing(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not save that correction.')
+      setEditorFault(describe(cause, 'Could not save that correction.'))
     } finally {
       setBusy(null)
     }
@@ -256,14 +398,14 @@ export default function Bets() {
    */
   const remove = async (bet: Bet) => {
     setBusy(bet.id)
-    setError(null)
+    setEditorFault(null)
     try {
-      setFile(
-        await saveBets(
-          (current) => ({ ...current, bets: current.bets.filter((b) => b.id !== bet.id) }),
-          `Bet deleted by the commissioner: ${matchup(bet)}`,
-        ),
+      const next = await saveBets(
+        (current) => ({ ...current, bets: current.bets.filter((b) => b.id !== bet.id) }),
+        `Bet deleted by the commissioner: ${matchup(bet)}`,
       )
+      setFile(next)
+      writeLastGood(next)
       if (betResults.results.some((r) => r.betId === bet.id)) {
         await save<BetResultsFile>(
           'bet-results.json',
@@ -271,339 +413,42 @@ export default function Bets() {
           `Bet result removed: ${matchup(bet)}`,
         )
       }
+      if (open === bet.id) setOpen(null)
       setEditing(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not delete that bet.')
+      setEditorFault(describe(cause, 'Could not delete that bet.'))
     } finally {
       setBusy(null)
     }
   }
 
-  /** The commissioner's way into the editor. Icon-only — slip footers are tight. */
-  const EditButton = ({ bet }: { bet: Bet }) => (
-    <button
-      type="button"
-      className="btn min-h-[34px] px-2.5 py-1"
-      disabled={busy === bet.id}
-      onClick={() => setEditing(bet)}
-      aria-label={`Edit or delete the bet: ${bet.terms}`}
-      title="Edit or delete this bet"
+  const loading = file === null
+  const sections = loading
+    ? [
+        { id: 'table', label: 'On the table' },
+        { id: 'live', label: 'Live' },
+        { id: 'tab', label: 'The Tab' },
+      ]
+    : [
+        { id: 'table', label: 'On the table' },
+        { id: 'live', label: 'Live' },
+        ...(settled.length ? [{ id: 'settled', label: 'Settled' }] : []),
+        { id: 'tab', label: 'The Tab' },
+        ...(records.length ? [{ id: 'sharps', label: 'Sharps' }] : []),
+      ]
+
+  const slipFor = (bet: Bet, actions: ReactNode) => (
+    <Slip
+      bet={bet}
+      nameOf={nameOf}
+      me={me}
+      pyre={pyre}
+      error={faultFor(bet.id)}
+      onClose={() => setOpen(null)}
     >
-      ✎
-    </button>
+      {actions}
+    </Slip>
   )
-
-  /**
-   * Pointer-tracked 3D tilt with a foil catch-light, holo-card style. Vars
-   * feed the CSS transform; reduced motion leaves the card flat.
-   */
-  const tiltHandlers = {
-    onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
-      if (animationsDisabled()) return
-      const el = event.currentTarget
-      const box = el.getBoundingClientRect()
-      const px = (event.clientX - box.left) / box.width - 0.5
-      const py = (event.clientY - box.top) / box.height - 0.5
-      el.style.setProperty('--ty', `${(px * 9).toFixed(2)}deg`)
-      el.style.setProperty('--tx', `${(-py * 7).toFixed(2)}deg`)
-      el.style.setProperty('--gx', `${((px + 0.5) * 100).toFixed(1)}%`)
-      el.style.setProperty('--gy', `${((py + 0.5) * 100).toFixed(1)}%`)
-    },
-    onPointerLeave: (event: React.PointerEvent<HTMLElement>) => {
-      const el = event.currentTarget
-      el.style.removeProperty('--ty')
-      el.style.removeProperty('--tx')
-    },
-  }
-
-  /**
-   * A matchup slab: square card split on the diagonal, each manager holding
-   * their triangle in their own colour with their portrait in the corner,
-   * the stake on a ribbon along the bottom. Tap to unfold the full slip.
-   */
-  const BetTile = ({ bet, coals = false }: { bet: Bet; coals?: boolean }) => {
-    const [a, b] = [bet.proposer, bet.opponent]
-    const [colorA, colorB] = [managerColor(a), managerColor(b)]
-    const active = open === bet.id
-    // Three or more settled bets between this pair is history the site can
-    // recognise on its own: the VS pill runs hot and throws sparks.
-    const pair = h2h.find(
-      (row) => (row.a === a && row.b === b) || (row.a === b && row.b === a),
-    )
-    const feud = pair && pair.aWins + pair.bWins >= 3 ? pair : null
-    return (
-      <button
-        type="button"
-        className="bet-tile"
-        style={
-          active
-            ? { borderColor: colorA, boxShadow: `0 12px 30px rgba(0,0,0,.5), 0 0 16px ${colorB}44` }
-            : undefined
-        }
-        aria-expanded={active}
-        aria-label={`${managerName(managers, a)} versus ${managerName(managers, b)}, ${stakeLabel(bet)} — details`}
-        onClick={() => setOpen(active ? null : bet.id)}
-        {...tiltHandlers}
-      >
-        <span className="flex h-[3px]">
-          <span className="flex-1" style={{ background: colorA }} />
-          <span className="flex-1" style={{ background: colorB }} />
-        </span>
-        <span className="tile-face">
-          <span className="tile-half tile-half-a" style={{ ['--half' as string]: `${colorA}2e` }} />
-          <span className="tile-half tile-half-b" style={{ ['--half' as string]: `${colorB}2e` }} />
-          <span className="tile-seam" aria-hidden />
-          <span className="absolute top-[7%] left-[5%] flex w-[38%] flex-col items-start gap-1">
-            <span className="tile-mug w-full overflow-hidden rounded-md border border-arc-line">
-              <PixelMugshot seed={a} scale={3} />
-            </span>
-            <span
-              className="arcade max-w-full truncate text-[11px] uppercase"
-              style={{ color: colorA }}
-            >
-              {managerName(managers, a)}
-            </span>
-          </span>
-          <span className="absolute right-[5%] bottom-[6%] flex w-[38%] flex-col items-end gap-1">
-            <span
-              className="arcade max-w-full truncate text-[11px] uppercase"
-              style={{ color: colorB }}
-            >
-              {managerName(managers, b)}
-            </span>
-            <span className="tile-mug w-full overflow-hidden rounded-md border border-arc-line">
-              <PixelMugshot seed={b} scale={3} />
-            </span>
-          </span>
-          <span
-            className={`tile-vs arcade ${feud ? 'tile-vs-feud' : ''}`}
-            title={
-              feud
-                ? `Blood feud: ${managerName(managers, feud.a)} ${feud.aWins}–${feud.bWins} ${managerName(managers, feud.b)}`
-                : undefined
-            }
-            aria-hidden
-          >
-            VS
-          </span>
-          {coals && <span className="tile-coals" aria-hidden />}
-          <span className="tile-shine" aria-hidden />
-        </span>
-        <span className="tile-bar">
-          {bet.stakeKind === 'cash' ? (
-            <span className="tnum min-w-0 flex-1 truncate text-[15px] leading-tight font-semibold text-arc-green">
-              {stakeLabel(bet)}
-            </span>
-          ) : (
-            <span className="flex min-w-0 flex-1 items-baseline gap-1.5 leading-tight">
-              <span className="arcade shrink-0 text-[12px] text-[var(--color-arc-orange)]">Dare</span>
-              <span className="min-w-0 truncate text-[11px] text-arc-ink-soft">
-                {bet.forfeit || 'Forfeit'}
-              </span>
-            </span>
-          )}
-          {bet.status === 'live' ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-[10px] tracking-[0.14em] whitespace-nowrap text-arc-green uppercase">
-              <span className="live-dot" aria-hidden />
-              Live
-            </span>
-          ) : (
-            <span className="text-[10px] tracking-[0.14em] text-[var(--color-arc-orange)] uppercase">
-              Open
-            </span>
-          )}
-        </span>
-      </button>
-    )
-  }
-
-  /**
-   * The opened window. The grid row grows downward (0fr to 1fr) while the
-   * slip unfolds from its top hinge in perspective; once the growth settles,
-   * overflow opens so the border effects can breathe past the edges. Fresh
-   * bets burn; standing bets get breathing coals inside a rim of the two
-   * managers' colours orbiting the card.
-   */
-  const Detail = ({ bet, children }: { bet: Bet; children: React.ReactNode }) => {
-    const still = animationsDisabled()
-    const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>(still ? 'open' : 'closed')
-    useEffect(() => {
-      if (still) return
-      const frame = requestAnimationFrame(() =>
-        requestAnimationFrame(() => setPhase('opening')),
-      )
-      return () => cancelAnimationFrame(frame)
-    }, [still])
-
-    const burning = bet.status === 'live' && isNewBet(bet) && !still
-    const slip = <Slip bet={bet}>{children}</Slip>
-
-    return (
-      <div
-        className={`col-span-full slip-reveal ${phase !== 'closed' ? 'is-open' : ''} ${
-          phase === 'open' ? 'is-settled' : ''
-        }`}
-        onTransitionEnd={(event) => {
-          if (event.propertyName === 'grid-template-rows') setPhase('open')
-        }}
-      >
-        <div className="slip-reveal-inner">
-          <div className={`slip-unfold ${burning ? 'pt-10 pb-5' : ''}`}>
-            {burning ? (
-              <FireFrame>{slip}</FireFrame>
-            ) : (
-              <span
-                className="energy-rim"
-                style={{
-                  ['--ca' as string]: managerColor(bet.proposer),
-                  ['--cb' as string]: managerColor(bet.opponent),
-                }}
-              >
-                {slip}
-                {bet.status === 'live' && <span className="tile-coals" aria-hidden />}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  /**
-   * The checkerboard. Tiles flow in a dense grid; the open one unfolds the
-   * full slip across the next row, app-store style. Fresh live bets burn and
-   * are dealt first, so the fire sits on the top row where it has headroom.
-   */
-  const BetBoard = ({
-    bets,
-    actions,
-  }: {
-    bets: Bet[]
-    actions: (bet: Bet) => React.ReactNode
-  }) => {
-    const burning = (bet: Bet) => bet.status === 'live' && isNewBet(bet) && !animationsDisabled()
-    const dealt = [...bets].sort((x, y) => Number(burning(y)) - Number(burning(x)))
-    return (
-      <div
-        className={`grid grid-cols-2 px-5 sm:grid-cols-3 xl:grid-cols-4 ${
-          dealt.some(burning) ? 'gap-8 pt-11 pb-8' : 'gap-3 py-5'
-        }`}
-      >
-        {dealt.map((bet) => (
-          <Fragment key={bet.id}>
-            {burning(bet) ? (
-              <FireFrame>
-                <BetTile bet={bet} />
-              </FireFrame>
-            ) : (
-              // Live but past the blaze: banked down to smouldering coals.
-              <BetTile bet={bet} coals={bet.status === 'live'} />
-            )}
-            {open === bet.id && (
-              <Detail bet={bet}>
-                {actions(bet)}
-                <button
-                  type="button"
-                  className="ml-auto px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
-                  onClick={() => setOpen(null)}
-                  aria-label="Collapse"
-                >
-                  ×
-                </button>
-              </Detail>
-            )}
-          </Fragment>
-        ))}
-      </div>
-    )
-  }
-
-  const face = (id: ManagerId, size = 2) => (
-    <span className="shrink-0 overflow-hidden rounded-md border border-arc-line">
-      <PixelMugshot seed={id} scale={size} />
-    </span>
-  )
-
-  /**
-   * A matchup card in the sportsbook idiom: the two managers as opposing
-   * sides under their own colours, the stake as a big tile, action beneath.
-   */
-  const Slip = ({ bet, children }: { bet: Bet; children?: React.ReactNode }) => {
-    const won = (id: ManagerId) => bet.status === 'settled' && bet.winner === id
-    const lost = (id: ManagerId) => bet.status === 'settled' && bet.winner !== null && !won(id)
-    const halves = [bet.proposer, bet.opponent] as const
-
-    const card = (
-      <div className="overflow-hidden rounded-xl border border-arc-line bg-arc-panel transition-colors hover:border-arc-ink-faint">
-        {/* team colours across the top, like a game card */}
-        <div className="flex h-1">
-          {halves.map((id) => (
-            <span key={id} className="flex-1" style={{ background: managerColor(id) }} />
-          ))}
-        </div>
-
-        <div className="relative flex items-stretch">
-          {halves.map((id, i) => (
-            <div
-              key={id}
-              className={`relative flex flex-1 items-center gap-2.5 p-3 ${i ? 'flex-row-reverse text-right' : ''} ${
-                pyre?.betId === bet.id && pyre.winner === id ? 'win-flood' : ''
-              }`}
-              style={{
-                opacity: lost(id) ? 0.45 : 1,
-                ['--flood' as string]:
-                  pyre?.betId === bet.id && pyre.winner === id
-                    ? `${managerColor(id)}2e`
-                    : undefined,
-              }}
-            >
-              {pyre?.betId === bet.id && pyre.loser === id && <BurnAway />}
-              {face(id, 2)}
-              <span className="min-w-0">
-                <span
-                  className="block truncate text-[15px] leading-tight"
-                  style={{ color: managerColor(id) }}
-                >
-                  {managerName(managers, id)}
-                </span>
-                {won(id) && (
-                  <span className="arcade text-[11px] text-arc-green">WON</span>
-                )}
-              </span>
-            </div>
-          ))}
-          <span className="arcade absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-arc-line bg-arc-bg px-2 py-0.5 text-[11px] text-arc-ink-faint">
-            VS
-          </span>
-        </div>
-
-        <p className="px-3 pb-3 text-[14px] leading-snug text-arc-ink">{bet.terms}</p>
-
-        <div className="flex items-stretch border-t border-arc-line">
-          <div className="flex min-w-[104px] flex-col justify-center border-r border-arc-line px-3 py-2">
-            <span className="text-[10px] tracking-[0.14em] text-arc-ink-faint uppercase">
-              {bet.stakeKind === 'cash' ? 'Each' : 'Forfeit'}
-            </span>
-            <span
-              className={`tnum text-[20px] leading-tight ${
-                bet.stakeKind === 'cash' ? 'text-arc-green' : 'text-[var(--color-arc-orange)]'
-              }`}
-            >
-              {stakeLabel(bet)}
-            </span>
-          </div>
-          <div className="flex flex-1 flex-wrap items-center gap-2 px-3 py-2">
-            {bet.resolves && (
-              <span className="text-[11px] text-arc-ink-faint">{bet.resolves}</span>
-            )}
-            {children}
-          </div>
-        </div>
-      </div>
-    )
-
-    return card
-  }
 
   return (
     <>
@@ -617,14 +462,42 @@ export default function Bets() {
             <button type="button" className="btn btn-primary" onClick={() => setComposing((c) => !c)}>
               {composing ? 'Cancel' : 'Propose a bet'}
             </button>
+          ) : leagueVault ? (
+            <button type="button" className="btn btn-primary" onClick={jumpToPassword}>
+              Unlock to bet
+            </button>
           ) : undefined
         }
       />
 
+      {loading && (
+        <div
+          className="relative -mx-4 mb-6 overflow-hidden border-y border-arc-line bg-arc-panel sm:-mx-6 lg:-mx-9"
+          aria-hidden
+        >
+          <div className="flex items-center gap-7 py-2 pl-10 text-[11px] text-arc-ink-faint italic">
+            Reading the tape…
+          </div>
+        </div>
+      )}
       {tape.length > 0 && (
-        <div className="marquee-host relative -mx-4 mb-6 overflow-hidden border-y border-arc-line bg-arc-panel sm:-mx-6 lg:-mx-9">
+        <div
+          className="marquee-host relative -mx-4 mb-6 overflow-hidden border-y border-arc-line bg-arc-panel sm:-mx-6 lg:-mx-9"
+          data-paused={tapePaused || undefined}
+          role="button"
+          tabIndex={0}
+          aria-pressed={tapePaused}
+          aria-label={tapePaused ? 'Action tape, paused — tap to resume' : 'Action tape — tap to pause'}
+          onClick={() => setTapePaused((value) => !value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setTapePaused((value) => !value)
+            }
+          }}
+        >
           <div
-            className="marquee flex w-max items-center gap-7 py-2"
+            className="marquee flex w-max items-center gap-7 py-2 pl-10"
             style={{ ['--marquee-duration' as string]: `${Math.max(40, tape.length * 4.5)}s` }}
           >
             {[...tape, ...tape].map((b, i) => (
@@ -636,17 +509,15 @@ export default function Bets() {
                 {b.status === 'settled' && b.winner ? (
                   <>
                     <span className="text-arc-green">✓</span>
-                    <span className="text-arc-ink-soft">{managerName(managers, b.winner)}</span>
+                    <span className="text-arc-ink-soft">{nameOf(b.winner)}</span>
                     <span className="text-arc-ink-faint">beat</span>
-                    <span className="text-arc-ink-soft">
-                      {managerName(managers, loserOf(b)!)}
-                    </span>
+                    <span className="text-arc-ink-soft">{nameOf(loserOf(b)!)}</span>
                   </>
                 ) : (
                   <>
                     <span className="text-[var(--color-arc-orange)]">●</span>
                     <span className="text-arc-ink-soft">
-                      {managerName(managers, b.proposer)} v {managerName(managers, b.opponent)}
+                      {nameOf(b.proposer)} v {nameOf(b.opponent)}
                     </span>
                   </>
                 )}
@@ -657,78 +528,111 @@ export default function Bets() {
           </div>
           <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-arc-panel to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-arc-panel to-transparent" />
+          {tapePaused && (
+            <span className="label pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-arc-yellow">
+              Paused
+            </span>
+          )}
         </div>
       )}
 
-      {bets.length > 0 && (
+      <SectionNav sections={sections} />
+
+      {(loading || bets.length > 0) && (
         <div className="line-in mb-6 grid grid-cols-2 gap-6 lg:grid-cols-4">
-          <Stat
-            label="Riding right now"
-            countTo={riding}
-            format={(v) => money(v)}
-            value={money(riding)}
-            hint={`${live.length} live bet${live.length === 1 ? '' : 's'}`}
-            tone={riding ? 'up' : 'default'}
-          />
-          <Stat label="On the table" value={proposed.length} hint="Awaiting a taker" />
-          <Stat
-            label="Biggest pot"
-            value={biggest ? money(biggest.stake) : '—'}
-            hint={
-              biggest
-                ? `${managerName(managers, biggest.proposer)} v ${managerName(managers, biggest.opponent)}`
-                : undefined
-            }
-          />
-          <Stat
-            label="Hot hand"
-            value={hottest && hottest.streak > 0 ? managerName(managers, hottest.manager) : '—'}
-            hint={
-              hottest && hottest.streak > 0
-                ? `${hottest.streak} straight`
-                : 'Nobody on a run'
-            }
-            tone={hottest && hottest.streak > 0 ? 'gold' : 'default'}
-          />
+          {loading ? (
+            <>
+              <Stat label="Riding right now" value="—" hint="Reading the book…" />
+              <Stat label="On the table" value="—" hint="Awaiting a taker" />
+              <Stat label="Biggest pot" value="—" />
+              <Stat label="Hot hand" value="—" hint="Two straight or more" />
+            </>
+          ) : (
+            <>
+              <Stat
+                label="Riding right now"
+                countTo={riding}
+                format={(v) => money(v)}
+                value={money(riding)}
+                hint={`${live.length} live bet${live.length === 1 ? '' : 's'}`}
+                tone={riding ? 'up' : 'default'}
+              />
+              <Stat label="On the table" value={proposed.length} hint="Awaiting a taker" />
+              <Stat
+                label="Biggest pot"
+                value={biggest ? money(biggest.stake) : '—'}
+                hint={biggest ? `${nameOf(biggest.proposer)} v ${nameOf(biggest.opponent)}` : undefined}
+              />
+              <Stat
+                label="Hot hand"
+                value={onARun ? nameOf(onARun.manager) : '—'}
+                hint={onARun ? `${onARun.streak} straight` : 'Nobody on a run'}
+                tone={onARun ? 'gold' : 'default'}
+              />
+            </>
+          )}
         </div>
+      )}
+
+      {boardAsOf !== null && (
+        <p
+          role="status"
+          className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-l-2 border-[var(--color-arc-orange)] pl-3 text-[12.5px] leading-snug text-[var(--color-arc-orange)]"
+        >
+          <span>
+            Couldn't confirm the board — showing it as of {clockTime(boardAsOf)}. Nothing here is a
+            ruling.
+          </span>
+          <button type="button" className="btn min-h-[34px] px-3 py-1 text-[12px]" onClick={() => void load()}>
+            Retry
+          </button>
+        </p>
       )}
 
       {/* Unlock */}
       {!unlocked && (
-        <Panel
-          title="league password"
-          subtitle={
-            leagueVault
-              ? 'One password for the whole league. Enter it once on this device to post and accept bets.'
-              : 'No league password has been set yet — the commissioner sets it from the commissioner panel.'
-          }
-        >
-          {leagueVault && (
-            <div className="flex flex-wrap items-end gap-3 px-5 py-5">
-              <label className="min-w-[220px] flex-1">
-                <span className="label">Password</span>
-                <input
-                  type="password"
-                  className="field mt-1.5"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && password) void unlock()
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!password || busy === 'unlock'}
-                onClick={() => void unlock()}
-              >
-                {busy === 'unlock' ? 'Unlocking…' : 'Unlock'}
-              </button>
-            </div>
-          )}
-        </Panel>
+        <div ref={passwordPanel} className="scroll-mt-[124px] lg:scroll-mt-[72px]">
+          <Panel
+            title="league password"
+            subtitle={
+              leagueVault
+                ? 'One password for the whole league. Enter it once on this device to post and accept bets.'
+                : 'No league password has been set yet — the commissioner sets it from the commissioner panel.'
+            }
+          >
+            {leagueVault && (
+              <div className="flex flex-wrap items-end gap-3 px-5 py-5">
+                <label className="min-w-[220px] flex-1">
+                  <span className="label">Password</span>
+                  <input
+                    ref={passwordField}
+                    type="password"
+                    className="field mt-1.5"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && password) void unlock()
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!password || busy === 'unlock'}
+                  onClick={() => void unlock()}
+                >
+                  {busy === 'unlock' ? 'Unlocking…' : 'Unlock'}
+                </button>
+                {faultFor('unlock') && (
+                  <p role="alert" className="basis-full text-[12.5px] text-[var(--color-arc-red)]">
+                    {faultFor('unlock')}
+                  </p>
+                )}
+              </div>
+            )}
+          </Panel>
+        </div>
       )}
 
       {composing && unlocked && (
@@ -737,254 +641,258 @@ export default function Bets() {
             season={season}
             managers={active.map((m) => ({ id: m.id, name: m.displayName }))}
             busy={busy === 'new'}
+            me={me}
+            error={faultFor('new')}
             onSubmit={(bet) =>
-              mutate(
+              void mutate(
                 (current) => ({ ...current, bets: [...current.bets, bet] }),
-                `Bet proposed: ${managerName(managers, bet.proposer)} vs ${managerName(managers, bet.opponent)}`,
+                `Bet proposed: ${nameOf(bet.proposer)} vs ${nameOf(bet.opponent)}`,
                 'new',
-              ).then(() => setComposing(false))
+              ).then((ok) => {
+                if (ok) setComposing(false)
+              })
             }
           />
         </div>
       )}
 
-      {error && (
-        <p className="mt-4 border-l-2 border-[var(--color-arc-red)] pl-3 text-[12.5px] text-[var(--color-arc-red)]">
-          {error}
-        </p>
-      )}
-
-      {file === null ? (
-        <Panel title="loading">
-          <p className="px-5 py-6 text-[13px] text-arc-ink-faint italic">Reading the book…</p>
-        </Panel>
-      ) : (
-        <div className="mt-6 space-y-6">
-          <Panel
-            title="on the table"
-            subtitle={
-              proposed.length
+      <div className="mt-6 space-y-6">
+        <Panel
+          id="table"
+          title="on the table"
+          subtitle={
+            loading
+              ? 'Proposed and waiting to be taken.'
+              : proposed.length
                 ? 'Proposed and waiting to be taken. Tap Accept if it is against you.'
-                : 'Nothing pending. Propose one.'
-            }
-          >
-            {proposed.length === 0 ? (
-              <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">No open proposals.</p>
-            ) : (
-              <BetBoard
-                bets={proposed}
-                actions={(bet) => (
+                : unlocked
+                  ? 'Nothing pending. Propose one.'
+                  : leagueVault
+                    ? 'Nothing pending. Unlock above to propose one.'
+                    : 'Nothing pending.'
+          }
+        >
+          {loading ? (
+            <p className="min-h-[120px] px-5 py-5 text-[13px] text-arc-ink-faint italic">Reading the book…</p>
+          ) : proposed.length === 0 ? (
+            <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">No open proposals.</p>
+          ) : (
+            <BetBoard
+              bets={proposed}
+              open={open}
+              onOpen={setOpen}
+              nameOf={nameOf}
+              me={me}
+              h2h={h2h}
+              renderSlip={(bet) =>
+                slipFor(
+                  bet,
                   <>
-                    <Chip tone="flag">Awaiting {managerName(managers, bet.opponent)}</Chip>
+                    <Chip tone="flag">Awaiting {nameOf(bet.opponent)}</Chip>
                     {unlocked && (
                       <>
                         <button
                           type="button"
-                          className="btn btn-primary min-h-[34px] px-3 py-1"
+                          className={`btn min-h-[34px] px-3 py-1 ${
+                            !me || me === bet.opponent ? 'btn-primary' : ''
+                          }`}
                           disabled={busy === bet.id}
                           onClick={() => void accept(bet)}
                         >
-                          {busy === bet.id ? 'Saving…' : "I'm in"}
+                          {busy === bet.id
+                            ? 'Saving…'
+                            : !me || me === bet.opponent
+                              ? "I'm in"
+                              : `Accept for ${nameOf(bet.opponent)}`}
                         </button>
-                        <button
-                          type="button"
-                          className="btn min-h-[34px] px-3 py-1"
+                        <ConfirmButton
+                          confirm="Withdraw this bet?"
+                          onConfirm={() => void drop(bet)}
                           disabled={busy === bet.id}
-                          onClick={() => void drop(bet)}
                         >
                           Withdraw
-                        </button>
+                        </ConfirmButton>
                       </>
                     )}
-                  </>
-                )}
-              />
-            )}
-          </Panel>
+                  </>,
+                )
+              }
+            />
+          )}
+        </Panel>
 
-          <Panel
-            title="live action"
-            subtitle={`${live.length} bet${live.length === 1 ? '' : 's'} riding. ${
-              commissioner ? 'Tap a winner when it resolves.' : 'The commissioner calls these.'
-            }`}
-          >
-            {live.length === 0 ? (
-              <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">
-                Nothing riding right now.
-              </p>
-            ) : (
-              <BetBoard
-                bets={live}
-                actions={(bet) => (
+        <Panel
+          id="live"
+          title="live action"
+          subtitle={
+            loading
+              ? 'Bets riding.'
+              : `${live.length} bet${live.length === 1 ? '' : 's'} riding. ${
+                  commissioner
+                    ? 'Open one and tap the winner; it asks once before it calls it.'
+                    : 'The commissioner calls these.'
+                }`
+          }
+        >
+          {loading ? (
+            <p className="min-h-[200px] px-5 py-5 text-[13px] text-arc-ink-faint italic">Reading the book…</p>
+          ) : live.length === 0 ? (
+            <p className="px-5 py-5 text-[13px] text-arc-ink-faint italic">Nothing riding right now.</p>
+          ) : (
+            <BetBoard
+              bets={live}
+              open={open}
+              onOpen={setOpen}
+              nameOf={nameOf}
+              me={me}
+              h2h={h2h}
+              renderSlip={(bet) =>
+                slipFor(
+                  bet,
                   <>
                     <Chip tone="up">Live</Chip>
                     {commissioner && (
                       <>
                         <span className="text-[12px] text-arc-ink-faint">Winner:</span>
                         {[bet.proposer, bet.opponent].map((id) => (
-                          <button
+                          <ConfirmButton
                             key={id}
-                            type="button"
-                            className="btn min-h-[34px] px-3 py-1"
+                            confirm={`Call it for ${nameOf(id)}?`}
+                            onConfirm={() => void settle(bet, id)}
                             disabled={busy === bet.id}
-                            onClick={() => void settle(bet, id)}
                           >
-                            {managerName(managers, id)}
-                          </button>
+                            {nameOf(id)}
+                          </ConfirmButton>
                         ))}
-                        <EditButton bet={bet} />
+                        <EditButton bet={bet} busy={busy === bet.id} onEdit={openEditor} />
                       </>
                     )}
-                  </>
-                )}
-              />
-            )}
-          </Panel>
-
-          {settled.length > 0 && (
-            <Panel
-              title="settled"
-              subtitle={
-                commissioner
-                  ? 'The stubs you kept. ✎ fixes the terms, the stake, or the wrong name called.'
-                  : 'The stubs you kept — every settled bet, stamped by its winner.'
+                  </>,
+                )
               }
-            >
-              <div className="space-y-3.5 px-4 py-5 sm:px-5">
-                {settled.map((bet, index) => {
-                  const winner = bet.winner!
-                  const beaten = loserOf(bet)!
-                  const winnerColor = managerColor(winner)
-                  return (
-                    <div
-                      key={bet.id}
-                      className="stub"
-                      style={{
-                        ['--rot' as string]: `${((index % 3) - 1) * 0.45}deg`,
-                      }}
-                    >
-                      <span className="stub-notch top" aria-hidden />
-                      <span className="stub-notch bottom" aria-hidden />
-                      <div className="stub-stake w-[64px] sm:w-[86px]">
-                        <span className="text-[9.5px] tracking-[0.14em] text-arc-ink-faint uppercase">
-                          {bet.stakeKind === 'cash' ? 'Stake' : 'Forfeit'}
-                        </span>
-                        <span
-                          className={`tnum text-[19px] leading-tight font-bold ${
-                            bet.stakeKind === 'cash'
-                              ? 'text-arc-green'
-                              : 'text-[15px] text-[var(--color-arc-orange)]'
-                          }`}
-                        >
-                          {bet.stakeKind === 'cash' ? `$${bet.stake}` : 'DARE'}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1 px-3 py-2.5">
-                        <p className="line-clamp-2 text-[13.5px] leading-snug text-arc-ink sm:truncate">{bet.terms}</p>
-                        <p className="mt-0.5 text-[11.5px] leading-snug text-arc-ink-faint sm:truncate">
-                          <b style={{ color: winnerColor }}>{managerName(managers, winner)}</b>
-                          {' beat '}
-                          {managerName(managers, beaten)}
-                          {bet.settledAt ? ` · ${shortDate(bet.settledAt)}` : ''}
-                          {bet.stakeKind === 'forfeit' && bet.forfeit ? ` · ${bet.forfeit}` : ''}
-                        </p>
-                      </div>
-                      <span
-                        className="stamp stamp-in"
-                        style={{
-                          color: winnerColor,
-                          ['--stamp-rot' as string]: `${-11 + (index % 3) * 4}deg`,
-                          ['--i' as string]: Math.min(index, 8),
-                        }}
-                      >
-                        {managerName(managers, winner)} ✓
-                      </span>
-                      {commissioner && (
-                        <span className="mr-2 self-center">
-                          <EditButton bet={bet} />
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </Panel>
+            />
           )}
+        </Panel>
 
+        {settled.length > 0 && (
           <Panel
-            title="the tab"
-            subtitle="Betting debts only — kept apart from league dues and payouts. Wins and losses between the same two people net down to one number."
+            id="settled"
+            title="settled"
+            subtitle={
+              commissioner
+                ? 'The stubs you kept. Tap one for its receipt; ✎ fixes the terms, the stake, or the wrong name called.'
+                : 'The stubs you kept — every settled bet, stamped by its winner. Tap one for its receipt.'
+            }
           >
-            {debts.length === 0 ? (
-              <p className="px-5 py-6 text-[14px] text-arc-green">
-                All square. Nobody owes anybody a dollar.
-              </p>
-            ) : (
-              <ul>
-                {debts.map((debt) => {
-                  const key = `debt-${debt.from}-${debt.to}`
-                  const pay = venmoUrl(
-                    handleOf(debt.to),
-                    debt.amount,
-                    `WACL side bet — ${managerName(managers, debt.from)} to ${managerName(managers, debt.to)}`,
-                  )
-                  return (
-                    <li
-                      key={key}
-                      className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-b border-arc-line/40 px-5 py-3 last:border-b-0 sm:flex"
-                    >
-                      {face(debt.from, 1.6)}
-                      <span className="min-w-0 flex-1 text-[14px]">
-                        <b style={{ color: managerColor(debt.from) }}>
-                          {managerName(managers, debt.from)}
-                        </b>
-                        <span className="text-arc-ink-faint"> owes </span>
-                        <b style={{ color: managerColor(debt.to) }}>
-                          {managerName(managers, debt.to)}
-                        </b>
-                        <span className="block text-[11px] text-arc-ink-faint">
-                          across {debt.betIds.length} settled bet
-                          {debt.betIds.length === 1 ? '' : 's'}
-                        </span>
-                      </span>
-                      {/* Sentence on one line, the money and its buttons on the next
-                          below sm; one row on wider screens. */}
-                      <span className="col-span-2 flex items-center justify-end gap-2 sm:col-span-1 sm:ml-auto">
-                        <span className="tnum mr-1 text-[17px] text-[var(--color-arc-red)]">
-                          {money(debt.amount)}
-                        </span>
-                        {pay && (
-                          <a
-                            href={pay}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="arcade inline-flex min-h-[34px] shrink-0 items-center rounded-md px-3 text-[12px]"
-                            style={{ background: 'var(--color-arc-green)', color: 'var(--color-arc-bg-deep)' }}
-                          >
-                            PAY
-                          </a>
-                        )}
-                        {unlocked && (
-                          <button
-                            type="button"
-                            className="btn min-h-[34px] shrink-0 px-3 py-1"
-                            disabled={busy === key}
-                            onClick={() => void settleUp(debt)}
-                          >
-                            {busy === key ? 'Saving…' : 'Mark paid'}
-                          </button>
-                        )}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+            <div className="space-y-3.5 px-4 py-5 sm:px-5">
+              {settled.map((bet, index) => (
+                <Stub
+                  key={bet.id}
+                  bet={bet}
+                  index={index}
+                  nameOf={nameOf}
+                  me={me}
+                  open={open === bet.id}
+                  onToggle={() => setOpen(open === bet.id ? null : bet.id)}
+                  linked={linked === bet.id}
+                  action={
+                    commissioner ? (
+                      <EditButton bet={bet} busy={busy === bet.id} onEdit={openEditor} />
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
           </Panel>
+        )}
 
-          {records.length > 0 && (
-            <div className="grid min-w-0 gap-6 lg:grid-cols-2">
-              <Panel title="the sharps" subtitle="Career betting records, by money won.">
+        <Panel
+          id="tab"
+          title="the tab"
+          subtitle="Betting debts only — kept apart from league dues and payouts. Wins and losses between the same two people net down to one number."
+        >
+          {loading ? (
+            <p className="px-5 py-6 text-[13px] text-arc-ink-faint italic">Reading the book…</p>
+          ) : debts.length === 0 ? (
+            <p className="px-5 py-6 text-[14px] text-arc-green">All square. Nobody owes anybody a dollar.</p>
+          ) : (
+            <ul>
+              {debts.map((debt) => {
+                const key = `debt-${debt.from}-${debt.to}`
+                const pay = venmoUrl(
+                  handleOf(debt.to),
+                  debt.amount,
+                  `WACL side bet — ${nameOf(debt.from)} to ${nameOf(debt.to)}`,
+                )
+                const yours = me === debt.from || me === debt.to
+                return (
+                  <li
+                    key={key}
+                    className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-b border-arc-line/40 px-5 py-3 last:border-b-0 sm:flex"
+                    style={
+                      yours
+                        ? {
+                            background: `color-mix(in srgb, ${managerColor(me)} 9%, transparent)`,
+                            boxShadow: `inset 3px 0 0 ${managerColor(me)}`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <Face id={debt.from} size={1.6} />
+                    <span className="min-w-0 flex-1 text-[14px]">
+                      <b style={{ color: managerColor(debt.from) }}>{nameOf(debt.from)}</b>
+                      <span className="text-arc-ink-faint"> owes </span>
+                      <b style={{ color: managerColor(debt.to) }}>{nameOf(debt.to)}</b>
+                      {yours && <span className="arcade ml-1.5 text-[11px] text-arc-ink-soft">you</span>}
+                      <span className="block text-[11px] text-arc-ink-faint">
+                        across {debt.betIds.length} settled bet
+                        {debt.betIds.length === 1 ? '' : 's'}
+                      </span>
+                    </span>
+                    {/* Sentence on one line, the money and its buttons on the next
+                        below sm; one row on wider screens. */}
+                    <span className="col-span-2 flex items-center justify-end gap-2 sm:col-span-1 sm:ml-auto">
+                      <span className="tnum mr-1 text-[17px] text-[var(--color-arc-red)]">
+                        {money(debt.amount)}
+                      </span>
+                      {pay && (
+                        <a
+                          href={pay}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="arcade inline-flex min-h-[36px] shrink-0 items-center rounded-md px-3 text-[12px]"
+                          style={{ background: 'var(--color-arc-green)', color: 'var(--color-arc-bg-deep)' }}
+                        >
+                          PAY
+                        </a>
+                      )}
+                      {unlocked && (
+                        <button
+                          type="button"
+                          className="btn min-h-[36px] shrink-0 px-3 py-1"
+                          disabled={busy === key}
+                          onClick={() => void settleUp(debt)}
+                        >
+                          {busy === key ? 'Saving…' : 'Mark paid'}
+                        </button>
+                      )}
+                    </span>
+                    {faultFor(key) && (
+                      <p role="alert" className="col-span-2 text-[12px] text-[var(--color-arc-red)] sm:basis-full">
+                        {faultFor(key)}
+                      </p>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        {records.length > 0 && (
+          <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+            <Panel id="sharps" title="the sharps" subtitle="Career betting records, by money won. Riding is what each has out on live bets.">
+              <div className="book-tight">
                 <table className="out">
                   <thead>
                     <tr>
@@ -998,25 +906,29 @@ export default function Bets() {
                   <tbody>
                     {records.map((row) => (
                       <tr key={row.manager}>
-                        <td style={{ color: managerColor(row.manager) }}>
-                          {managerName(managers, row.manager)}
-                          {row.streak >= 3 && (
-                            <span title={`${row.streak} straight`} className="ml-1.5">
-                              🔥
-                            </span>
-                          )}
-                          {row.streak <= -3 && (
-                            <span title={`${-row.streak} straight losses`} className="ml-1.5 opacity-60">
-                              🧊
-                            </span>
-                          )}
+                        <td>
+                          <span className="inline-flex items-center gap-1.5">
+                            <ManagerTag id={row.manager} link={false} size={20} />
+                            {row.streak >= 3 && (
+                              <span title={`${row.streak} straight`} aria-label={`${row.streak} straight wins`}>
+                                🔥
+                              </span>
+                            )}
+                            {row.streak <= -3 && (
+                              <span
+                                title={`${-row.streak} straight losses`}
+                                aria-label={`${-row.streak} straight losses`}
+                                className="opacity-60"
+                              >
+                                🧊
+                              </span>
+                            )}
+                          </span>
                         </td>
                         <td className="n">
                           {row.won}–{row.lost}
                         </td>
-                        <td className="n text-arc-ink-faint">
-                          {row.settled ? pct(row.winPct, 0) : '—'}
-                        </td>
+                        <td className="n text-arc-ink-faint">{row.settled ? pct(row.winPct, 0) : '—'}</td>
                         <td
                           className="n"
                           style={{
@@ -1031,59 +943,59 @@ export default function Bets() {
                           {row.net === 0 ? '—' : money(row.net, { sign: true })}
                         </td>
                         <td className="n text-arc-ink-faint">
-                          {row.live ? `${row.live} · ${money(row.exposure)}` : '—'}
+                          {row.live ? (
+                            <>
+                              <span className="hidden sm:inline">{row.live} · </span>
+                              {row.exposure ? money(row.exposure) : 'dare'}
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+
+            {h2h.length > 0 && (
+              <Panel title="who owns whom" subtitle="Settled head-to-head records.">
+                <table className="out">
+                  <thead>
+                    <tr>
+                      <th>Matchup</th>
+                      <th className="n">Record</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {h2h.map((row) => (
+                      <tr key={`${row.a}-${row.b}`}>
+                        <td>
+                          <span style={{ color: managerColor(row.a) }}>{nameOf(row.a)}</span>
+                          <span className="text-arc-ink-faint"> vs </span>
+                          <span style={{ color: managerColor(row.b) }}>{nameOf(row.b)}</span>
+                        </td>
+                        <td className="n">
+                          {row.aWins}–{row.bWins}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </Panel>
-
-              {h2h.length > 0 && (
-                <Panel title="who owns whom" subtitle="Settled head-to-head records.">
-                  <table className="out">
-                    <thead>
-                      <tr>
-                        <th>Matchup</th>
-                        <th className="n">Record</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {h2h.map((row) => (
-                        <tr key={`${row.a}-${row.b}`}>
-                          <td>
-                            <span style={{ color: managerColor(row.a) }}>
-                              {managerName(managers, row.a)}
-                            </span>
-                            <span className="text-arc-ink-faint"> vs </span>
-                            <span style={{ color: managerColor(row.b) }}>
-                              {managerName(managers, row.b)}
-                            </span>
-                          </td>
-                          <td className="n">
-                            {row.aWins}–{row.bWins}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Panel>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {editing && (
         <BetEditor
           bet={editing}
-          sides={[editing.proposer, editing.opponent].map((id) => ({
-            id,
-            name: managerName(managers, id),
-          }))}
+          sides={[editing.proposer, editing.opponent].map((id) => ({ id, name: nameOf(id) }))}
           unlocked={unlocked}
           busy={busy === editing.id}
-          error={error}
+          error={editorFault}
           onCancel={() => setEditing(null)}
           onSave={(edit, winner) => void correct(editing, edit, winner)}
           onDelete={() => void remove(editing)}
@@ -1108,13 +1020,13 @@ export default function Bets() {
           the full history is public
         </a>
         . The shared password carries no identity, so pick your own name honestly — the timestamps
-        are the referee.
+        are the referee, and every slip prints its own.
         {unlocked && (
           <>
             {' '}
             <button
               type="button"
-              className="underline underline-offset-2"
+              className="-my-2 inline-flex min-h-[36px] items-center px-1 underline underline-offset-2"
               onClick={() => {
                 setLeagueToken(null)
                 setUnlocked(false)
@@ -1126,410 +1038,5 @@ export default function Bets() {
         )}
       </p>
     </>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-
-const TEMPLATES = [
-  'I beat you head-to-head in week __',
-  'I finish above you in the final standings',
-  'My first-round pick outscores yours this season',
-  'You miss the playoffs',
-]
-
-function Composer({
-  season,
-  managers,
-  busy,
-  onSubmit,
-}: {
-  season: number
-  managers: { id: ManagerId; name: string }[]
-  busy: boolean
-  onSubmit: (bet: Bet) => void
-}) {
-  const [proposer, setProposer] = useState('')
-  const [opponent, setOpponent] = useState('')
-  const [terms, setTerms] = useState('')
-  const [stakeKind, setStakeKind] = useState<StakeKind>('cash')
-  const [stake, setStake] = useState(20)
-  const [forfeit, setForfeit] = useState('')
-  const [resolves, setResolves] = useState('')
-
-  const ready =
-    proposer && opponent && proposer !== opponent && terms.trim() &&
-    (stakeKind === 'cash' ? stake > 0 : forfeit.trim())
-
-  return (
-    <Panel title="propose a bet" subtitle="Pick your name, pick your mark, name the terms.">
-      <div className="grid gap-4 px-5 py-5 sm:grid-cols-2">
-        <label>
-          <span className="label">You</span>
-          <select className="field mt-1.5" value={proposer} onChange={(e) => setProposer(e.target.value)}>
-            <option value="">Select…</option>
-            {managers.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="label">Against</span>
-          <select className="field mt-1.5" value={opponent} onChange={(e) => setOpponent(e.target.value)}>
-            <option value="">Select…</option>
-            {managers.filter((m) => m.id !== proposer).map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="sm:col-span-2">
-          <span className="label">The bet</span>
-          <input
-            className="field mt-1.5"
-            placeholder="Say exactly what has to happen"
-            value={terms}
-            onChange={(e) => setTerms(e.target.value)}
-          />
-          <span className="mt-2 flex flex-wrap gap-1.5">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="rounded border border-arc-line px-2 py-1 text-[11px] text-arc-ink-faint hover:border-arc-green hover:text-arc-green"
-                onClick={() => setTerms(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </span>
-        </label>
-
-        <label>
-          <span className="label">Stake</span>
-          <select
-            className="field mt-1.5"
-            value={stakeKind}
-            onChange={(e) => setStakeKind(e.target.value as StakeKind)}
-          >
-            <option value="cash">Cash</option>
-            <option value="forfeit">Forfeit / dare</option>
-          </select>
-        </label>
-        {stakeKind === 'cash' ? (
-          <label>
-            <span className="label">Amount each</span>
-            <input
-              type="number"
-              min={1}
-              className="field tnum mt-1.5"
-              value={stake}
-              onChange={(e) => setStake(Number(e.target.value) || 0)}
-            />
-            <span className="mt-2 flex flex-wrap gap-1.5">
-              {[10, 20, 50, 100].map((amount) => (
-                <button
-                  key={amount}
-                  type="button"
-                  className="tnum rounded-md border px-2.5 py-1 text-[12px] transition-colors"
-                  style={
-                    stake === amount
-                      ? { borderColor: 'var(--color-arc-green)', color: '#06210a', background: 'var(--color-arc-green)' }
-                      : { borderColor: 'var(--color-arc-line)', color: 'var(--color-arc-ink-soft)' }
-                  }
-                  onClick={() => setStake(amount)}
-                >
-                  ${amount}
-                </button>
-              ))}
-            </span>
-          </label>
-        ) : (
-          <label>
-            <span className="label">Loser must…</span>
-            <input
-              className="field mt-1.5"
-              placeholder="wear the jersey to the draft"
-              value={forfeit}
-              onChange={(e) => setForfeit(e.target.value)}
-            />
-          </label>
-        )}
-
-        <label className="sm:col-span-2">
-          <span className="label">Resolves</span>
-          <input
-            className="field mt-1.5"
-            placeholder="Week 3 · End of season · Draft night"
-            value={resolves}
-            onChange={(e) => setResolves(e.target.value)}
-          />
-        </label>
-      </div>
-
-      <div className="flex items-center gap-3 border-t border-arc-line px-5 py-4">
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!ready || busy}
-          onClick={() =>
-            onSubmit({
-              id: newBetId(),
-              season,
-              proposer,
-              opponent,
-              terms: terms.trim(),
-              stakeKind,
-              stake: stakeKind === 'cash' ? stake : 0,
-              forfeit: stakeKind === 'forfeit' ? forfeit.trim() : '',
-              resolves: resolves.trim(),
-              status: 'proposed',
-              winner: null,
-              proposedAt: new Date().toISOString(),
-            })
-          }
-        >
-          {busy ? 'Posting…' : 'Post it'}
-        </button>
-        <span className="text-[12px] text-arc-ink-faint">
-          It lands on the table until they take it.
-        </span>
-      </div>
-    </Panel>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-
-/**
- * The commissioner's correction desk for one bet.
- *
- * A bet's two halves live in two repos: the terms and the stake in the
- * league-writable bets repo, the winner in the commissioner-only results
- * file. So a commissioner who hasn't entered the league password on this
- * device can still overturn a call — they just can't rewrite the terms or
- * delete the bet until they do, and the panel says so rather than failing at
- * the save.
- */
-function BetEditor({
-  bet,
-  sides,
-  unlocked,
-  busy,
-  error,
-  onCancel,
-  onSave,
-  onDelete,
-}: {
-  bet: Bet
-  sides: { id: ManagerId; name: string }[]
-  unlocked: boolean
-  busy: boolean
-  error: string | null
-  onCancel: () => void
-  onSave: (edit: BetEdit, winner: ManagerId | null) => void
-  onDelete: () => void
-}) {
-  const initial = useMemo(() => betEditOf(bet), [bet])
-  const [edit, setEdit] = useState<BetEdit>(initial)
-  const [winner, setWinner] = useState<ManagerId | null>(bet.winner)
-  const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
-
-  const set = (patch: Partial<BetEdit>) => setEdit((current) => ({ ...current, ...patch }))
-  const cash = edit.stakeKind === 'cash'
-  const dirty = JSON.stringify(edit) !== JSON.stringify(initial) || winner !== bet.winner
-  const ready = Boolean(edit.terms.trim()) && (cash ? edit.stake > 0 : Boolean(edit.forfeit.trim()))
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-arc-bg-deep/85 px-3 py-[6vh] backdrop-blur-sm sm:px-6"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Edit bet"
-    >
-      <div className="win rise-in w-full max-w-xl">
-        <div className="win-head">
-          <span className="label">Editing a bet — {sides.map((s) => s.name).join(' v ')}</span>
-          <button
-            type="button"
-            className="px-1 text-[18px] leading-none text-arc-ink-faint hover:text-arc-ink"
-            onClick={onCancel}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="grid gap-4 px-5 py-5 sm:grid-cols-2">
-          <label className="sm:col-span-2">
-            <span className="label">The bet</span>
-            <input
-              className="field mt-1.5"
-              value={edit.terms}
-              disabled={!unlocked}
-              onChange={(event) => set({ terms: event.target.value })}
-            />
-          </label>
-
-          <label>
-            <span className="label">Stake</span>
-            <select
-              className="field mt-1.5"
-              value={edit.stakeKind}
-              disabled={!unlocked}
-              onChange={(event) => set({ stakeKind: event.target.value as StakeKind })}
-            >
-              <option value="cash">Cash</option>
-              <option value="forfeit">Forfeit / dare</option>
-            </select>
-          </label>
-          {cash ? (
-            <label>
-              <span className="label">Amount each</span>
-              <input
-                type="number"
-                min={1}
-                className="field tnum mt-1.5"
-                value={edit.stake}
-                disabled={!unlocked}
-                onChange={(event) => set({ stake: Number(event.target.value) || 0 })}
-              />
-            </label>
-          ) : (
-            <label>
-              <span className="label">Loser must…</span>
-              <input
-                className="field mt-1.5"
-                value={edit.forfeit}
-                disabled={!unlocked}
-                onChange={(event) => set({ forfeit: event.target.value })}
-              />
-            </label>
-          )}
-
-          <label className="sm:col-span-2">
-            <span className="label">Resolves</span>
-            <input
-              className="field mt-1.5"
-              value={edit.resolves}
-              disabled={!unlocked}
-              onChange={(event) => set({ resolves: event.target.value })}
-            />
-          </label>
-
-          <div className="sm:col-span-2">
-            <span className="label">Winner</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {sides.map((side) => (
-                <button
-                  key={side.id}
-                  type="button"
-                  className="btn min-h-[36px] px-3 py-1"
-                  style={
-                    winner === side.id
-                      ? {
-                          borderColor: 'var(--color-arc-green)',
-                          background: 'var(--color-arc-green)',
-                          color: '#06210a',
-                        }
-                      : undefined
-                  }
-                  onClick={() => setWinner(side.id)}
-                >
-                  {side.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="btn min-h-[36px] px-3 py-1"
-                style={winner === null ? { borderColor: 'var(--color-arc-orange)' } : undefined}
-                onClick={() => setWinner(null)}
-              >
-                Nobody yet
-              </button>
-            </div>
-            <p className="mt-2 text-[12px] text-arc-ink-faint">
-              {winner === null
-                ? 'Clearing the winner puts the bet back on the live board.'
-                : 'The result file is the only place a winner can come from, so this is the call of record.'}
-            </p>
-          </div>
-
-          {cash && (
-            <label className="flex items-center gap-2.5 sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={edit.paid}
-                disabled={!unlocked}
-                onChange={(event) => set({ paid: event.target.checked })}
-              />
-              <span className="text-[13.5px]">
-                Loser has paid up
-                <span className="block text-[12px] text-arc-ink-faint">
-                  Unticking it puts the money back on the tab.
-                </span>
-              </span>
-            </label>
-          )}
-        </div>
-
-        {!unlocked && (
-          <p className="border-t border-arc-line px-5 py-3 text-[12.5px] text-[var(--color-arc-orange)]">
-            Enter the league password on this device to change the terms, the stake, or to delete
-            the bet. The winner can be corrected without it.
-          </p>
-        )}
-        {error && (
-          <p className="border-t border-arc-line px-5 py-3 text-[12.5px] text-[var(--color-arc-red)]">
-            {error}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3 border-t border-arc-line px-5 py-4">
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!dirty || !ready || busy}
-            onClick={() => onSave(edit, winner)}
-          >
-            {busy ? 'Saving…' : 'Save changes'}
-          </button>
-          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          {unlocked && (
-            <span className="ml-auto flex items-center gap-2">
-              {confirming && (
-                <span className="text-[12px] text-arc-ink-faint">Wipes it from the record.</span>
-              )}
-              <button
-                type="button"
-                className={`btn min-h-[36px] px-3 py-1 ${confirming ? 'btn-danger' : ''}`}
-                style={
-                  confirming
-                    ? undefined
-                    : { borderColor: 'var(--color-arc-red)', color: 'var(--color-arc-red)' }
-                }
-                disabled={busy}
-                onClick={() => (confirming ? onDelete() : setConfirming(true))}
-              >
-                {busy ? 'Working…' : confirming ? 'Delete for good' : 'Delete bet'}
-              </button>
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
   )
 }
