@@ -121,10 +121,26 @@ export function clearOverlay(): void {
   }
 }
 
+/**
+ * The record files only change when the commissioner reseeds from the
+ * workbook, so the browser may serve them from its cache; the seven the app
+ * itself writes are revalidated on every load, because a ruling made on a
+ * phone must show up on the laptop. Twenty-one round trips become seven.
+ */
+const WRITTEN: ReadonlySet<string> = new Set(Object.values(FILES).filter((file) =>
+  ['cash.json', 'faab.json', 'trade-queue.json', 'keepers.json', 'auth.json', 'league-auth.json', 'bet-results.json'].includes(file),
+))
+
+function fetchData(file: string): Promise<Response> {
+  return fetch(`${import.meta.env.BASE_URL}data/${file}`, {
+    cache: WRITTEN.has(file) ? 'no-cache' : 'default',
+  })
+}
+
 /** live.json only exists once the Yahoo sync has run at least once. */
 async function loadOptionalJson<T>(file: string): Promise<T | null> {
   try {
-    const response = await fetch(`${import.meta.env.BASE_URL}data/${file}`, { cache: 'no-cache' })
+    const response = await fetchData(file)
     if (!response.ok) return null
     return (await response.json()) as T
   } catch {
@@ -133,7 +149,7 @@ async function loadOptionalJson<T>(file: string): Promise<T | null> {
 }
 
 async function loadJson<T>(file: string): Promise<T> {
-  const response = await fetch(`${import.meta.env.BASE_URL}data/${file}`, { cache: 'no-cache' })
+  const response = await fetchData(file)
   if (!response.ok) throw new Error(`Missing data file: ${file}`)
   return (await response.json()) as T
 }
@@ -165,6 +181,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [commissioner, setCommissioner] = useState(isCommissioner)
+
+  // The rest of the league, once the first screen is up. Nothing here gates
+  // a render: every one of these fields is nullable and every reader already
+  // handles its absence, so the pages that want them simply fill in.
+  const hydrate = useCallback(async () => {
+    const [live, playerPoints, playerPositions, draftPool] = await Promise.all([
+      loadOptionalJson<LiveStandings>(FILES.live),
+      loadOptionalJson<import('./types').PlayerPoints>(FILES.playerPoints),
+      loadOptionalJson<import('./types').PlayerPositions>(FILES.playerPositions),
+      loadOptionalJson<import('./types').DraftPool>(FILES.draftPool),
+    ])
+    setData((current) =>
+      current ? { ...current, live, playerPoints, playerPositions, draftPool } : current,
+    )
+  }, [])
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -205,11 +236,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loadJson<CashFile>(FILES.cash),
         loadJson<FaabFile>(FILES.faab),
         loadJson<TradeQueueFile>(FILES.tradeQueue),
-        loadOptionalJson<LiveStandings>(FILES.live),
-        loadOptionalJson<import('./types').PlayerPoints>(FILES.playerPoints),
-        loadOptionalJson<import('./types').PlayerPositions>(FILES.playerPositions),
+        // Four files nothing on a first screen needs — the per-player scoring
+        // matrix alone is bigger than the rest of the league put together —
+        // are fetched after the desk is on screen; see hydrate() below.
+        Promise.resolve(null) as Promise<LiveStandings | null>,
+        Promise.resolve(null) as Promise<import('./types').PlayerPoints | null>,
+        Promise.resolve(null) as Promise<import('./types').PlayerPositions | null>,
         loadOptionalJson<import('./types').CommissionerVault>(FILES.vault),
-        loadOptionalJson<import('./types').DraftPool>(FILES.draftPool),
+        Promise.resolve(null) as Promise<import('./types').DraftPool | null>,
         loadOptionalJson<import('./types').GameRecords>(FILES.gameRecords),
         loadOptionalJson<import('./types').CareerAverages>(FILES.careerAverages),
         loadOptionalJson<import('./types').CommissionerVault>(FILES.leagueVault),
@@ -269,12 +303,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       writeOverlay(pruned, prunedAges)
 
       setData(next)
+      void hydrate()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load league data.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [hydrate])
 
   useEffect(() => {
     void reload()

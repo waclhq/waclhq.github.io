@@ -79,8 +79,13 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`
 
-/** Render scale — caustics are soft; 2/3 on desktop, half on phones. */
-const SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.5 : 0.66
+/** Render scale — caustics are soft; 2/3 on desktop, half on phones. The
+ *  governor below can halve it again on a device that cannot keep up. */
+const BASE_SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.5 : 0.66
+/** Sustained frame interval that means the room is costing more than it is
+ *  worth: ~24fps. Two strikes and the shader gives way to the CSS aurora. */
+const STRUGGLING_MS = 42
+const PATIENCE = 90
 /**
  * The glass moves slowly; 30 frames a second is indistinguishable and halves
  * the GPU bill. The margin matters: on a device already delivering frames at
@@ -170,17 +175,48 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       let lastDraw = 0
       let lastFrame = 0
       let cadence = 16.7
+      let scale = BASE_SCALE
+      let strikes = 0
+      let judged = 0
       const tick = (time: number) => {
         raf = requestAnimationFrame(tick)
         if (document.hidden) return
         // What the display is actually giving us, smoothed. When it is
-        // already at or below the target rate, every frame gets drawn.
-        if (lastFrame) cadence += (Math.min(time - lastFrame, 100) - cadence) * 0.1
+        // already at or below the target rate, every frame gets drawn. A gap
+        // longer than a fifth of a second is a pause — a scroll, a tab
+        // switch, the phone thinking about something else — not a frame
+        // rate, and counting it would slander the device.
+        const gap = lastFrame ? time - lastFrame : 0
         lastFrame = time
+        if (gap > 200) {
+          judged = 0
+          return
+        }
+        if (gap) cadence += (Math.min(gap, 60) - cadence) * 0.1
         if (cadence < FRAME_MS - FRAME_SLACK && time - lastDraw < FRAME_MS - FRAME_SLACK) return
         lastDraw = time
-        const w = Math.floor(window.innerWidth * SCALE)
-        const h = Math.floor(window.innerHeight * SCALE)
+
+        // The governor. A phone that cannot hold a frame is a phone where
+        // this room is the reason, so the room gets out of the way: once at
+        // half resolution, and if that is not enough, entirely — the CSS
+        // aurora is nearly free and nobody has to know why.
+        if (++judged > PATIENCE) {
+          judged = 0
+          if (cadence > STRUGGLING_MS) {
+            strikes += 1
+            if (strikes === 1) scale = BASE_SCALE * 0.62
+            else {
+              failedRef.current = true
+              cancelAnimationFrame(raf)
+              raf = 0
+              setGeneration((n) => n + 1)
+              return
+            }
+          } else strikes = 0
+        }
+
+        const w = Math.floor(window.innerWidth * scale)
+        const h = Math.floor(window.innerHeight * scale)
         if (canvas.width !== w || canvas.height !== h) {
           canvas.width = w
           canvas.height = h

@@ -27,12 +27,9 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   build: {
+    // Recharts is big, but naming it as a manual chunk made Vite preload it
+    // from index.html — on every cold load, for pages that never chart.
+    // Automatic splitting leaves it with the lazy routes that import it.
     chunkSizeWarningLimit: 700,
-    rollupOptions: {
-      output: {
-        // Recharts only matters on the stat pages; keep it out of the entry.
-        manualChunks: { charts: ['recharts'] },
-      },
-    },
   },
 })
