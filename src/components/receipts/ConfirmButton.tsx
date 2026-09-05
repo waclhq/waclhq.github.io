@@ -11,7 +11,7 @@ export default function ConfirmButton({
   confirm,
   onConfirm,
   disabled = false,
-  className = 'btn min-h-[34px] px-3 py-1',
+  className = 'btn min-h-[40px] px-3 py-1',
   cancelLabel = 'Cancel',
   ariaLabel,
 }: {
@@ -65,7 +65,7 @@ export default function ConfirmButton({
       </button>
       <button
         type="button"
-        className="btn min-h-[34px] px-3 py-1 text-[12px]"
+        className="btn min-h-[40px] px-3 py-1 text-[12px]"
         onClick={() => setAsking(false)}
       >
         {cancelLabel}

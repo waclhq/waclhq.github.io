@@ -1,11 +1,11 @@
 import { Fragment, type ReactNode } from 'react'
 import FireFrame from '../FireFrame'
 import { isNewBet, type Bet, type HeadToHead } from '../../lib/bets'
-import { animationsDisabled } from '../../lib/motion'
 import type { ManagerId } from '../../lib/types'
 import BetTile from './BetTile'
 import Detail from './Detail'
 import type { NameOf } from './provenance'
+import { useStill } from './useStill'
 
 /** True when the seat picked on this device is on either side of the bet. */
 export function isMine(bet: Bet, me: ManagerId | null): boolean {
@@ -36,7 +36,7 @@ export default function BetBoard({
   me: ManagerId | null
   h2h: HeadToHead[]
 }) {
-  const still = animationsDisabled()
+  const still = useStill()
   // One fire, always the newest money. Five tiles alight at once is five
   // simulations competing for the same frame — and five things asking for
   // the eye, which is none. The other fresh bets smoulder like the rest.

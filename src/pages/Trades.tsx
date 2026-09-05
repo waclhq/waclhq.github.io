@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Chip, Empty, Panel, PageHeader, SectionNav, SegmentedControl } from '../components/ui'
 import TradeForm from '../components/TradeForm'
 import ConfirmButton from '../components/receipts/ConfirmButton'
@@ -17,6 +17,8 @@ import { applyTradeRoster } from '../lib/roster'
 import type { LeagueData, Trade, TradeQueueFile, TradeStatus } from '../lib/types'
 
 type Tab = 'queue' | 'ledger' | 'archive'
+
+const TABS: Tab[] = ['queue', 'ledger', 'archive']
 
 /**
  * Approvals are two commits — the ruling, then the roster move. When the
@@ -51,16 +53,44 @@ export default function Trades() {
   const { commissioner, save } = useLeague()
   const trades = useTrades()
   const me = useMe()
+  // Terms shows from md, Status from sm; the batch row spans what is there.
   const wide = useMedia('(min-width: 768px)')
+  const mid = useMedia('(min-width: 640px)')
+  const columns = wide ? 5 : mid ? 4 : 3
 
-  const [tab, setTab] = useState<Tab>('queue')
+  // Which tab and which season live in the address, the way Finances keeps
+  // its own, so a reload or a pasted link comes back to the same view.
+  const [params, setParams] = useSearchParams()
+  const requestedTab = params.get('tab') as Tab | null
+  const tab: Tab = requestedTab && TABS.includes(requestedTab) ? requestedTab : 'queue'
+  const setTab = (next: Tab) =>
+    setParams(
+      (current) => {
+        if (next === 'queue') current.delete('tab')
+        else current.set('tab', next)
+        if (next !== 'ledger') current.delete('season')
+        return current
+      },
+      { replace: true },
+    )
+  const requestedSeason = Number(params.get('season'))
+  const seasonFilter: 'all' | number = Number.isFinite(requestedSeason) && requestedSeason > 0 ? requestedSeason : 'all'
+  const setSeasonFilter = (next: 'all' | number) =>
+    setParams(
+      (current) => {
+        if (next === 'all') current.delete('season')
+        else current.set('season', String(next))
+        return current
+      },
+      { replace: true },
+    )
+
   const [composing, setComposing] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [moment, setMoment] = useState<MomentKind | null>(null)
   // A failure is pinned to the trade it happened on; 'page' for anything else.
   const [fault, setFault] = useState<{ id: string; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [seasonFilter, setSeasonFilter] = useState<'all' | number>('all')
   const [pendingMoves, setPendingMoves] = useState<Record<string, Trade>>(readPendingMoves)
 
   const pending = trades.filter(
@@ -145,7 +175,9 @@ export default function Trades() {
         `Trade ${trade.id}: ${status} (${managerName(managers, trade.seller)} → ${managerName(managers, trade.buyer)})`,
       )
     } catch (cause) {
-      setFault({ id: trade.id, message: `Nothing was saved — ${friendlySaveError(cause)}` })
+      // One failure, one sentence: the same words the Shell's save strip
+      // prints, so the two surfaces never disagree about what happened.
+      setFault({ id: trade.id, message: friendlySaveError(cause) })
       setBusyId(null)
       return
     }
@@ -159,7 +191,7 @@ export default function Trades() {
         setPending({ ...pendingMoves, [trade.id]: updated })
         setFault({
           id: trade.id,
-          message: `Approved, but the roster move didn't save (${friendlySaveError(cause)}). Retry the roster move from the Recorded tab.`,
+          message: `Approved — but the roster move didn't save. ${friendlySaveError(cause)} Retry it from the Recorded tab.`,
         })
       }
     }
@@ -180,7 +212,7 @@ export default function Trades() {
       delete next[trade.id]
       setPending(next)
     } catch (cause) {
-      setFault({ id: trade.id, message: `The roster move still didn't save — ${friendlySaveError(cause)}` })
+      setFault({ id: trade.id, message: `The roster move still didn't save. ${friendlySaveError(cause)}` })
     } finally {
       setBusyId(null)
     }
@@ -299,7 +331,7 @@ export default function Trades() {
               const busy = busyId === trade.id
 
               return (
-                <Panel key={trade.id} delay={index * 60} className={involvesMe(trade) ? 'desk-mine' : ''}>
+                <Panel key={trade.id} delay={index * 60} className={involvesMe(trade) ? 'queue-mine' : ''}>
                   <div className="px-5 py-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -308,7 +340,9 @@ export default function Trades() {
                           <span className="mx-2.5 text-arc-green">→</span>
                           {managerName(managers, trade.buyer)}
                           {involvesMe(trade) && (
-                            <span className="arcade ml-2 align-middle text-[11px] text-arc-ink-soft">you</span>
+                            <span className="arcade ml-2 align-middle text-[12px] whitespace-nowrap text-arc-ink-soft">
+                              you
+                            </span>
                           )}
                         </div>
                         <div className="mt-1.5 text-[13px] text-arc-ink-soft">{trade.players}</div>
@@ -322,7 +356,7 @@ export default function Trades() {
                           {(verdict.triggered || onMarketCheck) && (
                             <Link
                               to="/rules#anti-dumping"
-                              className="text-[11px] text-arc-ink-faint underline underline-offset-2 hover:text-arc-ink"
+                              className="-my-2 inline-flex min-h-[40px] items-center px-1 text-[12px] text-arc-ink-faint underline underline-offset-2 hover:text-arc-ink"
                             >
                               the rule
                             </Link>
@@ -474,7 +508,11 @@ export default function Trades() {
                   <Fragment key={trade.id}>
                     {newBatch && (
                       <tr className="desk-group">
-                        <td colSpan={wide ? 5 : 3}>{trade.batch}</td>
+                        {/* Exactly the columns on screen. A short span left
+                            Status as an unstyled gap between sm and md; a
+                            long one makes the fixed layout reserve width for
+                            columns nobody can see. */}
+                        <td colSpan={columns}>{trade.batch}</td>
                       </tr>
                     )}
                     <tr
@@ -492,9 +530,13 @@ export default function Trades() {
                         {managerName(managers, trade.seller)}
                         <span className="mx-1.5 text-arc-green">→</span>
                         <span className="whitespace-nowrap">{managerName(managers, trade.buyer)}</span>
-                        {mine && <span className="arcade ml-1.5 text-[11px] text-arc-ink-soft">you</span>}
+                        {mine && (
+                          <span className="arcade ml-1.5 text-[12px] whitespace-nowrap text-arc-ink-soft">
+                            you
+                          </span>
+                        )}
                       </td>
-                      <td className="max-w-[170px] text-arc-ink-soft md:max-w-[280px]">
+                      <td className="desk-wrap max-w-[170px] text-arc-ink-soft md:max-w-[280px]">
                         {trade.players}
                         {/* Terms restate the obligations the total sums; below
                             md they fold under the players. */}
@@ -505,7 +547,7 @@ export default function Trades() {
                             {commissioner && (
                               <button
                                 type="button"
-                                className="btn min-h-[34px] px-3 py-1 text-[12px]"
+                                className="btn min-h-[40px] px-3 py-1 text-[12px]"
                                 disabled={busyId === trade.id}
                                 onClick={() => void retryRoster(owed)}
                               >

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { animationsDisabled } from '../lib/motion'
+import { useStill } from './receipts/useStill'
 
 /**
  * The losing half of a settled bet slip, consumed by fire.
@@ -22,9 +22,10 @@ const CLIMB_S = 1.15
 
 export default function BurnAway({ color = '#12161c' }: { color?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const still = useStill()
 
   useEffect(() => {
-    if (animationsDisabled()) return
+    if (still) return
     const canvas = canvasRef.current
     if (!canvas || !canvas.parentElement) return
     const ctx = canvas.getContext('2d')
@@ -88,8 +89,11 @@ export default function BurnAway({ color = '#12161c' }: { color?: string }) {
       }
     }
     step()
-    return () => window.clearTimeout(timer)
-  }, [color])
+    return () => {
+      window.clearTimeout(timer)
+      ctx.clearRect(0, 0, cols, rows)
+    }
+  }, [color, still])
 
   return (
     <canvas

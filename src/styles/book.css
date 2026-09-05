@@ -30,7 +30,7 @@
     top: 6%;
     right: 5%;
     padding: 1px 7px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
     text-transform: uppercase;
     border: 1px solid currentColor;
@@ -47,6 +47,15 @@
     display: block;
     width: 44px !important;
     height: 44px !important;
+  }
+  /* And one step further on a 360: "Bernstein" plus the centred VS pill needs
+     every pixel the portrait can give back. */
+  @media (max-width: 399px) {
+    .slip-face img,
+    .slip-face canvas {
+      width: 38px !important;
+      height: 38px !important;
+    }
   }
   @media (min-width: 640px) {
     .slip-face img,
@@ -241,9 +250,13 @@
     .desk-fixed .desk-col-total {
       width: 23%;
     }
-    /* Outranks .out's own nowrap, which sits later in the cascade. */
+    /* Outranks .out's own nowrap, which sits later in the cascade. Only the
+       players cell breaks inside a word — everywhere else a break mid-word
+       splits the "you" pip into "y" and "ou". */
     .out.desk-fixed tbody td {
       white-space: normal;
+    }
+    .out.desk-fixed tbody td.desk-wrap {
       overflow-wrap: anywhere;
     }
   }
@@ -257,8 +270,11 @@
   .desk-flag {
     border-left: 3px solid var(--color-arc-orange);
   }
-  /* A queue card with your seat on either side. */
-  .desk-mine {
+  /* A queue card with your seat on either side. Written against .win —
+     index.css's own .win box-shadow is imported after this sheet and wins at
+     equal specificity, so the ring needs the extra class to land. The name is
+     the desk's own: ledger.css has a different .desk-mine for Your desk. */
+  .win.queue-mine {
     box-shadow:
       inset 3px 0 0 var(--me-color, transparent),
       var(--shadow-hard);

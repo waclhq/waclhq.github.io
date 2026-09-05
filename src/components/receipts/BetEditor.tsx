@@ -141,7 +141,7 @@ export default function BetEditor({
                 <button
                   key={side.id}
                   type="button"
-                  className="btn min-h-[36px] px-3 py-1"
+                  className="btn min-h-[40px] px-3 py-1"
                   aria-pressed={winner === side.id}
                   style={
                     winner === side.id
@@ -159,10 +159,14 @@ export default function BetEditor({
               ))}
               <button
                 type="button"
-                className="btn min-h-[36px] px-3 py-1"
+                className="btn min-h-[40px] px-3 py-1"
                 aria-pressed={winner === null}
                 style={winner === null ? { borderColor: 'var(--color-arc-orange)' } : undefined}
-                onClick={() => setWinner(null)}
+                onClick={() => {
+                  setWinner(null)
+                  // A live bet has no loser, so it cannot have been paid.
+                  set({ paid: false })
+                }}
               >
                 Nobody yet
               </button>
@@ -174,7 +178,8 @@ export default function BetEditor({
             </p>
           </div>
 
-          {cash && (
+          {/* Nobody has paid up on a bet with no loser yet. */}
+          {cash && winner !== null && (
             <label className="flex items-center gap-2.5 sm:col-span-2">
               <input
                 type="checkbox"
@@ -222,7 +227,7 @@ export default function BetEditor({
               {confirming && <span className="text-[12px] text-arc-ink-faint">Wipes it from the record.</span>}
               <button
                 type="button"
-                className={`btn min-h-[36px] px-3 py-1 ${confirming ? 'btn-danger' : ''}`}
+                className={`btn min-h-[40px] px-3 py-1 ${confirming ? 'btn-danger' : ''}`}
                 style={
                   confirming ? undefined : { borderColor: 'var(--color-arc-red)', color: 'var(--color-arc-red)' }
                 }
