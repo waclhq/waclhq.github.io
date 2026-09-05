@@ -85,6 +85,13 @@
       transform: none;
     }
   }
+  /* The settle happens once. After it, medals belong to the row and ride the
+     FLIP with it — an era switch mounts new numerals, and replaying their
+     entrance blanked the podium for half a second on every re-sort. */
+  .board-stage[data-settled] .board-medal {
+    animation: none;
+    opacity: 1;
+  }
 
   /* The leader's wash fills in with the bars (background-size, like them). */
   tr.board-lead {
@@ -94,6 +101,35 @@
   /* Your seat, pinned under the fold at its true rank. */
   tr.board-you td {
     border-top: 1px dashed var(--color-arc-line);
+  }
+
+  /* Phones get the podium's own grid: narrower gutters, same trim as the
+     leaderboard in tables.css, and a taller row. The widest boards print five
+     columns on a 360 — rank, name, year, record, headline — and the shared
+     12px gutters pushed the headline past the edge, so the number that names
+     the board came back as a swipe hint. The taller row is for the thumb: the
+     whole row navigates, so it owes a 40px band. */
+  @media (max-width: 639.98px) {
+    .board-stage .out thead th,
+    .board-stage .out tbody td {
+      padding-inline: 10px;
+    }
+    .board-stage .out tbody td {
+      padding-block: 10px;
+    }
+    /* The name inside the row is a link of its own; stretch it to the same
+       band. Padding in, margin back out — the hit area grows, nothing moves. */
+    .board-stage .out tbody td a {
+      padding-block: 10px;
+      margin-block: -10px;
+    }
+    .board-stage .out thead th.n {
+      padding-right: calc(10px - 0.1em);
+    }
+    .board-stage .out thead th:first-child,
+    .board-stage .out tbody td:first-child {
+      padding-inline: 8px 6px;
+    }
   }
 
   /* Group seam (blessed / cursed). */

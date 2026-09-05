@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
@@ -34,7 +34,9 @@ export default function EloChart({
   const [focus, setFocus] = useState<Set<ManagerId>>(() => new Set(defaultFocus))
   // A seat picked after mount lights up too, without clobbering taps.
   const defaultKey = defaultFocus.join('|')
+  const chosen = useRef(false)
   useEffect(() => {
+    chosen.current = false
     setFocus(new Set(defaultKey ? defaultKey.split('|') : []))
   }, [defaultKey])
 
@@ -70,6 +72,13 @@ export default function EloChart({
   const focusing = focus.size > 0
   const toggle = (id: ManagerId) =>
     setFocus((current) => {
+      // The pre-lit pair (your seat, the reigning champion) is a suggestion,
+      // not a selection: the first deliberate tap isolates that line instead
+      // of adding a second one. Tapping the only lit chip still puts it out.
+      if (!chosen.current) {
+        chosen.current = true
+        if (!(current.size === 1 && current.has(id))) return new Set([id])
+      }
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
       else next.add(id)

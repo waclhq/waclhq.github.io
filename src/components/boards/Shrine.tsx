@@ -153,8 +153,8 @@ function Flex({ color }: { color: string }) {
           <div className="display text-[26px] leading-none" style={{ color }}>
             G.O.A.T.
           </div>
-          <div className="label mt-1 text-[10px]">
-            {still ? 'the flex plays with fx on' : 'the flex, on tape'}
+          <div className="label mt-1 text-[11px] leading-tight">
+            {still ? 'turn fx on to play' : 'the flex, on tape'}
           </div>
         </div>
       </div>

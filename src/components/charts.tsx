@@ -34,7 +34,7 @@ const axisProps = {
   stroke: GRID,
   tickLine: false,
   axisLine: { stroke: GRID },
-  tick: { fill: AXIS, fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' },
+  tick: { fill: AXIS, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
 } as const
 
 /** Snap the axis to round numbers so ticks read 80/100/120, not 74.94/136.67. */
@@ -114,7 +114,7 @@ export function WinPctChart({
             label={{
               value: '.500',
               fill: AXIS,
-              fontSize: 10,
+              fontSize: 11,
               fontFamily: 'IBM Plex Mono, monospace',
               position: 'insideTopRight',
               dy: -4,
