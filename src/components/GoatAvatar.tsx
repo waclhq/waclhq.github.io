@@ -5,7 +5,8 @@ import { animationsDisabled } from '../lib/motion'
  * The G.O.A.T. himself, in heap-sprite pixel art: backwards tan cap, orange
  * tiger-striped jersey, number 1 on the chest, hitting a front double-biceps
  * with veins that throb on the beat. Same DNA as HeapScene — low-res canvas,
- * chunky pixels, stepped animation. Static single frame when FX are off.
+ * chunky pixels, stepped animation. Static single frame when FX are off, and
+ * the loop rests whenever the sprite is off-screen or the tab is hidden.
  */
 
 const W = 44
@@ -22,6 +23,7 @@ const STRIPE = '#151312'
 const WHITE = '#f5efe6'
 const MOUTH = '#4a2a1a'
 const VEIN = '#8a1f1f'
+const SPARK = '#ffd84d'
 
 export default function GoatAvatar({ scale = 4 }: { scale?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -118,8 +120,8 @@ export default function GoatAvatar({ scale = 4 }: { scale?: number }) {
       if (pulse) {
         px(cx - 16, 6, WHITE, 0.9)
         px(cx + 16, 5, WHITE, 0.9)
-        px(cx - 18, 9, '#ffd84d', 0.8)
-        px(cx + 18, 8, '#ffd84d', 0.8)
+        px(cx - 18, 9, SPARK, 0.8)
+        px(cx + 18, 8, SPARK, 0.8)
       }
     }
 
@@ -127,21 +129,40 @@ export default function GoatAvatar({ scale = 4 }: { scale?: number }) {
       draw(1) // hold the squeeze
       return
     }
+
     let frame = 0
     let alive = true
+    let visible = true
+    let handle = 0
     let last = 0
     const tick = (time: number) => {
-      if (!alive) return
+      if (!alive || !visible || document.hidden) {
+        handle = 0
+        return
+      }
       if (time - last > 420) {
         last = time
         frame += 1
         draw(frame % 2)
       }
-      requestAnimationFrame(tick)
+      handle = requestAnimationFrame(tick)
     }
-    requestAnimationFrame(tick)
+    const wake = () => {
+      if (alive && visible && !document.hidden && !handle) handle = requestAnimationFrame(tick)
+    }
+    draw(1)
+    const watch = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting
+      wake()
+    })
+    watch.observe(canvas)
+    document.addEventListener('visibilitychange', wake)
+    wake()
     return () => {
       alive = false
+      if (handle) cancelAnimationFrame(handle)
+      watch.disconnect()
+      document.removeEventListener('visibilitychange', wake)
     }
   }, [scale])
 

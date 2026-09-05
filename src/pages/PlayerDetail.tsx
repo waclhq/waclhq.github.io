@@ -1,71 +1,142 @@
 import { useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Chip, Empty, Hero, Panel, PageHeader, Sparkline } from '../components/ui'
-import { managerName, useLeagueData } from '../lib/data'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ManagerLink } from '../components/profile/ManagerLink'
+import { SalaryBars } from '../components/profile/SalaryBars'
+import { useDocumentTitle } from '../components/profile/useDocumentTitle'
+import { Chip, Empty, Hero, Panel, PageHeader } from '../components/ui'
+import { useLeagueData } from '../lib/data'
 import { money } from '../lib/format'
-import { playerDossier } from '../lib/search'
-import { normalizePlayer } from '../lib/analytics'
+import { playerFile } from '../lib/profile-player'
 
+/**
+ * A player's file: every keeper sheet he appears on, what each owner paid,
+ * and the trades that moved him. The route accepts any spelling that
+ * normalises to the same name, so a link typed from memory still lands.
+ */
 export default function PlayerDetail() {
   const { name = '' } = useParams()
+  const navigate = useNavigate()
   const data = useLeagueData()
-  const decoded = useMemo(() => decodeURIComponent(name), [name])
-  const dossier = useMemo(() => playerDossier(data, decoded), [data, decoded])
-  const { managers } = data
+  const decoded = useMemo(() => {
+    try {
+      return decodeURIComponent(name)
+    } catch {
+      return name
+    }
+  }, [name])
+  const file = useMemo(() => playerFile(data, decoded), [data, decoded])
+  const found = file.stints.length > 0 || file.trades.length > 0
+  useDocumentTitle(found ? `${file.name} · Players · WACL League HQ` : null)
 
-  if (dossier.stints.length === 0 && dossier.trades.length === 0) {
+  // A way back: the page that sent us here when there is one, the manager
+  // list when the link was pasted cold.
+  const cameFromSite =
+    typeof window !== 'undefined' && Number((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0
+  const trail = (
+    <nav className="pf-trail" aria-label="Breadcrumb">
+      <div className="pf-trail-path">
+        {cameFromSite ? (
+          <button type="button" className="pf-trail-link" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        ) : (
+          <Link to="/managers" className="pf-trail-link">
+            Managers
+          </Link>
+        )}
+        <span aria-hidden className="pf-trail-sep">
+          ›
+        </span>
+        <span className="text-arc-ink-faint">Players</span>
+        <span aria-hidden className="pf-trail-sep">
+          ›
+        </span>
+        <span aria-current="page" className="pf-trail-here">
+          {found ? file.name : decoded}
+        </span>
+      </div>
+    </nav>
+  )
+
+  if (!found) {
     return (
-      <>
-        <PageHeader path="~/players" eyebrow="player history" title="Not found" />
+      <div className="pf-page">
+        {trail}
+        <PageHeader eyebrow="Player file" title="Not found" />
         <Panel>
           <Empty>
-            No roster record for “{decoded}”. Try the{' '}
-            <span className="text-arc-green">⌘K</span> search.
+            No roster record for “{decoded}”. Use Find (⌘K on a keyboard) to search every sheet the
+            league has kept.
           </Empty>
         </Panel>
-      </>
+      </div>
     )
   }
 
-  const owners = [...new Set(dossier.stints.map((stint) => stint.manager))].filter(Boolean)
-  const chronological = [...dossier.stints].sort((a, b) => a.year - b.year)
+  const chronological = [...file.stints].sort((a, b) => a.year - b.year)
+  const seasonsOnBooks = new Set(file.stints.map((stint) => stint.year)).size
+  const keptCount = file.stints.filter((stint) => stint.kept).length
+  const eyebrow = [
+    file.position,
+    `${seasonsOnBooks} ${seasonsOnBooks === 1 ? 'season' : 'seasons'} on the books`,
+    `${file.owners.length} ${file.owners.length === 1 ? 'owner' : 'owners'}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const lede = [
+    file.firstSeen
+      ? `On league rosters from ${file.firstSeen} to ${file.lastSeen}${
+          keptCount ? `, kept ${keptCount} ${keptCount === 1 ? 'time' : 'times'}` : ''
+        }.`
+      : null,
+    file.trades.length
+      ? `Moved in ${file.trades.length} recorded ${file.trades.length === 1 ? 'trade' : 'trades'}.`
+      : 'Never traded on the structured ledger.',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <>
-      <PageHeader
-        path="~/players"
-        eyebrow={`grep "${dossier.name}" rosters/*`}
-        title={dossier.name}
-        lede={`${data.playerPositions?.[normalizePlayer(dossier.name)] ?? ''} · on league rosters from ${dossier.firstSeen} to ${dossier.lastSeen} across ${owners.length} ${owners.length === 1 ? 'manager' : 'managers'}.`.replace(/^ · /, '')}
-      />
+    <div className="pf-page">
+      {trail}
+      <PageHeader eyebrow={eyebrow} title={file.name} lede={lede} />
 
       <div className="mb-8 grid min-w-0 gap-8 lg:grid-cols-[1fr_1.1fr]">
         <Hero
           label="Peak keeper cost"
-          value={money(dossier.peakCost)}
-          accent
+          value={money(file.peak?.cost)}
+          countTo={file.peak?.cost}
+          format={(value) => money(value)}
           caption={
-            <>
-              Highest salary this player ever carried against a $200 auction budget.{' '}
-              {dossier.trades.length > 0 &&
-                `Moved in ${dossier.trades.length} recorded ${dossier.trades.length === 1 ? 'trade' : 'trades'}.`}
-            </>
+            file.peak ? (
+              <>
+                The highest salary this player ever carried against a {money(data.league.baseDraftBudget)}{' '}
+                auction budget: {file.peak.year}, on{' '}
+                {file.peak.manager ? <ManagerLink id={file.peak.manager} /> : 'an unmapped sheet'}.
+              </>
+            ) : (
+              'No salary recorded on any sheet.'
+            )
           }
         />
-        <div className="self-end">
-          <div className="label mb-2">Salary by season</div>
-          <div className="text-[26px]">
-            <Sparkline values={chronological.map((stint) => stint.cost)} />
+        {chronological.length > 0 && (
+          <div className="self-end">
+            <div className="label mb-3">
+              Salary by season{' '}
+              <span className="normal-case tracking-normal text-arc-ink-faint">· bar colour is the owner</span>
+            </div>
+            <SalaryBars stints={chronological} peakYear={file.peak?.year ?? null} />
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12.5px]">
+              {file.owners.map((owner) => (
+                <ManagerLink key={owner} id={owner} face />
+              ))}
+            </div>
           </div>
-          <div className="mt-1 flex justify-between text-[10px] text-arc-ink-faint">
-            <span>{chronological[0]?.year}</span>
-            <span>{chronological.at(-1)?.year}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
-        <Panel title="roster history" subtitle="Every keeper sheet this player appears on.">
+        <Panel title="Roster history" subtitle="Every keeper sheet this player appears on.">
           <table className="out">
             <thead>
               <tr>
@@ -77,51 +148,50 @@ export default function PlayerDetail() {
               </tr>
             </thead>
             <tbody>
-              {dossier.stints.map((stint) => (
+              {file.stints.map((stint) => (
                 <tr key={`${stint.year}-${stint.team}`}>
                   <td className="tnum">{stint.year}</td>
                   <td>
                     {stint.manager ? (
-                      <Link
-                        to={`/managers/${stint.manager}`}
-                        className="transition-colors hover:text-arc-green"
-                      >
-                        {managerName(managers, stint.manager)}
-                      </Link>
+                      <ManagerLink id={stint.manager} face />
                     ) : (
-                      stint.team
+                      <span className="text-arc-ink-soft">{stint.team}</span>
                     )}
                   </td>
                   <td className="n">{money(stint.cost)}</td>
                   <td className="n text-arc-ink-faint">{stint.contractYear ?? '—'}</td>
-                  <td>
-                    {stint.kept ? <Chip tone="up">kept</Chip> : <Chip>rostered</Chip>}
-                  </td>
+                  <td>{stint.kept ? <Chip tone="up">kept</Chip> : <Chip>rostered</Chip>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Panel>
 
-        <Panel title="trades" subtitle="Deals in the structured ledger naming this player.">
-          {dossier.trades.length === 0 ? (
+        <Panel title="Trades" subtitle="Deals in the structured ledger naming this player.">
+          {file.trades.length === 0 ? (
             <Empty>Never traded.</Empty>
           ) : (
             <table className="out">
               <thead>
                 <tr>
-                  <th>Batch</th>
+                  <th>Season</th>
+                  <th className="hidden sm:table-cell">Batch</th>
                   <th>From</th>
                   <th>To</th>
                   <th className="n">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {dossier.trades.map((trade) => (
+                {file.trades.map((trade) => (
                   <tr key={trade.id}>
-                    <td className="tnum text-arc-ink-faint">{trade.batch}</td>
-                    <td>{managerName(managers, trade.seller)}</td>
-                    <td>{managerName(managers, trade.buyer)}</td>
+                    <td className="tnum">{trade.season}</td>
+                    <td className="hidden text-arc-ink-faint sm:table-cell">{trade.batch}</td>
+                    <td>
+                      <ManagerLink id={trade.seller} />
+                    </td>
+                    <td>
+                      <ManagerLink id={trade.buyer} />
+                    </td>
                     <td className="n text-arc-green">{money(trade.total)}</td>
                   </tr>
                 ))}
@@ -130,6 +200,6 @@ export default function PlayerDetail() {
           )}
         </Panel>
       </div>
-    </>
+    </div>
   )
 }
