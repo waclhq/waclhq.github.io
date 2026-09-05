@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import DuesBoard from '../components/DuesBoard'
 import ManagerTag from '../components/ManagerTag'
@@ -6,7 +6,6 @@ import { Chip, Empty, Panel, PageHeader, SegmentedControl, Stat } from '../compo
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { newId, useCash, useLedger } from '../lib/derive'
 import { money, shortDate } from '../lib/format'
-import { plainSaveError } from '../lib/ops-save'
 import type { CashEntry, CashFile, CashType } from '../lib/types'
 
 type Tab = 'auction' | 'dues' | 'cash'
@@ -36,7 +35,7 @@ export default function Finances() {
   const { league } = useLeagueData()
 
   return (
-    <>
+    <div className="ops-room">
       <PageHeader
         path="~/finances"
         eyebrow="Balances"
@@ -57,7 +56,7 @@ export default function Finances() {
       {tab === 'auction' && <AuctionBook />}
       {tab === 'dues' && <DuesBoard season={league.currentSeason} />}
       {tab === 'cash' && <CashBook season={league.currentSeason} />}
-    </>
+    </div>
   )
 }
 
@@ -167,10 +166,17 @@ function CashBook({ season }: { season: number }) {
   const [scope, setScope] = useState<'season' | 'all'>('season')
   const positions = useCash(scope === 'all' ? 'all' : season)
   const [adding, setAdding] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null)
+
+  // The confirmation is a receipt, not a fixture: it clears itself the way
+  // the save strip does, so the panel is not still congratulating the
+  // commissioner on an entry they made ten minutes ago.
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   const entries = cash.entries
     .filter((entry) => scope === 'all' || entry.season === season)
@@ -182,32 +188,32 @@ function CashBook({ season }: { season: number }) {
     .filter((row) => row.outstanding > 0)
     .reduce((total, row) => total + row.outstanding, 0)
 
-  /** True when the commit landed. Errors come back in plain words. */
+  /**
+   * True when the commit landed. A failure needs no sentence here: save()
+   * raises the strip above the thumb with the words and a Retry, the same
+   * on every page.
+   */
   async function mutate(
     update: (current: CashFile) => CashFile,
     message: string,
-  ): Promise<string | null> {
+  ): Promise<boolean> {
     try {
       await save<CashFile>('cash.json', update, message)
-      return null
-    } catch (cause) {
-      return plainSaveError(cause)
+      return true
+    } catch {
+      return false
     }
   }
 
   async function record(entry: CashEntry): Promise<boolean> {
-    setFormError(null)
-    const failure = await mutate(
+    const ok = await mutate(
       (current) => ({ ...current, entries: [...current.entries, entry] }),
       `Cash: ${entry.description} (${managerName(managers, entry.manager)})`,
     )
-    if (failure) {
-      setFormError(failure)
-      return false
-    }
+    if (!ok) return false
     setNotice({
       id: entry.id,
-      text: `Recorded · ${managerName(managers, entry.manager)} ${money(entry.amount, { sign: true })}`,
+      text: `Recorded · ${managerName(managers, entry.manager)} ${cashMoney(entry.amount, { sign: true })}`,
     })
     return true
   }
@@ -215,9 +221,8 @@ function CashBook({ season }: { season: number }) {
   async function flip(entry: CashEntry) {
     if (saving) return
     setSaving(entry.id)
-    setRowError(null)
     const next = !entry.settled
-    const failure = await mutate(
+    const ok = await mutate(
       (current) => ({
         ...current,
         entries: current.entries.map((row) => (row.id === entry.id ? { ...row, settled: next } : row)),
@@ -225,11 +230,10 @@ function CashBook({ season }: { season: number }) {
       `Cash: mark ${entry.description} ${next ? 'settled' : 'unsettled'}`,
     )
     setSaving(null)
-    if (failure) setRowError({ id: entry.id, message: failure })
-    else
+    if (ok)
       setNotice({
         id: entry.id,
-        text: `${next ? 'Settled' : 'Reopened'} · ${managerName(managers, entry.manager)} ${money(entry.amount, { sign: true })}`,
+        text: `${next ? 'Settled' : 'Reopened'} · ${managerName(managers, entry.manager)} ${cashMoney(entry.amount, { sign: true })}`,
       })
   }
 
@@ -243,20 +247,20 @@ function CashBook({ season }: { season: number }) {
       <div className="line-in grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
         <Stat
           label="Owed to the league"
-          value={money(Math.abs(owedToLeague))}
+          value={cashMoney(Math.abs(owedToLeague))}
           tone={owedToLeague < 0 ? 'down' : 'default'}
           hint={owedToLeague < 0 ? 'Still to collect' : 'All collected'}
         />
         <Stat
           label="Owed by the league"
-          value={money(owedByLeague)}
+          value={cashMoney(owedByLeague)}
           tone={owedByLeague > 0 ? 'up' : 'default'}
           hint={owedByLeague > 0 ? 'Still to pay out' : 'Nothing owed'}
         />
         <Stat label="Entries" value={entries.length} />
         <Stat
           label="Net position"
-          value={money(owedByLeague + owedToLeague, { sign: true })}
+          value={cashMoney(owedByLeague + owedToLeague, { sign: true })}
           hint="Should settle to zero once the season closes"
         />
       </div>
@@ -279,10 +283,7 @@ function CashBook({ season }: { season: number }) {
                 type="button"
                 className="btn"
                 aria-expanded={adding}
-                onClick={() => {
-                  setAdding((open) => !open)
-                  setFormError(null)
-                }}
+                onClick={() => setAdding((open) => !open)}
               >
                 {adding ? 'Cancel' : 'Add'}
               </button>
@@ -293,22 +294,12 @@ function CashBook({ season }: { season: number }) {
         {adding && (
           <CashForm
             season={season}
-            error={formError}
             onSubmit={async (entry) => {
               const ok = await record(entry)
               if (ok) setAdding(false)
               return ok
             }}
           />
-        )}
-        {notice && (
-          <p
-            role="status"
-            className="flex items-center gap-2 border-b border-arc-line px-4 py-2 text-[12.5px] text-arc-green sm:px-5"
-          >
-            <span aria-hidden>✓</span>
-            <span className="tnum">{notice.text}</span>
-          </p>
         )}
         <table className="out">
           <thead>
@@ -328,9 +319,9 @@ function CashBook({ season }: { season: number }) {
                 </td>
                 <td className="n hidden text-arc-ink-faint sm:table-cell">{row.entries || '·'}</td>
                 <td className="n hidden text-arc-ink-soft sm:table-cell">
-                  {money(row.owed, { sign: true })}
+                  {cashMoney(row.owed, { sign: true })}
                 </td>
-                <td className="n text-arc-ink-faint">{money(row.settled, { sign: true })}</td>
+                <td className="n text-arc-ink-faint">{cashMoney(row.settled, { sign: true })}</td>
                 <td
                   className={`n font-semibold ${
                     row.outstanding > 0
@@ -340,7 +331,7 @@ function CashBook({ season }: { season: number }) {
                         : 'text-arc-ink-faint'
                   }`}
                 >
-                  {row.outstanding === 0 ? '·' : money(row.outstanding, { sign: true })}
+                  {row.outstanding === 0 ? '·' : cashMoney(row.outstanding, { sign: true })}
                 </td>
               </tr>
             ))}
@@ -356,6 +347,16 @@ function CashBook({ season }: { season: number }) {
             : 'Every dollar logged, newest first.'
         }
       >
+        {/* The confirmation sits with the row it announces, not two panels up. */}
+        {notice && (
+          <p
+            role="status"
+            className="flex items-center gap-2 border-b border-arc-line px-4 py-2 text-[12.5px] text-arc-green sm:px-5"
+          >
+            <span aria-hidden>✓</span>
+            <span className="tnum">{notice.text}</span>
+          </p>
+        )}
         {entries.length === 0 ? (
           <Empty kicker="clean book">
             Nothing recorded yet. Dues, payouts, and side bets you log here roll into the balances
@@ -382,7 +383,16 @@ function CashBook({ season }: { season: number }) {
               {entries.map((entry) => {
                 const busy = saving === entry.id
                 const label = CASH_TYPES.find((type) => type.id === entry.type)?.label ?? entry.type
-                return [
+                // 'Aug 15 · Dues · Dues' reads like a stutter: a description
+                // that only repeats its own type earns no second mention.
+                const meta = [dateFor(entry), label, entry.description]
+                  .filter(
+                    (part, index, all) =>
+                      part &&
+                      all.findIndex((other) => other.toLowerCase() === part.toLowerCase()) === index,
+                  )
+                  .join(' · ')
+                return (
                   <tr key={entry.id} className={notice?.id === entry.id ? 'ops-row-new' : ''}>
                     {commissioner && (
                       <td className="!px-1">
@@ -415,11 +425,11 @@ function CashBook({ season }: { season: number }) {
                     <td>
                       {managerName(managers, entry.manager)}
                       <span className="tnum block max-w-[132px] truncate text-[11px] leading-snug text-arc-ink-faint sm:hidden">
-                        {dateFor(entry)} · {label} · {entry.description}
+                        {meta}
                       </span>
                     </td>
                     <td className={`n font-semibold ${entry.amount > 0 ? 'text-arc-green' : 'text-arc-red'}`}>
-                      {money(entry.amount, { sign: true })}
+                      {cashMoney(entry.amount, { sign: true })}
                     </td>
                     <td>
                       <Chip tone={entry.settled ? 'neutral' : 'flag'}>
@@ -428,15 +438,8 @@ function CashBook({ season }: { season: number }) {
                     </td>
                     <td className="hidden text-arc-ink-soft sm:table-cell">{entry.description}</td>
                     <td className="hidden text-[12px] text-arc-ink-soft md:table-cell">{label}</td>
-                  </tr>,
-                  rowError?.id === entry.id && (
-                    <tr key={`${entry.id}-error`}>
-                      <td colSpan={commissioner ? 7 : 6} className="!whitespace-normal text-[12.5px] text-arc-red" role="alert">
-                        {rowError.message}
-                      </td>
-                    </tr>
-                  ),
-                ]
+                  </tr>
+                )
               })}
             </tbody>
           </table>
@@ -448,13 +451,22 @@ function CashBook({ season }: { season: number }) {
 
 type Direction = 'owes' | 'owed'
 
+/** Dollars, and cents when an entry carries them — never a rounded receipt. */
+function cashMoney(value: number, opts: { sign?: boolean } = {}): string {
+  if (Number.isInteger(value)) return money(value, opts)
+  const sign = opts.sign && value > 0 ? '+' : value < 0 ? '−' : ''
+  const shown = Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `${sign}$${shown}`
+}
+
 function CashForm({
   season,
-  error,
   onSubmit,
 }: {
   season: number
-  error: string | null
   onSubmit: (entry: CashEntry) => Promise<boolean>
 }) {
   const { managers } = useLeagueData()
@@ -468,8 +480,12 @@ function CashForm({
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const magnitude = Number(amountText.replace(/[^0-9.]/g, ''))
-  const valid = Number.isFinite(magnitude) && magnitude > 0
+  // Dollars, and at most two cents, with a typed $ or thousands commas
+  // forgiven. Anything else is not a number of dollars — '1e3' above all,
+  // which the old sanitiser stripped to '13' and booked as thirteen.
+  const typed = amountText.trim().replace(/^\$/, '').replace(/,/g, '')
+  const valid = /^\d+(\.\d{1,2})?$/.test(typed) && Number(typed) > 0
+  const magnitude = valid ? Number(typed) : 0
   const amount = direction === 'owes' ? -magnitude : magnitude
   const who = manager ? managerName(managers, manager) : 'The manager'
 
@@ -528,6 +544,7 @@ function CashForm({
           onChange={(event) => setAmountText(event.target.value)}
           placeholder="150"
           aria-describedby="cash-amount-hint"
+          aria-invalid={typed !== '' && !valid}
         />
       </label>
       <label className="sm:col-span-2 lg:col-span-3">
@@ -561,25 +578,23 @@ function CashForm({
         >
           {busy ? 'Saving…' : 'Record entry'}
         </button>
-        {error ? (
-          <p role="alert" className="text-[12.5px] leading-snug text-arc-red">
-            {error}
-          </p>
-        ) : (
-          <p id="cash-amount-hint" className="tnum text-[12px] text-arc-ink-soft">
-            {valid ? (
-              <>
-                Books as{' '}
-                <span className={amount < 0 ? 'text-arc-red' : 'text-arc-green'}>
-                  {money(amount, { sign: true })}
-                </span>{' '}
-                — {who} {direction === 'owes' ? 'owes the league' : 'is owed by the league'}.
-              </>
-            ) : (
-              'Enter the amount as a positive number; the direction sets the sign.'
-            )}
-          </p>
-        )}
+        <p id="cash-amount-hint" className="tnum text-[12px] text-arc-ink-soft">
+          {valid ? (
+            <>
+              Books as{' '}
+              <span className={amount < 0 ? 'text-arc-red' : 'text-arc-green'}>
+                {cashMoney(amount, { sign: true })}
+              </span>{' '}
+              — {who} {direction === 'owes' ? 'owes the league' : 'is owed by the league'}.
+            </>
+          ) : typed === '' ? (
+            'Enter the amount as a positive number; the direction sets the sign.'
+          ) : (
+            <span className="text-arc-red">
+              Dollars and cents only — 150 or 12.50. No letters, no shorthand.
+            </span>
+          )}
+        </p>
       </div>
     </div>
   )

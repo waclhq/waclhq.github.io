@@ -87,7 +87,7 @@ export default function Draft() {
   }
 
   return (
-    <>
+    <div className="ops-room">
       <PageHeader
         path="~/draft"
         eyebrow={auctionDone ? `${season} auction · in the books` : 'Auction night'}
@@ -113,11 +113,13 @@ export default function Draft() {
       {/* The filter rail sticks under the top bar: on auction night a thumb
           deep in the WRs can still flip to RBs without scrolling back up. */}
       <div
-        className="section-rail sticky top-[calc(env(safe-area-inset-top,0px)+56px)] z-30 -mx-4 mb-4 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
+        className="section-rail ops-under-bar sticky z-30 -mx-4 mb-4 px-4 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-9 lg:px-9"
         role="group"
         aria-label="Board filters"
       >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+        {/* One row at 360 too: the positions scroll inside their own strip
+            rather than pushing the toggle onto a second line. */}
+        <div className="ops-rail flex items-center gap-x-3 py-2">
           <SegmentedControl<Position>
             value={position}
             onChange={(next) => setParam('pos', next === 'ALL' ? null : next)}
@@ -125,12 +127,16 @@ export default function Draft() {
           />
           <button
             type="button"
-            className="btn ops-toggle min-h-[40px] px-3 py-1 text-[12.5px]"
+            className="btn ops-toggle min-h-[40px] shrink-0 px-3 py-1 text-[12.5px]"
             aria-pressed={showKept}
             aria-label={showKept ? 'Hide kept players' : 'Show kept players'}
             onClick={() => setParam('kept', showKept ? null : '1')}
           >
-            <span aria-hidden>{showKept ? '✓' : '+'}</span> Kept
+            {/* Fixed-width glyph: '+' and '✓' must not resize the button. */}
+            <span aria-hidden className="inline-block w-3 text-center">
+              {showKept ? '✓' : '+'}
+            </span>{' '}
+            Kept
           </button>
           <span className="tnum ml-auto hidden text-[12px] text-arc-ink-soft sm:inline" role="status">
             <span className="font-semibold text-arc-green">{visibleAvailable}</span>
@@ -144,6 +150,18 @@ export default function Draft() {
         subtitle={`${draftPool.scoring} scoring. Tiers and ranks straight from the source — the league adds only who's gone.`}
       >
         <table className="out ops-board">
+          {/* The grid is declared here and sized in ops.css: left to itself
+              the table re-measures when a Status chip grows from AVAILABLE
+              to KEPT — VELAMOOR $69, and all seven columns slide. */}
+          <colgroup>
+            <col className="ops-c-rank" />
+            <col />
+            <col className="ops-c-pos" />
+            <col className="ops-c-team" />
+            <col className="ops-c-bye" />
+            <col className="ops-c-tier" />
+            <col className="ops-c-status" />
+          </colgroup>
           <thead>
             <tr>
               <th className="n">Rank</th>
@@ -175,7 +193,7 @@ export default function Draft() {
                 <tr key={row.rank} className={row.keeper ? 'ops-kept' : ''}>
                   <td className="n text-arc-ink-soft">{row.rank}</td>
                   <td className="min-w-0">
-                    <span className="flex items-center gap-2">
+                    <span className="flex min-w-0 items-center gap-2">
                       {!row.keeper && (
                         <span
                           aria-hidden
@@ -184,14 +202,14 @@ export default function Draft() {
                       )}
                       <Link
                         to={`/players/${playerSlug(row.player)}`}
-                        className={`transition-colors hover:text-arc-green ${
+                        className={`truncate transition-colors hover:text-arc-green ${
                           row.keeper ? 'text-arc-ink-faint line-through decoration-arc-red/70' : ''
                         }`}
                       >
                         {row.player}
                       </Link>
                     </span>
-                    <span className="block text-[11.5px] leading-snug text-arc-ink-faint sm:hidden">
+                    <span className="block truncate text-[11.5px] leading-snug text-arc-ink-faint sm:hidden">
                       {row.team} · bye {row.bye}
                       {row.keeper && (
                         <>
@@ -246,6 +264,6 @@ export default function Draft() {
           is computed against this site's keeper lists and updates as they change.
         </p>
       </Panel>
-    </>
+    </div>
   )
 }

@@ -71,7 +71,7 @@ export default function Keepers() {
       ?.scrollIntoView({ behavior: animationsDisabled() ? 'auto' : 'smooth', block: 'start' })
 
   return (
-    <>
+    <div className="ops-room">
       <PageHeader
         path="~/keepers"
         eyebrow="Contracts & Rosters"
@@ -163,7 +163,7 @@ export default function Keepers() {
                       ) : (
                         <span>{block.team}</span>
                       )}
-                      {isMe && <span className="tag text-[10px]">you</span>}
+                      {isMe && <span className="tag">you</span>}
                     </div>
                     {block.manager && (
                       <div className="mt-1 truncate text-[13px] text-arc-ink-soft">{block.team}</div>
@@ -348,6 +348,6 @@ export default function Keepers() {
           </Panel>
         )}
       </div>
-    </>
+    </div>
   )
 }

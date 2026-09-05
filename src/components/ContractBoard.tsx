@@ -109,7 +109,7 @@ export default function ContractBoard({ year }: { year: number }) {
                 <span className="text-arc-ink">{block.team}</span>
               )}
               <span className="truncate text-[11px] text-arc-ink-faint">{block.team}</span>
-              {block.manager === me && <span className="tag ml-1 text-[9.5px]">you</span>}
+              {block.manager === me && <span className="tag ml-1">you</span>}
             </div>
 
             {block.keepers.length === 0 && (
@@ -123,12 +123,14 @@ export default function ContractBoard({ year }: { year: number }) {
               return (
                 <div
                   key={`${block.team}-${pick.player}`}
-                  className="ops-crow flex min-h-[32px] items-center rounded-md transition-colors hover:bg-arc-raised"
+                  className="ops-crow flex min-h-[40px] items-center rounded-md transition-colors hover:bg-arc-raised sm:min-h-[32px]"
                 >
-                  <div className="flex w-[156px] shrink-0 items-baseline justify-between gap-1.5 pr-2 pl-1 sm:w-[188px] sm:pr-3">
+                  <div className="flex w-[156px] shrink-0 items-center justify-between gap-1.5 pr-2 pl-1 sm:w-[188px] sm:pr-3">
+                    {/* The link is the whole cell height, not just its text:
+                        a name is a 40px target on a phone. */}
                     <Link
                       to={`/players/${playerSlug(pick.player)}`}
-                      className="truncate text-[12px] text-arc-ink-soft transition-colors hover:text-arc-green sm:text-[13px]"
+                      className="flex min-h-[40px] min-w-0 items-center truncate text-[12px] text-arc-ink-soft transition-colors hover:text-arc-green sm:min-h-[32px] sm:text-[13px]"
                       title={pick.player}
                     >
                       {pick.player}
