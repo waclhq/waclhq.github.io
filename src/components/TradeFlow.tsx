@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { managerName, useLeagueData } from '../lib/data'
-import { animationsDisabled } from '../lib/motion'
 import { money } from '../lib/format'
+import { useStill } from './receipts/useStill'
 import type { ManagerId, Trade } from '../lib/types'
 
 interface Link {
@@ -18,8 +18,9 @@ interface Link {
 export default function TradeFlow({ trades }: { trades: Trade[] }) {
   const { managers } = useLeagueData()
   const [focus, setFocus] = useState<ManagerId | null>(null)
-  // SMIL animation ignores the CSS reduced-motion rules, so gate it here.
-  const reduceMotion = typeof window !== 'undefined' && animationsDisabled()
+  // SMIL animation ignores the CSS reduced-motion rules, so gate it here —
+  // watched, so the FX switch reaches the diagram already on screen.
+  const reduceMotion = useStill()
   const svg = useRef<SVGSVGElement>(null)
 
   // The balls only run while the diagram is on screen and the tab is visible.
@@ -164,9 +165,15 @@ export default function TradeFlow({ trades }: { trades: Trade[] }) {
                       strokeWidth="1.2"
                       opacity={lit ? 1 : 0.25}
                     >
+                      {/* The stagger runs backwards: a positive begin leaves
+                          the ball parked at the SVG origin until its turn,
+                          and because the timeline is paused offscreen the
+                          whole pile replays at the corner on first reveal.
+                          Negative offsets spread the same phase with every
+                          ball already on its arc at t=0. */}
                       <animateMotion
                         dur="2.6s"
-                        begin={`${(ballIndex * 0.32).toFixed(2)}s`}
+                        begin={ballIndex === 0 ? '0s' : `-${(ballIndex * 0.32).toFixed(2)}s`}
                         repeatCount="indefinite"
                         rotate="auto"
                         path={d}

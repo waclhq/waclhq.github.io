@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import FireFrame from '../FireFrame'
 import { type Bet } from '../../lib/bets'
 import { managerColor } from '../../lib/identity'
-import { animationsDisabled } from '../../lib/motion'
+import { useStill } from './useStill'
 
 /**
  * The opened window. The grid row grows downward (0fr to 1fr) while the slip
@@ -21,13 +21,16 @@ export default function Detail({
   children: ReactNode
   burning?: boolean
 }) {
-  const still = animationsDisabled()
+  const still = useStill()
   const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>(still ? 'open' : 'closed')
+  // The unfold runs once, on the way in. FX flipping on mid-slip must not
+  // re-arm it: a slip already open would drop back to 'opening' and never get
+  // the transitionend that settles it.
   useEffect(() => {
-    if (still) return
+    if (still || phase !== 'closed') return
     const frame = requestAnimationFrame(() => requestAnimationFrame(() => setPhase('opening')))
     return () => cancelAnimationFrame(frame)
-  }, [still])
+  }, [still, phase])
 
   const burning = alight && !still
 

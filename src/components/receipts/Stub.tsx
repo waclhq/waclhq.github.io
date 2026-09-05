@@ -78,7 +78,9 @@ export default function Stub({
               {nameOf(beaten)}
               {bet.settledAt ? ` · ${shortDate(bet.settledAt)}` : ''}
               {bet.stakeKind === 'forfeit' && bet.forfeit ? ` · ${bet.forfeit}` : ''}
-              {mine && <span className="arcade ml-1.5 text-[11px] text-arc-ink-soft">you</span>}
+              {mine && (
+                <span className="arcade ml-1.5 text-[12px] whitespace-nowrap text-arc-ink-soft">you</span>
+              )}
             </span>
             <span
               className="stamp stamp-in"

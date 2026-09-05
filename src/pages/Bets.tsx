@@ -12,8 +12,8 @@ import Stub from '../components/receipts/Stub'
 import { readLastGood, writeLastGood } from '../components/receipts/betsCache'
 import type { NameOf } from '../components/receipts/provenance'
 import { landOn } from '../components/receipts/land'
+import { useStill } from '../components/receipts/useStill'
 import { play } from '../lib/sfx'
-import { animationsDisabled } from '../lib/motion'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { friendlySaveError } from '../lib/github'
 import { managerColor } from '../lib/identity'
@@ -48,7 +48,7 @@ function EditButton({ bet, busy, onEdit }: { bet: Bet; busy: boolean; onEdit: (b
   return (
     <button
       type="button"
-      className="btn min-h-[36px] min-w-[40px] px-2.5 py-1"
+      className="btn min-h-[40px] min-w-[40px] px-2.5 py-1"
       disabled={busy}
       onClick={() => onEdit(bet)}
       aria-label={`Edit or delete the bet: ${bet.terms}`}
@@ -59,9 +59,14 @@ function EditButton({ bet, busy, onEdit }: { bet: Bet; busy: boolean; onEdit: (b
   )
 }
 
-/** The bets repo speaks for itself on its own failures; GitHub's get translated. */
+/**
+ * The bets repo and the vault speak for themselves on their own failures;
+ * GitHub's get translated. A mistyped password is not a failed save, so it
+ * must not be dressed as one — every member hits it on a typo.
+ */
 function describe(cause: unknown, fallback: string): string {
   const message = cause instanceof Error ? cause.message : ''
+  if (/wrong password/i.test(message)) return 'Wrong password — try again.'
   if (/league password|league token|bets repo|bets\.json|no longer valid|cannot write/i.test(message))
     return message
   return cause instanceof Error ? friendlySaveError(cause) : fallback
@@ -80,6 +85,8 @@ function clockTime(at: number): string {
  */
 /** How long the settle ceremony owns the slip: the burn plus the flood. */
 const CEREMONY_MS = 2300
+/** And how long the last piece of confetti takes to reach the floor. */
+const CONFETTI_MS = 4600
 
 export default function Bets() {
   const { league, managers, leagueVault, betResults } = useLeagueData()
@@ -107,6 +114,23 @@ export default function Bets() {
   const [tapePaused, setTapePaused] = useState(false)
   const passwordPanel = useRef<HTMLDivElement>(null)
   const passwordField = useRef<HTMLInputElement>(null)
+  const still = useStill()
+
+  // The fire and the confetti belong to the ruling that just happened, not to
+  // the bet id. Both are on timers this room owns, so they can be called off
+  // if the commissioner corrects or deletes the bet mid-ceremony, and on the
+  // way out of the room. Left to itself the confetti loops forever.
+  const ceremony = useRef<number[]>([])
+  const stopCeremony = useCallback(() => {
+    ceremony.current.forEach((id) => window.clearTimeout(id))
+    ceremony.current = []
+  }, [])
+  const endCeremony = useCallback(() => {
+    stopCeremony()
+    setPyre(null)
+    setCelebrate(0)
+  }, [stopCeremony])
+  useEffect(() => stopCeremony, [stopCeremony])
 
   // Which bet is unfolded. It lives in the address (?bet=<id>) so a slip can
   // be handed to someone; the route itself never changes. Opening a tile
@@ -283,7 +307,7 @@ export default function Bets() {
   }
 
   const jumpToPassword = () => {
-    if (passwordPanel.current) landOn(passwordPanel.current, animationsDisabled() ? 'auto' : 'smooth')
+    if (passwordPanel.current) landOn(passwordPanel.current, still ? 'auto' : 'smooth')
     passwordField.current?.focus({ preventScroll: true })
   }
 
@@ -306,7 +330,8 @@ export default function Bets() {
   const settle = async (bet: Bet, winner: ManagerId) => {
     setBusy(bet.id)
     setFault(null)
-    if (!animationsDisabled()) {
+    stopCeremony()
+    if (!still) {
       setPyre({ betId: bet.id, loser: winner === bet.proposer ? bet.opponent : bet.proposer, winner })
     }
     try {
@@ -321,16 +346,20 @@ export default function Bets() {
         `Bet settled: ${nameOf(winner)} wins`,
       )
       play('roar')
-      if (animationsDisabled()) {
+      if (still) {
         setBusy(null)
         return
       }
       // Let it burn: the front needs ~1.6s to climb and the winner's flood
-      // runs 2.2s. Only then does the slip cross over to the kept stubs.
+      // runs 2.2s. Only then does the slip cross over to the kept stubs, and
+      // the confetti clears once the last piece has landed.
       setCelebrate((n) => n + 1)
-      window.setTimeout(() => setPyre(null), CEREMONY_MS)
+      ceremony.current = [
+        window.setTimeout(() => setPyre(null), CEREMONY_MS),
+        window.setTimeout(() => setCelebrate(0), CONFETTI_MS),
+      ]
     } catch (cause) {
-      setPyre(null)
+      endCeremony()
       setFault({ id: bet.id, message: friendlySaveError(cause) })
     } finally {
       setBusy(null)
@@ -374,6 +403,9 @@ export default function Bets() {
   const correct = async (bet: Bet, edit: BetEdit, winner: ManagerId | null) => {
     setBusy(bet.id)
     setEditorFault(null)
+    // A correction overrules the ruling being celebrated; a reopened bet is a
+    // plain live slip, not one still on fire.
+    if (pyre?.betId === bet.id || celebrate > 0) endCeremony()
     try {
       const now = new Date().toISOString()
       // Edit the STORED bet, never the one applyResults has already folded a
@@ -420,6 +452,7 @@ export default function Bets() {
   const remove = async (bet: Bet) => {
     setBusy(bet.id)
     setEditorFault(null)
+    if (pyre?.betId === bet.id || celebrate > 0) endCeremony()
     try {
       const next = await saveBets(
         (current) => ({ ...current, bets: current.bets.filter((b) => b.id !== bet.id) }),
@@ -505,17 +538,25 @@ export default function Bets() {
         <div
           className="marquee-host relative -mx-4 mb-6 overflow-hidden border-y border-arc-line bg-arc-panel sm:-mx-6 lg:-mx-9"
           data-paused={tapePaused || undefined}
-          role="button"
-          tabIndex={0}
-          aria-pressed={tapePaused}
-          aria-label={tapePaused ? 'Action tape, paused — tap to resume' : 'Action tape — tap to pause'}
-          onClick={() => setTapePaused((value) => !value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              setTapePaused((value) => !value)
-            }
-          }}
+          // A still strip has nothing to pause: under reduced motion the tape
+          // is a plain scroll track, so it offers no pause affordance either.
+          {...(still
+            ? {}
+            : {
+                role: 'button',
+                tabIndex: 0,
+                'aria-pressed': tapePaused,
+                'aria-label': tapePaused
+                  ? 'Action tape, paused — tap to resume'
+                  : 'Action tape — tap to pause',
+                onClick: () => setTapePaused((value) => !value),
+                onKeyDown: (event: React.KeyboardEvent) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setTapePaused((value) => !value)
+                  }
+                },
+              })}
         >
           <div
             className="marquee flex w-max items-center gap-7 py-2 pl-10"
@@ -549,8 +590,10 @@ export default function Bets() {
           </div>
           <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-arc-panel to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-arc-panel to-transparent" />
-          {tapePaused && (
-            <span className="label pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-arc-yellow">
+          {tapePaused && !still && (
+            // Its own backing: printed straight onto the tape it landed on
+            // top of whatever item happened to be under it.
+            <span className="label pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-arc-line bg-arc-panel px-2 py-0.5 text-[11px] text-arc-yellow">
               Paused
             </span>
           )}
@@ -604,7 +647,7 @@ export default function Bets() {
             Couldn't confirm the board — showing it as of {clockTime(boardAsOf)}. Nothing here is a
             ruling.
           </span>
-          <button type="button" className="btn min-h-[34px] px-3 py-1 text-[12px]" onClick={() => void load()}>
+          <button type="button" className="btn min-h-[40px] px-3 py-1 text-[12px]" onClick={() => void load()}>
             Retry
           </button>
         </p>
@@ -715,7 +758,7 @@ export default function Bets() {
                       <>
                         <button
                           type="button"
-                          className={`btn min-h-[34px] px-3 py-1 ${
+                          className={`btn min-h-[40px] px-3 py-1 ${
                             !me || me === bet.opponent ? 'btn-primary' : ''
                           }`}
                           disabled={busy === bet.id}
@@ -866,7 +909,7 @@ export default function Bets() {
                       <b style={{ color: managerColor(debt.from) }}>{nameOf(debt.from)}</b>
                       <span className="text-arc-ink-faint"> owes </span>
                       <b style={{ color: managerColor(debt.to) }}>{nameOf(debt.to)}</b>
-                      {yours && <span className="arcade ml-1.5 text-[11px] text-arc-ink-soft">you</span>}
+                      {yours && <span className="arcade ml-1.5 text-[12px] whitespace-nowrap text-arc-ink-soft">you</span>}
                       <span className="block text-[11px] text-arc-ink-faint">
                         across {debt.betIds.length} settled bet
                         {debt.betIds.length === 1 ? '' : 's'}
@@ -883,7 +926,7 @@ export default function Bets() {
                           href={pay}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="arcade inline-flex min-h-[36px] shrink-0 items-center rounded-md px-3 text-[12px]"
+                          className="arcade inline-flex min-h-[40px] shrink-0 items-center rounded-md px-3 text-[12px]"
                           style={{ background: 'var(--color-arc-green)', color: 'var(--color-arc-bg-deep)' }}
                         >
                           PAY
@@ -892,7 +935,7 @@ export default function Bets() {
                       {unlocked && (
                         <button
                           type="button"
-                          className="btn min-h-[36px] shrink-0 px-3 py-1"
+                          className="btn min-h-[40px] shrink-0 px-3 py-1"
                           disabled={busy === key}
                           onClick={() => void settleUp(debt)}
                         >
@@ -1049,7 +1092,7 @@ export default function Bets() {
             {' '}
             <button
               type="button"
-              className="-my-2 inline-flex min-h-[36px] items-center px-1 underline underline-offset-2"
+              className="-my-2 inline-flex min-h-[40px] items-center px-1 underline underline-offset-2"
               onClick={() => {
                 setLeagueToken(null)
                 setUnlocked(false)

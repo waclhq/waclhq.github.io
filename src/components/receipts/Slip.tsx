@@ -64,9 +64,12 @@ export default function Slip({
         {halves.map((id, i) => (
           <div
             key={id}
-            className={`relative flex flex-1 items-center gap-2 p-2.5 sm:gap-2.5 sm:p-3 ${i ? 'flex-row-reverse text-right' : ''} ${
-              flooding(id) ? 'win-flood' : ''
-            }`}
+            /* The VS pill is centred over the seam, so each half keeps a lane
+               clear of it — otherwise a nine-letter name runs under the pill
+               at 360. */
+            className={`relative flex flex-1 items-center gap-2 py-2.5 sm:gap-2.5 sm:py-3 ${
+              i ? 'flex-row-reverse pr-2.5 pl-4 text-right sm:pr-3 sm:pl-6' : 'pr-4 pl-2.5 sm:pr-6 sm:pl-3'
+            } ${flooding(id) ? 'win-flood' : ''}`}
             style={{
               opacity: lost(id) ? 0.45 : 1,
               ['--flood' as string]: flooding(id) ? `${managerColor(id)}2e` : undefined,
@@ -80,15 +83,22 @@ export default function Slip({
                 style={{ color: managerColor(id) }}
               >
                 {nameOf(id)}
-                {id === me && (
-                  <span className="arcade ml-1.5 align-middle text-[11px] text-arc-ink-soft">you</span>
-                )}
               </span>
-              {won(id) ? (
-                <span className="arcade text-[11px] text-arc-green">WON</span>
-              ) : i === 0 ? (
-                <span className="arcade text-[11px] text-arc-ink-faint">called it</span>
-              ) : null}
+              {/* The seat pip sits on the status line, not beside the name:
+                  on the name line a phone truncated away the one thing the
+                  seat is there to mark. */}
+              {(won(id) || i === 0 || id === me) && (
+                <span
+                  className={`flex flex-wrap items-baseline gap-x-1.5 ${i ? 'justify-end' : ''}`}
+                >
+                  {won(id) ? (
+                    <span className="arcade text-[12px] text-arc-green">WON</span>
+                  ) : i === 0 ? (
+                    <span className="arcade text-[12px] text-arc-ink-faint">called it</span>
+                  ) : null}
+                  {id === me && <span className="arcade text-[12px] text-arc-ink-soft">you</span>}
+                </span>
+              )}
             </span>
           </div>
         ))}

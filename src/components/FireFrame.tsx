@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { animationsDisabled } from '../lib/motion'
 import { subscribe } from '../lib/ticker'
+import { useStill } from './receipts/useStill'
 
 /**
  * A card actually on fire.
@@ -114,9 +114,12 @@ function wobble(x: number, t: number): number {
 export default function FireFrame({ children }: { children: React.ReactNode }) {
   const host = useRef<HTMLSpanElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
+  // Watched, not read once: FX OFF has to put the simulation out on the view
+  // the reader is looking at, not the next one they open.
+  const still = useStill()
 
   useEffect(() => {
-    if (animationsDisabled()) return
+    if (still) return
     const hostNode = host.current
     const canvasNode = canvas.current
     if (!hostNode || !canvasNode) return
@@ -297,8 +300,11 @@ export default function FireFrame({ children }: { children: React.ReactNode }) {
       seen.disconnect()
       resized.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
+      // Leave nothing burning on the canvas — a frozen last frame reads as
+      // fire that simply stopped moving.
+      ctx.clearRect(0, 0, canvasNode.width, canvasNode.height)
     }
-  }, [])
+  }, [still])
 
   return (
     <span className="on-fire block" ref={host}>

@@ -57,7 +57,7 @@ export default function ShareButton({
     <span className={`inline-flex min-w-0 flex-wrap items-center gap-2 ${className}`}>
       <button
         type="button"
-        className="btn min-h-[34px] px-3 py-1 text-[12px]"
+        className="btn min-h-[40px] px-3 py-1 text-[12px]"
         onClick={() => void share()}
         aria-label={`Share a link to this bet: ${bet.terms}`}
       >
@@ -70,7 +70,7 @@ export default function ShareButton({
         <input
           ref={field}
           readOnly
-          className="field min-h-[34px] w-full max-w-[260px] px-2 py-1 text-[11.5px]"
+          className="field min-h-[40px] w-full max-w-[260px] px-2 py-1 text-[11.5px]"
           value={betLink(bet.id)}
           aria-label="Link to this bet"
           onFocus={(event) => event.currentTarget.select()}

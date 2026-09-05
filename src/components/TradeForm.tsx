@@ -73,13 +73,18 @@ export default function TradeForm({ onSubmit, onCancel, canSave }: Props) {
   )
   const issues = validateTrade(draft, league, budgets)
   const blocking = issues.filter((issue) => issue.level === 'error')
+  // The anti-dumping rule reads the money, so it has nothing to say until
+  // there is money to read — and nothing sane to say about a negative amount,
+  // which the error beside the field already names. A blank form that opens
+  // shouting "$0 is below the $10 trigger" is the form talking to itself.
+  const priced = rows.some((row) => row.amount.trim() !== '')
+  const rulesReadable = priced && obligations.every((obligation) => obligation.amount >= 0)
   // Red lines mean something you did: errors wait for their field or the
   // first attempt to save; warnings (the anti-dumping rule) are live.
-  const shown = issues.filter(
-    (issue) =>
-      issue.level === 'warning' ||
-      submitted ||
-      concerns(issue).some((field) => touched.has(field)),
+  const shown = issues.filter((issue) =>
+    issue.level === 'warning'
+      ? rulesReadable || !/^Anti-dumping:/.test(issue.message)
+      : submitted || concerns(issue).some((field) => touched.has(field)),
   )
   const verdict = antiDumpingCheck(draft)
   const total = obligations.reduce((sum, obligation) => sum + obligation.amount, 0)
@@ -326,7 +331,7 @@ export default function TradeForm({ onSubmit, onCancel, canSave }: Props) {
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
-        {verdict.triggered && (
+        {verdict.triggered && rulesReadable && (
           <span className="text-[11.5px] text-arc-ink-faint">
             Anti-dumping applies — it will offer a 24h market check in the queue.
           </span>

@@ -77,7 +77,7 @@ export default function Guide() {
             <Step n={3}>
               That's it. Editing buttons appear across the site — on a computer the bottom bar
               shows <B>2 CREDITS</B> instead of 1, and on a phone the More sheet shows{' '}
-              <B>COMMISH ✓</B>. Each device remembers until you sign out.
+              <B>COMMISH ✓ SIGNED IN</B>. Each device remembers until you sign out.
             </Step>
           </ol>
         </Panel>
@@ -89,13 +89,15 @@ export default function Guide() {
         >
           <ol className="space-y-3 px-5 py-5">
             <Step n={1}>
-              On a phone, open <B>More</B> and tap <B>Pick your seat</B> near the top of the sheet.
-              On a computer it sits in the left sidebar, just under <B>Find</B>. Tap your own name.
+              On a phone, open <B>More</B> and scroll to the bottom of the sheet: <B>Pick your
+              seat</B> sits under the page tiles, above the SFX/FX switches. On a computer it is in
+              the left sidebar, just under <B>Find</B>. Tap your own name.
             </Step>
             <Step n={2}>
               From then on this device lights up your rows in your colour on every table, puts
-              your bets first on <B to="/bets">The Book</B> with a ring around them, and fills in
-              your name when you propose a bet. Tap the seat again to change or clear it.
+              your live bets first on <B to="/bets">The Book</B> and rings every bet you are in,
+              and fills in your name when you propose one. Tap the seat again to change or clear
+              it.
             </Step>
             <Step n={3}>
               Nothing trusts it. Picking a seat gives no powers and records nothing; anyone can
@@ -154,17 +156,18 @@ export default function Guide() {
         >
           <ol className="space-y-3 px-5 py-5">
             <Step n={1}>
-              <B>Season dues are the easy one.</B> The dues board sits at the top of the{' '}
-              <B to="/">Ledger</B> (and under <B to="/finances">Finances → Dues</B>): everyone who
-              has paid on the left, everyone who hasn't on the right. When somebody pays you,{' '}
-              <B>tick the box next to their name</B> — they move across to the paid side and the
-              league sees it. Ticking it again undoes it, in case a payment bounces. Once everyone
-              has paid, the board folds down to a single “all paid” line — tap it to reopen.
+              <B>Season dues are the easy one.</B> The dues board is under{' '}
+              <B to="/finances">Finances → Dues</B>, and partway down the <B to="/">Ledger</B>: it
+              is a section of the stands, one seat per manager, and a seat lights up in that
+              manager's colour with a ✓ once their dues are in. When somebody pays you,{' '}
+              <B>tap their seat</B> — tap it again to undo, in case a payment bounces. Anyone
+              still owing is listed under <B>Still owed</B> beneath the seats. Once everyone has
+              paid, the whole board folds down to a single “all paid” line — tap it to reopen.
             </Step>
             <Step n={2}>
-              Managers pay by tapping the green <B>PAY</B> button on their own row, which opens
-              Venmo with the amount already filled in. Nothing tells the site a payment arrived,
-              so you ticking the box is what makes it official.
+              Managers pay by tapping the green <B>Pay</B> button on their <B>Still owed</B> row,
+              which opens Venmo with the amount already filled in. Nothing tells the site a
+              payment arrived, so you tapping their seat is what makes it official.
             </Step>
             <Step n={3}>
               <B>Everything else</B> — payouts, side bets, one-off fees — goes in under{' '}
@@ -174,7 +177,7 @@ export default function Guide() {
             <Step n={4}>
               Pick <B>Manager owes league</B> or <B>League owes manager</B>, then type the amount
               as a plain positive number. The form shows how it will book before you press{' '}
-              <B>Record</B>, and a green <B>Recorded</B> line confirms it landed.
+              <B>Record entry</B>, and a green <B>Recorded</B> line confirms it landed.
             </Step>
             <Step n={5}>
               When one of those is squared away, tick the box on its row to mark it{' '}
@@ -193,7 +196,7 @@ export default function Guide() {
             <Step n={1}>
               <B>First time only — set the betting password.</B> Open the commissioner panel (the
               same place you signed in) and press <B>🎲 League betting password</B>. Paste the
-              bets token the site builder gives you, choose a password, and press <B>Set</B>.
+              bets token the site builder gives you, choose a password, and press <B>Set league password</B>.
               Share that password with the league in the group chat. It only ever reaches the
               bets board — never keepers, trades or cash — so it is safe to hand around. Members
               type it once, in the box at the top of <B to="/bets">The Book</B>.

@@ -119,7 +119,7 @@ export default function Composer({
                 <button
                   key={t}
                   type="button"
-                  className="inline-flex min-h-[36px] items-center rounded-md border border-arc-line px-2.5 text-[11.5px] text-arc-ink-soft hover:border-arc-green hover:text-arc-green"
+                  className="inline-flex min-h-[40px] items-center rounded-md border border-arc-line px-2.5 text-[11.5px] text-arc-ink-soft hover:border-arc-green hover:text-arc-green"
                   onClick={() => setTerms(t)}
                 >
                   {t}
@@ -155,7 +155,7 @@ export default function Composer({
                   <button
                     key={amount}
                     type="button"
-                    className="tnum inline-flex min-h-[36px] items-center rounded-md border px-3 text-[12.5px] transition-colors"
+                    className="tnum inline-flex min-h-[40px] items-center rounded-md border px-3 text-[12.5px] transition-colors"
                     aria-pressed={stake === amount}
                     style={
                       stake === amount
