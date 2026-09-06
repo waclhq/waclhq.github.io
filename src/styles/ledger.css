@@ -14,6 +14,37 @@
 */
 
 @layer components {
+  /* ---- the word of the day ------------------------------------------- */
+
+  .desk-quote {
+    margin: 0;
+    padding-left: 14px;
+    border-left: 2px solid var(--color-arc-green);
+  }
+  .desk-quote-eyebrow {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .desk-quote-day {
+    color: var(--color-arc-ink-soft);
+  }
+  .desk-quote-text {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: clamp(1.25rem, 1rem + 1.4vw, 1.7rem);
+    line-height: 1.15;
+    letter-spacing: 0.005em;
+    color: var(--color-arc-ink);
+    text-wrap: balance;
+  }
+  .desk-quote-by {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--color-arc-ink-soft);
+  }
+
   /* ---- the kickoff clock: a split-flap board ------------------------- */
 
   .desk-board {

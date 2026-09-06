@@ -101,7 +101,7 @@ the Shell offers a refresh when a newer build is live.
   (`TradeForm`, `KeeperEditor`).
 - `src/styles/` — one stylesheet per room (see rule 6).
 - Room-level component folders, each owned by its page: `desk/` (Ledger:
-  split-flap kickoff clock, odometer, score tiles, Your desk), `rafters/`
+  word of the day, split-flap kickoff clock, odometer, score tiles, Your desk), `rafters/`
   (Almanac: hanging banners, the 22-seasons race), `profile/` (manager holo
   header, tale of the tape, Book panel), `tables/` (season scrubber, sortable
   leaderboard bits), `boards/` (the shared podium `Board`, Elo constellation,

@@ -8,6 +8,7 @@ import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
 import { Bar, Chip, Panel, useRevealed } from '../components/ui'
 import KickoffClock from '../components/desk/KickoffClock'
+import WordOfTheDay from '../components/desk/WordOfTheDay'
 import { DeskHero } from '../components/desk/Odometer'
 import { ScoreTile } from '../components/desk/ScoreTile'
 import Tape from '../components/desk/Tape'
@@ -98,6 +99,9 @@ export default function Dashboard() {
       </div>
 
       <header className="pop-in mb-7">
+        <div className="mb-6 max-w-2xl">
+          <WordOfTheDay />
+        </div>
         {/* Full width on a phone, centred on a tablet, left with the title on a desktop. */}
         <div className="mb-4 flex justify-center lg:justify-start">
           <KickoffClock season={season} />
