@@ -202,7 +202,12 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
+  }
+  @media (min-width: 640px) {
+    .desk-count {
+      gap: 8px;
+    }
   }
   .flap-pair {
     display: inline-flex;
@@ -220,12 +225,13 @@
     flex-direction: column;
     justify-content: center;
     gap: 9px;
-    width: 6px;
+    width: 4px;
     height: var(--h);
   }
   @media (min-width: 640px) {
     .desk-colon {
       --h: 46px;
+      width: 6px;
     }
   }
   .desk-colon::before,

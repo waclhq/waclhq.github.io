@@ -98,11 +98,14 @@ export default function Dashboard() {
       </div>
 
       <header className="pop-in mb-7">
+        {/* Full width on a phone, centred on a tablet, left with the title on a desktop. */}
+        <div className="mb-4 flex justify-center lg:justify-start">
+          <KickoffClock season={season} />
+        </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0 max-w-2xl">
-            <KickoffClock season={season} />
             <h1
-              className="display cursor neon-soft mt-4 text-arc-ink"
+              className="display cursor neon-soft text-arc-ink"
               style={{ viewTransitionName: 'page-title' }}
             >
               The Ledger

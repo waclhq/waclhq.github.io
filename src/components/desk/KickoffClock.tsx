@@ -1,14 +1,15 @@
 import type { CSSProperties } from 'react'
 import { nflKickoff, seasonClock, untilKickoff, type SeasonClock } from '../../lib/season'
 import { FlapLine, FlapPair } from './Flap'
-import { useMinuteClock } from './hooks'
+import { useClock } from './hooks'
 
 /**
  * The kickoff clock. A split-flap board above the Ledger's title that reads
  * what the season clock says: a countdown to Thursday night before kickoff,
  * the week and a seventeen-notch bar once the season is under way, and its
- * own lines for the playoffs and the offseason. Ticks once a minute; only the
- * cards that change flip.
+ * own lines for the playoffs and the offseason. Ticks every second while it
+ * is counting down and once a minute otherwise; only the cards that change
+ * flip.
  */
 
 const REGULAR_WEEKS = 14
@@ -64,13 +65,18 @@ function WeekBar({ week, offset }: { week: number; offset: number }) {
   )
 }
 
+function isCountdown(phase: SeasonClock['phase']): boolean {
+  return phase !== 'in-season' && phase !== 'playoffs'
+}
+
 export default function KickoffClock({ season }: { season: number }) {
-  const now = useMinuteClock()
+  // The phase decides the tick: seconds matter on a countdown, not on a week bar.
+  const countdown = isCountdown(seasonClock(season, new Date()).phase)
+  const now = useClock(countdown ? 1000 : 60_000)
   const clock = seasonClock(season, now)
   const target = kickoffMoment(clock, now)
   const left = untilKickoff({ ...clock, kickoff: new Date(target.getTime() - KICKOFF_OFFSET_MS) }, now)
   const week = clock.week ?? 0
-  const countdown = clock.phase !== 'in-season' && clock.phase !== 'playoffs'
 
   const line = clock.eyebrow
   let right: string
@@ -96,7 +102,7 @@ export default function KickoffClock({ season }: { season: number }) {
   const lineLength = line.replace(/ /g, '').length
 
   return (
-    <div className="desk-board" role="timer" aria-label={summary}>
+    <div className="desk-board w-full sm:w-auto" role="timer" aria-label={summary}>
       <div className="desk-board-cap" aria-hidden>
         <span className="desk-lamp" />
         <span className="label">{dayLabel(now)}</span>
@@ -110,6 +116,8 @@ export default function KickoffClock({ season }: { season: number }) {
           <FlapPair value={left.hours} caption="hrs" offset={lineLength + 3} />
           <span className="desk-colon" />
           <FlapPair value={left.minutes} caption="min" offset={lineLength + 5} />
+          <span className="desk-colon" />
+          <FlapPair value={left.seconds} caption="sec" offset={lineLength + 7} />
         </div>
       ) : (
         <WeekBar week={week} offset={lineLength} />

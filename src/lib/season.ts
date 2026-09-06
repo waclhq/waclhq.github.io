@@ -80,6 +80,7 @@ export function untilKickoff(clock: SeasonClock, now: Date = new Date()) {
     days: Math.floor(ms / DAY),
     hours: Math.floor((ms % DAY) / 3_600_000),
     minutes: Math.floor((ms % 3_600_000) / 60_000),
+    seconds: Math.floor((ms % 60_000) / 1000),
     total: ms,
   }
 }

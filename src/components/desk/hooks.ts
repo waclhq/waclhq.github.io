@@ -2,33 +2,42 @@ import { useEffect, useRef, useState } from 'react'
 import { animationsDisabled } from '../../lib/motion'
 
 /**
- * A clock that ticks on the minute. Re-syncs when the tab comes back, so a
- * phone that slept through an hour shows the right minute the moment it
- * wakes rather than sixty seconds later.
+ * A clock that ticks on the boundary of `period` (a second, a minute). Each
+ * tick schedules the next from the wall clock, so it never drifts off the
+ * boundary; it sleeps while the tab is hidden and re-syncs the moment the
+ * tab comes back, so a phone that slept through an hour shows the right
+ * time at once rather than a tick later.
  */
-export function useMinuteClock(): Date {
+export function useClock(period = 60_000): Date {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    let interval: number | undefined
+    let timer: number | undefined
     const tick = () => setNow(new Date())
-    const align = window.setTimeout(
-      () => {
+    const schedule = () => {
+      timer = window.setTimeout(() => {
         tick()
-        interval = window.setInterval(tick, 60_000)
-      },
-      60_000 - (Date.now() % 60_000) + 20,
-    )
-    const onVisible = () => {
-      if (!document.hidden) tick()
+        schedule()
+      }, period - (Date.now() % period) + 20)
     }
+    const onVisible = () => {
+      window.clearTimeout(timer)
+      if (document.hidden) return
+      tick()
+      schedule()
+    }
+    if (!document.hidden) schedule()
     document.addEventListener('visibilitychange', onVisible)
     return () => {
-      window.clearTimeout(align)
-      if (interval !== undefined) window.clearInterval(interval)
+      window.clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [period])
   return now
+}
+
+/** A clock that ticks on the minute. */
+export function useMinuteClock(): Date {
+  return useClock(60_000)
 }
 
 /**
