@@ -1,280 +1,301 @@
 import { useEffect, useRef, useState } from 'react'
+import { animationsDisabled } from '../lib/motion'
 
 /**
- * The room the site lives in: liquid-glass caustics — light through a
- * rippled surface — rendered by a WebGL shader. Domain-warped noise folds
- * into bright veins that carry three drifting aurora colour centres.
+ * The room the site lives in: deep water under a lit board.
  *
- * Readability is a designed layer, not luck: a graded charcoal veil sits on
- * top of the shader, heaviest where page titles live, so text never fights
- * the light. Panels are opaque and float above it all.
+ * This used to be a WebGL shader — five octaves of noise, three times over,
+ * for every pixel of the viewport, thirty times a second, with a GL context
+ * and its driver allocations resident for the life of the app. It looked
+ * wonderful and it cost a phone more than the league is worth.
  *
- * With FX off there is no GL at all — the static CSS aurora blobs stand in,
- * per the site's motion rules. A GPU that refuses the shader gets the same
- * fallback rather than a black room.
+ * The same room, drawn a different way. The light field is computed ONCE, at
+ * a twelfth of an inch of resolution — a few thousand cells, not a million
+ * pixels — and every frame after that is a walk through it: the field drifts,
+ * the colour centres wander on their own long orbits, and the browser's own
+ * bilinear upscale from a postage stamp to the full screen is the softness we
+ * used to pay a blur for. No GL context, no shader program, no per-pixel
+ * transcendentals; about forty thousand additions a frame, ten times a
+ * second, into a canvas smaller than a favicon.
+ *
+ * Everything the room knew, it still knows: it keeps stadium hours (dusk
+ * warms it, after eleven the house lights come down), it tints toward the
+ * colour of whoever's seat is picked, it stands down while the page is
+ * scrolling or hidden, and with animations off it paints one still frame and
+ * never runs again.
  */
 
-const VERT = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }'
+/** Cells in the light field. ~16k of them, in the viewport's proportions —
+ *  still a fiftieth of the pixels the shader touched, and sharp enough that
+ *  the veins have edges. */
+const CELLS = 16000
+/** How often the field is redrawn. It moves like weather; ten is plenty. */
+const FRAME_MS = 100
+/** Frames to skip after a scroll ends, so a flick keeps the whole thread. */
+const SCROLL_QUIET_MS = 140
 
-// Apple GPUs run mediump at fp16, which collapses sin-hash noise to a flat
-// field — always take highp when the hardware offers it.
-const FRAG = `
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-uniform vec2 R; uniform float T;
-// stadium hours (0 day, 1 dusk, 2 late) and the seat-holder's colour
-uniform float H; uniform vec3 ME; uniform float MEON;
-float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float n(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(h(i), h(i + vec2(1, 0)), f.x),
-             mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
+/** The three fixed colours of the room, and the fourth the seat provides. */
+const GREEN = [0.33, 0.83, 0.22]
+const AMBER = [1.0, 0.71, 0.21]
+const TEAL = [0.17, 0.85, 0.82]
+
+/** Value noise on a lattice, smoothed — the cheapest field that reads organic. */
+function noiseField(width: number, height: number, scale: number, seed: number): Float32Array {
+  const cols = Math.ceil(width / scale) + 2
+  const rows = Math.ceil(height / scale) + 2
+  const lattice = new Float32Array(cols * rows)
+  // A small deterministic PRNG: the room looks the same on every device, and
+  // nobody has to wonder whether they are seeing the same thing as everyone
+  // else in the group chat.
+  let state = seed >>> 0
+  for (let i = 0; i < lattice.length; i += 1) {
+    state = (state * 1664525 + 1013904223) >>> 0
+    lattice[i] = state / 4294967296
+  }
+  const out = new Float32Array(width * height)
+  for (let y = 0; y < height; y += 1) {
+    const fy = y / scale
+    const y0 = fy | 0
+    const ty = fy - y0
+    const wy = ty * ty * (3 - 2 * ty)
+    for (let x = 0; x < width; x += 1) {
+      const fx = x / scale
+      const x0 = fx | 0
+      const tx = fx - x0
+      const wx = tx * tx * (3 - 2 * tx)
+      const a = lattice[y0 * cols + x0]
+      const b = lattice[y0 * cols + x0 + 1]
+      const c = lattice[(y0 + 1) * cols + x0]
+      const d = lattice[(y0 + 1) * cols + x0 + 1]
+      out[y * width + x] = (a + (b - a) * wx) * (1 - wy) + (c + (d - c) * wx) * wy
+    }
+  }
+  return out
 }
-float fbm(vec2 p){
-  float v = 0.0, a = 0.5;
-  for (int k = 0; k < OCTAVES; k++) { v += a * n(p); p = p * 2.03 + 7.7; a *= 0.5; }
-  return v;
-}
-void main(){
-  vec2 uv = gl_FragCoord.xy / R;
-  vec2 p = uv * vec2(R.x / R.y, 1.0) * 3.2;
-  float t = T * 0.055;
-
-  // domain warp: the surface kneading itself
-  vec2 q = vec2(fbm(p + t), fbm(p - t * 0.8 + 5.2));
-  float v = fbm((p + 1.5 * q) * 2.1 + t * 0.4);
-
-  // fold the field into caustic veins with fine speckle between
-  float vein = pow(1.0 - abs(2.0 * fract(v * 2.4) - 1.0), 3.2);
-  float speck = pow(1.0 - abs(2.0 * fract(v * 7.0) - 1.0), 6.0) * 0.5;
-
-  // aurora colour centres drifting beneath the surface
-  vec3 green = vec3(0.33, 0.83, 0.22);
-  vec3 amber = vec3(1.00, 0.71, 0.21);
-  vec3 teal  = vec3(0.17, 0.85, 0.82);
-  // dusk warms the green toward the amber; after eleven the teal goes deep
-  float dusk = step(0.5, H) * (1.0 - step(1.5, H));
-  float late = step(1.5, H);
-  green = mix(green, amber * 0.85, 0.35 * dusk);
-  teal  = mix(teal, vec3(0.09, 0.42, 0.60), late);
-  vec2 c1 = vec2(0.5 + 0.4 * sin(T * 0.10), 0.5 + 0.4 * cos(T * 0.13));
-  vec2 c2 = vec2(0.5 + 0.4 * cos(T * 0.07 + 2.0), 0.5 + 0.4 * sin(T * 0.09 + 2.0));
-  vec2 c3 = vec2(0.5 + 0.4 * sin(T * 0.05 + 4.0), 0.5 + 0.4 * cos(T * 0.06 + 4.0));
-  vec3 base = green * exp(-3.2 * distance(uv, c1))
-            + amber * exp(-3.4 * distance(uv, c2))
-            + teal  * exp(-3.8 * distance(uv, c3));
-  // your seat: a fourth, fainter colour centre drifting with the others,
-  // so the room is subtly yours once you have picked one
-  vec2 c4 = vec2(0.5 + 0.42 * cos(T * 0.08 + 1.0), 0.5 + 0.42 * sin(T * 0.11 + 3.0));
-  base += ME * exp(-3.0 * distance(uv, c4)) * 0.85 * MEON;
-
-  float dim = 1.0 - 0.32 * late;                    // late: the house lights come down
-  vec3 col = vec3(0.043, 0.055, 0.071);            // charcoal floor
-  col += base * (0.14 + 0.55 * vein + speck * 0.6) * dim; // veins carry the light, dimmed
-  col += vein * base * base * 0.25 * dim;           // hot cores kept below text-level
-  gl_FragColor = vec4(col, 1.0);
-}`
-
-/** Render scale — caustics are soft; 2/3 on desktop, less than half on a
- *  phone. The governor below can cut it again on a device that cannot keep
- *  up, and retire the shader entirely if that is still not enough. */
-const BASE_SCALE = typeof window !== 'undefined' && window.innerWidth < 700 ? 0.42 : 0.66
-/** Sustained frame interval that means the room is costing more than it is
- *  worth: ~26fps. Two strikes and the shader gives way to the CSS aurora. */
-const STRUGGLING_MS = 38
-const PATIENCE = 60
-/**
- * The glass moves slowly; 30 frames a second is indistinguishable and halves
- * the GPU bill. The margin matters: on a device already delivering frames at
- * 30Hz — a busy page, Low Power Mode — a bare "skip anything under 33.3ms"
- * test lands right on the cadence, so jitter drops every other frame and the
- * room stutters at 15fps. Allow a frame that is nearly due.
- */
-const FRAME_MS = 1000 / 30
-const FRAME_SLACK = 6
 
 /**
- * Octaves are where the whole shader's cost lives: each one is another noise
- * sample per pixel, three times over for the domain warp. Five gives the
- * glass its finest filigree on a desktop; three is indistinguishable at arm's
- * length on a phone and costs a little over half as much.
+ * The light itself: four octaves of noise, folded into caustics.
+ *
+ * This runs once per layout, not once per frame, which is what makes the
+ * detail affordable — four octaves over thirty thousand cells costs about a
+ * millisecond, and then the room lives off it for as long as the tab is open.
+ * The fold is where the look comes from: taking the distance to the nearest
+ * ridge of a rising field, and raising it to a power, turns smooth noise into
+ * thin bright filaments over dark water. That is what light does through a
+ * rippled surface, and it is what the shader was doing the expensive way.
  */
-const PHONE = typeof window !== 'undefined' && window.innerWidth < 700
-const OCTAVES = PHONE ? 3 : 5
+function lightField(width: number, height: number): Float32Array {
+  const base = Math.max(6, width / 9)
+  const octaves = [
+    { field: noiseField(width, height, base, 0x51f3a1), weight: 0.5 },
+    { field: noiseField(width, height, base / 2.1, 0x9e37b1), weight: 0.26 },
+    { field: noiseField(width, height, base / 4.3, 0x2b7d55), weight: 0.15 },
+    { field: noiseField(width, height, base / 8.7, 0xc41d7f), weight: 0.09 },
+  ]
+  const out = new Float32Array(width * height)
+  for (let i = 0; i < out.length; i += 1) {
+    let v = 0
+    for (let o = 0; o < octaves.length; o += 1) v += octaves[o].field[i] * octaves[o].weight
+    // Ridges: the field folded back on itself, sharpened into filaments.
+    const ridge = 1 - Math.abs(2 * ((v * 3.6) % 1) - 1)
+    const vein = ridge * ridge * ridge * ridge
+    // A finer fold scatters speckle across the water between them.
+    const grain = 1 - Math.abs(2 * ((v * 11.5) % 1) - 1)
+    const speck = grain * grain * grain * grain * grain * grain
+    // Mostly the smooth field, with the filaments laid over it: pools of
+    // light with structure inside them, rather than a net across the screen.
+    out[i] = vein * 0.46 + speck * 0.07 + v * 0.47
+  }
+  return out
+}
 
 export default function Backdrop({ enabled }: { enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const failedRef = useRef(false)
-  // Bumped to re-run the effect after the GPU hands the context back.
-  const [generation, setGeneration] = useState(0)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!enabled || failedRef.current) return
     const canvas = canvasRef.current
     if (!canvas) return
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) {
+      setFailed(true)
+      return
+    }
 
+    const still = animationsDisabled() || !enabled
+    let width = 0
+    let height = 0
+    let field: Float32Array = new Float32Array(0)
+    let image: ImageData | null = null
+
+    const layout = () => {
+      const ratio = window.innerHeight / Math.max(1, window.innerWidth)
+      const next = Math.max(40, Math.round(Math.sqrt(CELLS / ratio)))
+      const nextHeight = Math.max(40, Math.round(next * ratio))
+      if (next === width && nextHeight === height) return
+      width = next
+      height = nextHeight
+      canvas.width = width
+      canvas.height = height
+      // The field is drawn twice as wide as the canvas so the drift has
+      // somewhere to go: an hour of travel with no seam and no recompute.
+      field = lightField(width * 2, height)
+      image = context.createImageData(width, height)
+    }
+
+    /** The room's palette, read from the Shell's stamps once a second. */
+    let sampledAt = -Infinity
+    let hours = 0
+    let seat: number[] | null = null
+    const sample = (now: number) => {
+      if (now - sampledAt < 1000) return
+      sampledAt = now
+      const stamp = document.documentElement.dataset.hours
+      hours = stamp === 'late' ? 2 : stamp === 'dusk' ? 1 : 0
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--me-color').trim()
+      const hex = /^#([0-9a-f]{6})$/i.exec(raw)
+      seat = hex
+        ? [
+            parseInt(hex[1].slice(0, 2), 16) / 255,
+            parseInt(hex[1].slice(2, 4), 16) / 255,
+            parseInt(hex[1].slice(4, 6), 16) / 255,
+          ]
+        : null
+    }
+
+    const paint = (seconds: number) => {
+      if (!image) return
+      const data = image.data
+      // Where the field is being read from, and how hard the light burns.
+      const drift = (seconds * 1.1) % width
+      const shift = drift | 0
+      const dusk = hours === 1
+      const late = hours === 2
+      const lift = late ? 0.5 : dusk ? 0.72 : 0.86
+      const floorR = late ? 0.036 : 0.043
+      const floorG = late ? 0.045 : 0.055
+      const floorB = late ? 0.062 : 0.071
+
+      // Colour centres on slow, coprime orbits, in cell coordinates.
+      const centres: { x: number; y: number; c: number[]; k: number }[] = [
+        {
+          x: (0.5 + 0.4 * Math.sin(seconds * 0.05)) * width,
+          y: (0.5 + 0.4 * Math.cos(seconds * 0.062)) * height,
+          c: GREEN,
+          k: 2.1,
+        },
+        {
+          x: (0.5 + 0.42 * Math.cos(seconds * 0.037 + 2)) * width,
+          y: (0.5 + 0.42 * Math.sin(seconds * 0.045 + 2)) * height,
+          c: dusk || late ? [1, 0.62, 0.16] : AMBER,
+          k: 2.3,
+        },
+        {
+          x: (0.5 + 0.4 * Math.sin(seconds * 0.028 + 4)) * width,
+          y: (0.5 + 0.4 * Math.cos(seconds * 0.031 + 4)) * height,
+          c: TEAL,
+          k: late ? 3.0 : 2.5,
+        },
+      ]
+      if (seat) {
+        centres.push({
+          x: (0.5 + 0.45 * Math.cos(seconds * 0.021 + 1)) * width,
+          y: (0.5 + 0.45 * Math.sin(seconds * 0.024 + 1)) * height,
+          c: seat,
+          k: 2.6,
+        })
+      }
+      // Normalise the falloff to the canvas so the room looks the same on a
+      // phone and a widescreen.
+      const span = 1 / (width * width + height * height)
+      const inverseHeight = 1 / height
+
+      let at = 0
+      for (let y = 0; y < height; y += 1) {
+        const row = y * width * 2
+        for (let x = 0; x < width; x += 1) {
+          const vein = field[row + ((x + shift) % (width * 2))]
+          // The field lights: a warm lift along the bottom edge, the way a
+          // stadium glows under its own roof line.
+          const horizon = y * inverseHeight
+          let r = floorR + horizon * 0.028
+          let g = floorG + horizon * 0.022
+          let b = floorB + horizon * 0.012
+          for (let i = 0; i < centres.length; i += 1) {
+            const centre = centres[i]
+            const dx = x - centre.x
+            const dy = y - centre.y
+            // A rational falloff stands in for the exponential the shader
+            // used: the same soft pool of light, without the transcendental.
+            const reach = 1 / (1 + centre.k * centre.k * (dx * dx + dy * dy) * span * 4)
+            const amount = reach * (0.05 + 1.05 * vein) * lift
+            // Where a bright vein crosses the heart of a pool, the colour
+            // burns rather than washes: the hot core the glass used to have.
+            const core = reach * reach * reach * vein * vein * 0.75 * lift
+            r += centre.c[0] * amount + centre.c[0] * core
+            g += centre.c[1] * amount + centre.c[1] * core
+            b += centre.c[2] * amount + centre.c[2] * core
+          }
+          data[at] = r > 1 ? 255 : r * 255
+          data[at + 1] = g > 1 ? 255 : g * 255
+          data[at + 2] = b > 1 ? 255 : b * 255
+          data[at + 3] = 255
+          at += 4
+        }
+      }
+      context.putImageData(image, 0, 0)
+    }
+
+    layout()
+    sample(performance.now())
+    paint(0)
+    if (still) {
+      const onResize = () => {
+        layout()
+        paint(0)
+      }
+      window.addEventListener('resize', onResize)
+      return () => window.removeEventListener('resize', onResize)
+    }
+
+    // ---- the moving version ------------------------------------------------
     let raf = 0
-    let scrollStandDown: () => void = () => undefined
-    // A phone under memory pressure takes the GL context away mid-scroll and
-    // the room simply freezes. Ask to keep the canvas (preventDefault), stop
-    // drawing into a dead context, and rebuild when it comes back.
-    const onLost = (event: Event) => {
-      event.preventDefault()
-      cancelAnimationFrame(raf)
-      raf = 0
+    let lastPaint = -Infinity
+    let quietUntil = 0
+    let onScreen = true
+    const standDown = () => {
+      quietUntil = performance.now() + SCROLL_QUIET_MS
     }
-    const onRestored = () => setGeneration((n) => n + 1)
-    canvas.addEventListener('webglcontextlost', onLost)
-    canvas.addEventListener('webglcontextrestored', onRestored)
 
-    try {
-      const gl = canvas.getContext('webgl', { antialias: false, powerPreference: 'low-power' })
-      if (!gl) throw new Error('WebGL unavailable')
-
-      const compile = (type: number, source: string) => {
-        const shader = gl.createShader(type)!
-        gl.shaderSource(shader, source)
-        gl.compileShader(shader)
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          throw new Error(gl.getShaderInfoLog(shader) ?? 'shader compile failed')
-        }
-        return shader
-      }
-      const program = gl.createProgram()!
-      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT))
-      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, `#define OCTAVES ${OCTAVES}\n${FRAG}`))
-      gl.linkProgram(program)
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        throw new Error(gl.getProgramInfoLog(program) ?? 'link failed')
-      }
-      gl.useProgram(program)
-
-      const buffer = gl.createBuffer()
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
-      const loc = gl.getAttribLocation(program, 'p')
-      gl.enableVertexAttribArray(loc)
-      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
-      const uR = gl.getUniformLocation(program, 'R')
-      const uT = gl.getUniformLocation(program, 'T')
-      const uH = gl.getUniformLocation(program, 'H')
-      const uMe = gl.getUniformLocation(program, 'ME')
-      const uMeOn = gl.getUniformLocation(program, 'MEON')
-
-      // The room reads the Shell's stamps: data-hours on the root and the
-      // seat-holder's --me-color. Sampled once a second, not every frame.
-      let sampledAt = -1
-      let hours = 0
-      let me: [number, number, number] | null = null
-      const sample = (time: number) => {
-        if (time - sampledAt < 1000) return
-        sampledAt = time
-        const stamp = document.documentElement.dataset.hours
-        hours = stamp === 'late' ? 2 : stamp === 'dusk' ? 1 : 0
-        const raw = getComputedStyle(document.documentElement).getPropertyValue('--me-color').trim()
-        const hex = /^#([0-9a-f]{6})$/i.exec(raw)
-        if (hex) {
-          const n = parseInt(hex[1], 16)
-          me = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
-        } else me = null
-      }
-
-      // A flick is the one moment a phone has nothing to spare, and a room
-      // that holds still for the length of a scroll is a room nobody notices
-      // holding still. The shader stands down while the page moves and comes
-      // back a beat after it stops.
-      let scrollingUntil = 0
-      scrollStandDown = () => {
-        scrollingUntil = performance.now() + 140
-      }
-      window.addEventListener('scroll', scrollStandDown, { passive: true })
-      window.addEventListener('touchmove', scrollStandDown, { passive: true })
-
-      let lastDraw = 0
-      let lastFrame = 0
-      let cadence = 16.7
-      let scale = BASE_SCALE
-      let strikes = 0
-      let judged = 0
-      const tick = (time: number) => {
-        raf = requestAnimationFrame(tick)
-        if (document.hidden) return
-        // What the display is actually giving us, smoothed. When it is
-        // already at or below the target rate, every frame gets drawn. A gap
-        // longer than a fifth of a second is a pause — a scroll, a tab
-        // switch, the phone thinking about something else — not a frame
-        // rate, and counting it would slander the device.
-        const gap = lastFrame ? time - lastFrame : 0
-        lastFrame = time
-        if (gap > 200) {
-          judged = 0
-          return
-        }
-        // Scrolling frames are the page's, not ours — and they must not count
-        // against the room in the governor either.
-        if (time < scrollingUntil) {
-          judged = 0
-          return
-        }
-        if (gap) cadence += (Math.min(gap, 60) - cadence) * 0.1
-        if (cadence < FRAME_MS - FRAME_SLACK && time - lastDraw < FRAME_MS - FRAME_SLACK) return
-        lastDraw = time
-
-        // The governor. A phone that cannot hold a frame is a phone where
-        // this room is the reason, so the room gets out of the way: once at
-        // half resolution, and if that is not enough, entirely — the CSS
-        // aurora is nearly free and nobody has to know why.
-        if (++judged > PATIENCE) {
-          judged = 0
-          if (cadence > STRUGGLING_MS) {
-            strikes += 1
-            if (strikes === 1) scale = BASE_SCALE * 0.62
-            else {
-              failedRef.current = true
-              cancelAnimationFrame(raf)
-              raf = 0
-              setGeneration((n) => n + 1)
-              return
-            }
-          } else strikes = 0
-        }
-
-        const w = Math.floor(window.innerWidth * scale)
-        const h = Math.floor(window.innerHeight * scale)
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w
-          canvas.height = h
-        }
-        gl.viewport(0, 0, w, h)
-        sample(time)
-        gl.uniform2f(uR, w, h)
-        gl.uniform1f(uT, time / 1000)
-        gl.uniform1f(uH, hours)
-        gl.uniform3f(uMe, me?.[0] ?? 0, me?.[1] ?? 0, me?.[2] ?? 0)
-        gl.uniform1f(uMeOn, me ? 1 : 0)
-        gl.drawArrays(gl.TRIANGLES, 0, 3)
-      }
+    const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
-    } catch (error) {
-      // One layer dark beats a broken page; the aurora blobs remain.
-      failedRef.current = true
-      console.error('backdrop shader failed:', error)
+      if (document.hidden || !onScreen) return
+      // A flick is the one moment a phone has nothing to spare, and a room
+      // that holds still for the length of a scroll is one nobody notices
+      // holding still.
+      if (now < quietUntil) return
+      if (now - lastPaint < FRAME_MS) return
+      lastPaint = now
+      layout()
+      sample(now)
+      paint(now / 1000)
     }
+
+    const seen = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting
+    })
+    seen.observe(canvas)
+    window.addEventListener('scroll', standDown, { passive: true })
+    window.addEventListener('touchmove', standDown, { passive: true })
+    raf = requestAnimationFrame(tick)
 
     return () => {
       cancelAnimationFrame(raf)
-      canvas.removeEventListener('webglcontextlost', onLost)
-      canvas.removeEventListener('webglcontextrestored', onRestored)
-      window.removeEventListener('scroll', scrollStandDown)
-      window.removeEventListener('touchmove', scrollStandDown)
+      seen.disconnect()
+      window.removeEventListener('scroll', standDown)
+      window.removeEventListener('touchmove', standDown)
     }
-  }, [enabled, generation])
-
-  const shaderOn = enabled && !failedRef.current
+  }, [enabled])
 
   return (
     <div
@@ -282,22 +303,22 @@ export default function Backdrop({ enabled }: { enabled: boolean }) {
       className="pointer-events-none fixed inset-0 overflow-hidden"
       style={{ zIndex: 0 }}
     >
-      {shaderOn ? (
-        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      ) : (
+      {failed ? (
         <>
           <div className="aurora-blob aurora-a" />
           <div className="aurora-blob aurora-b" />
           <div className="aurora-blob aurora-c" />
         </>
+      ) : (
+        <canvas ref={canvasRef} className="room-canvas absolute inset-0 h-full w-full" />
       )}
       {/* The readability veil: heaviest up top where titles and ledes sit on
-          bare background, lighter mid-screen so the glass still glows. */}
+          bare background, lighter mid-screen so the room still glows. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgba(11,14,18,0.60) 0%, rgba(11,14,18,0.30) 32%, rgba(11,14,18,0.36) 70%, rgba(11,14,18,0.48) 100%)',
+            'linear-gradient(180deg, rgba(11,14,18,0.58) 0%, rgba(11,14,18,0.22) 34%, rgba(11,14,18,0.28) 70%, rgba(11,14,18,0.42) 100%)',
         }}
       />
     </div>

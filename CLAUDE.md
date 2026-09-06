@@ -12,9 +12,12 @@ writes to it from the live site through the GitHub Contents API, so every
 ruling is a commit and `git log` is the audit trail. There is no server and
 no backend — do not propose adding one. HashRouter, so no basename to
 maintain; the data layer reads `import.meta.env.BASE_URL`, which follows the
-Vite `base` (currently `/`, an org root site). The room is a WebGL
-liquid-glass backdrop (`Backdrop.tsx`, CSS aurora fallback) with opaque
-panels floating on it; route changes use view transitions with the chrome
+Vite `base` (currently `/`, an org root site). The room is a light field
+(`Backdrop.tsx`): four octaves of noise folded into caustics, computed once
+into a ~16k-cell buffer and walked ten times a second on a canvas the size of
+a favicon, which the browser upscales into softness — no WebGL context, no
+per-pixel shader. It keeps stadium hours, tints toward the picked seat, and
+stands down while the page scrolls. Opaque panels float on it; route changes use view transitions with the chrome
 held still. Builds are stamped (`vite.config.ts` emits `version.json`) and
 the Shell offers a refresh when a newer build is live.
 

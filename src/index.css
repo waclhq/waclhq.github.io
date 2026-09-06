@@ -414,6 +414,13 @@
     }
   }
 
+  /* The room's canvas is a postage stamp stretched to the viewport — the
+     browser's own smooth upscale is what makes it look like light through
+     water, so it must never be told to keep the pixels crisp. */
+  .room-canvas {
+    image-rendering: auto;
+  }
+
   /* Aurora backdrop: three colour fields drifting on minutes-long cycles,
      and the room whenever the shader is off or has been switched off for
      being too expensive. So it must be cheap itself: the softness is a
