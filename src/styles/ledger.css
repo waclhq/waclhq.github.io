@@ -66,6 +66,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 4px 10px;
   }
   .flap-word {
@@ -200,6 +201,7 @@
   .desk-count {
     display: flex;
     align-items: flex-start;
+    justify-content: center;
     gap: 8px;
   }
   .flap-pair {
@@ -241,6 +243,8 @@
     display: inline-flex;
     flex-direction: column;
     gap: 5px;
+    align-self: center;
+    width: fit-content;
   }
   .desk-weeks {
     display: flex;
