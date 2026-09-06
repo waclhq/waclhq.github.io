@@ -12,13 +12,13 @@ writes to it from the live site through the GitHub Contents API, so every
 ruling is a commit and `git log` is the audit trail. There is no server and
 no backend — do not propose adding one. HashRouter, so no basename to
 maintain; the data layer reads `import.meta.env.BASE_URL`, which follows the
-Vite `base` (currently `/`, an org root site). The room is a light field
-(`Backdrop.tsx`): four octaves of noise folded into caustics, computed once
-into a ~16k-cell buffer and walked ten times a second on a canvas the size of
-a favicon, which the browser upscales into softness — no WebGL context, no
-per-pixel shader. It keeps stadium hours, tints toward the picked seat, and
-stands down while the page scrolls. Opaque panels float on it; route changes use view transitions with the chrome
-held still. Builds are stamped (`vite.config.ts` emits `version.json`) and
+Vite `base` (currently `/`, an org root site). The room is flat and still:
+a graphite ground with a dot matrix and two fixed corner glows, painted by
+`body` / `body::before` in `src/index.css` and re-tinted by `data-hours`
+(day / dusk / late) — colour only, nothing that moves or costs a frame.
+There is no animated backdrop; it was removed deliberately, so don't add a
+canvas, shader, or drifting gradient behind the panels. Route changes use
+view transitions with the chrome held still. Builds are stamped (`vite.config.ts` emits `version.json`) and
 the Shell offers a refresh when a newer build is live.
 
 ## Rules that are easy to break
@@ -61,9 +61,9 @@ the Shell offers a refresh when a newer build is live.
    declared inline in `index.html`), no animation of layout properties —
    transform and opacity only — and the heavy data files (`player-points`,
    `player-positions`, `draft-pool`, `live`) load after the first screen, so
-   anything reading them must tolerate null. The room governs itself: the
-   backdrop measures its own frame rate, halves its resolution once, and
-   retires to the CSS aurora rather than dragging the site down.
+   anything reading them must tolerate null. Nothing paints continuously
+   behind the content — the ground is static, and the only long-running
+   canvases (the Book's fires) share one throttled clock in `lib/ticker.ts`.
 
 6. **Page styles live with the page.** `src/index.css` holds tokens and the
    shared primitives (`.win`, `.out`, `.tag`, `.badge`, `.btn`, rails, the
@@ -74,9 +74,8 @@ the Shell offers a refresh when a newer build is live.
 
 7. **"Your seat" is a preference, not a login.** `useMe()` (`src/lib/me.ts`)
    returns the manager a member picked on this device; `ManagerTag` marks
-   their rows (`.me-tag`, lit by `--me-color` on the root), the backdrop
-   tints toward their colour, pages may put "you" first. Nothing trusts it
-   and nothing writes because of it.
+   their rows (`.me-tag`, lit by `--me-color` on the root) and pages may put
+   "you" first. Nothing trusts it and nothing writes because of it.
 
 8. **League time comes from `src/lib/season.ts`.** `seasonClock()` derives
    pre-season / kickoff week / week N / playoffs / offseason from the
@@ -97,7 +96,7 @@ the Shell offers a refresh when a newer build is live.
   (your seat), `season.ts` (league time), `dialog.ts` (focus manners for
   overlays), `search.ts` (palette index), `music.ts`, `motion.ts`.
 - `src/components/` — `Shell.tsx` (nav, tab bar, sheet, seat picker,
-  SaveStatus, new-version bar), `Backdrop.tsx` (the glass), canvas pieces
+  SaveStatus, new-version bar), canvas pieces
   (`HeapScene`, `FireFrame`, `BurnAway`, `TradingCard`), editors
   (`TradeForm`, `KeeperEditor`).
 - `src/styles/` — one stylesheet per room (see rule 6).

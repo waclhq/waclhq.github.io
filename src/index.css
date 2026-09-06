@@ -66,13 +66,6 @@
     background-size: 6px 6px;
     color: var(--color-arc-ink);
     font-family: var(--font-body);
-    /* The liquid-glass backdrop puts light behind un-paneled text, so every
-       glyph carries a dark halo. Inherited everywhere; imperceptible on
-       opaque panels, decisive over the bright veins. */
-    text-shadow:
-      0 0 3px rgba(7, 9, 12, 0.95),
-      0 2px 5px rgba(7, 9, 12, 0.9),
-      0 0 14px rgba(7, 9, 12, 0.85);
     font-size: 14.5px;
     font-weight: 400;
     line-height: 1.55;
@@ -80,31 +73,9 @@
     overflow-x: hidden;
   }
 
-  /* ...but only there. Every opaque surface puts its own ground behind the
-     glyphs, and on one the halo is not protection, it is a smudge — worst on
-     small bold type like a badge's two dark initials on a bright fill, which
-     it wraps in grey fog. So the shadow stops at the edge of anything solid:
-     panels, chrome, chips, buttons, tiles, tickets. Page titles, ledes and
-     captions, which really do sit out on the glass, keep it. */
-  .win,
-  aside,
-  nav,
-  footer,
-  [role='dialog'],
-  .badge,
-  .tag,
-  .btn,
-  .bet-tile,
-  .stub,
-  .banner,
-  .no-halo,
-  kbd {
-    text-shadow: none;
-  }
-
   /* Ambient light off the board: signature green over the top-right, a
-     faint amber wash low-left. A fixed layer so the glow holds still while
-     the page scrolls past it. */
+     faint amber wash low-left. A fixed layer, and a still one — the room
+     behind the panels is a ground, not a performance. */
   body::before {
     content: '';
     position: fixed;
@@ -114,12 +85,9 @@
     background:
       radial-gradient(95vmax 60vmax at 88% -14%, rgba(83, 211, 55, 0.12), transparent 55%),
       radial-gradient(85vmax 55vmax at -8% 110%, rgba(255, 182, 54, 0.06), transparent 55%);
-    /* Arena lights: an imperceptibly slow drift so the room breathes. */
-    animation: arena-drift 46s ease-in-out infinite;
   }
   /* Stadium hours. Dusk warms the amber; after 11pm the lights come down
-     and the neon reads hotter — the book at 1am looks like 1am. Colour only;
-     the drift animation above carries on untouched. */
+     and the neon reads hotter — the book at 1am looks like 1am. */
   :root[data-hours='dusk'] body::before {
     background:
       radial-gradient(95vmax 60vmax at 88% -14%, rgba(83, 211, 55, 0.1), transparent 55%),
@@ -172,16 +140,6 @@
     from {
       opacity: 0;
       transform: translateY(14px);
-    }
-  }
-
-  @keyframes arena-drift {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    50% {
-      transform: translate3d(-1.6%, 1.2%, 0) scale(1.05);
     }
   }
 
@@ -411,66 +369,6 @@
     50%,
     100% {
       opacity: 0;
-    }
-  }
-
-  /* The room's canvas is a postage stamp stretched to the viewport — the
-     browser's own smooth upscale is what makes it look like light through
-     water, so it must never be told to keep the pixels crisp. */
-  .room-canvas {
-    image-rendering: auto;
-  }
-
-  /* Aurora backdrop: three colour fields drifting on minutes-long cycles,
-     and the room whenever the shader is off or has been switched off for
-     being too expensive. So it must be cheap itself: the softness is a
-     radial gradient rather than a 90px blur filter, and the drift moves on
-     transform. It used to animate top/left on blurred half-screen circles,
-     which is a layout and a giant repaint every frame — the single most
-     expensive thing on the site, on the devices least able to afford it.
-     With animations off they simply hold still as ambient glow. */
-  .aurora-blob {
-    position: absolute;
-    top: -25%;
-    left: -20%;
-    width: 60vmax;
-    height: 60vmax;
-    border-radius: 50%;
-    opacity: 0.16;
-    will-change: transform;
-  }
-  .aurora-a {
-    background: radial-gradient(closest-side, var(--color-arc-green), transparent 72%);
-    animation: aurora-a 37s ease-in-out infinite alternate;
-  }
-  .aurora-b {
-    top: auto;
-    bottom: -30%;
-    left: auto;
-    right: -15%;
-    background: radial-gradient(closest-side, var(--color-arc-yellow), transparent 72%);
-    animation: aurora-b 47s ease-in-out infinite alternate;
-  }
-  .aurora-c {
-    top: 45%;
-    left: 55%;
-    opacity: 0.1;
-    background: radial-gradient(closest-side, var(--color-arc-teal), transparent 72%);
-    animation: aurora-c 53s ease-in-out infinite alternate;
-  }
-  @keyframes aurora-a {
-    to {
-      transform: translate3d(58vw, 34vh, 0);
-    }
-  }
-  @keyframes aurora-b {
-    to {
-      transform: translate3d(-52vw, -32vh, 0);
-    }
-  }
-  @keyframes aurora-c {
-    to {
-      transform: translate3d(-56vw, -38vh, 0);
     }
   }
 
@@ -1857,9 +1755,6 @@
     :root:not([data-motion='on']) .type-in,
     :root:not([data-motion='on']) .pulse,
     :root:not([data-motion='on']) .marquee,
-    :root:not([data-motion='on']) .aurora-a,
-    :root:not([data-motion='on']) .aurora-b,
-    :root:not([data-motion='on']) .aurora-c,
     :root:not([data-motion='on']) .grow-x,
     :root:not([data-motion='on']) .hover-wiggle:hover,
     :root:not([data-motion='on']) .confetti,

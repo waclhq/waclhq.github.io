@@ -12,7 +12,6 @@ import CommandPalette from './CommandPalette'
 import GodMode from './GodMode'
 import Crest from './Crest'
 import { Sparkles } from './effects'
-import Backdrop from './Backdrop'
 import CommissionerPanel from './CommissionerPanel'
 import { ReplayWipe } from './effects'
 import { animationsDisabled, motionForcedOn, setMotionForcedOn, systemPrefersReduced } from '../lib/motion'
@@ -583,7 +582,6 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh pb-20 lg:grid lg:grid-cols-[228px_1fr] lg:pb-10" onClickCapture={onLinkCapture}>
-      <Backdrop enabled={!animationsDisabled()} />
       {/* Mobile top bar */}
       <div
         className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b-[3px] border-arc-line bg-arc-panel px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] pb-2 lg:hidden"
