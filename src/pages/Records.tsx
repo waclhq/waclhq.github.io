@@ -35,9 +35,12 @@ const SECTIONS = [
 export default function Records() {
   const { seasons, gameRecords, careerAverages } = useLeagueData()
   const eras = eraOptions(seasons)
+  // All-Time is the default: the record book is 22 seasons deep and that is
+  // the number people come to argue about. Narrower windows are a click away,
+  // and ?era=keeper still opens on the keeper era for links already shared.
   const [eraId, setEraId] = useEraParam(
     eras.map((option) => option.id),
-    'keeper',
+    'all',
   )
   const era = eras.find((option) => option.id === eraId) ?? eras[0]
   const rail = useSectionParam()
