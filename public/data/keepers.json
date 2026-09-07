@@ -15276,14 +15276,9 @@
           "player": "Cam Skattebo",
           "salary": 2,
           "contractYear": "B"
-        },
-        {
-          "player": "Zay Flowers",
-          "salary": 20,
-          "contractYear": "B"
         }
       ],
-      "keeperSalary": 50,
+      "keeperSalary": 30,
       "cashTraded": -60,
       "draftBudget": 111
     },
