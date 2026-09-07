@@ -141,6 +141,30 @@
       "source": "app",
       "proposedAt": "2026-09-07T02:30:59.705Z",
       "decidedAt": "2026-09-07T02:31:35.977Z"
+    },
+    {
+      "id": "t-mtqn7if2-k3j55",
+      "batch": "2026 Preseason",
+      "season": 2026,
+      "preseason": true,
+      "seller": "velamoor",
+      "buyer": "mukheja",
+      "players": "Jayden Daniels",
+      "terms": "$3 in 2026; $2 in 2027",
+      "totalDollars": 5,
+      "obligations": [
+        {
+          "year": 2026,
+          "amount": 3
+        },
+        {
+          "year": 2027,
+          "amount": 2
+        }
+      ],
+      "status": "pending",
+      "source": "app",
+      "proposedAt": "2026-09-07T02:50:00.062Z"
     }
   ]
 }
