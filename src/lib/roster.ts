@@ -36,10 +36,46 @@ function parsePlayers(players: string): string[] {
     .filter(Boolean)
 }
 
+/**
+ * Rosters carry a player's full name; a trade is typed by hand and often does
+ * not. "Kyle Pitts" has to find "Kyle Pitts Sr." — twenty-eight names on the
+ * current rosters wear a generational suffix — so an exact match is tried
+ * first and, failing that, one that ignores suffixes and punctuation.
+ *
+ * The looser pass only counts when it lands on exactly one player. Two names
+ * on one roster that blur into each other (2017 fielded two defenses both
+ * written "Los Angeles") stay unmatched and get reported, which is the honest
+ * answer: a guess here moves the wrong player.
+ */
+const SUFFIX = /\b(?:jr|sr|ii|iii|iv)\b/g
+
+function loosely(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(SUFFIX, '')
+    .replace(/[^a-z ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function indexOfPlayer(list: { player: string }[], name: string): number {
+  const exact = name.trim().toLowerCase()
+  const hit = list.findIndex((row) => row.player.trim().toLowerCase() === exact)
+  if (hit >= 0) return hit
+  const needle = loosely(name)
+  if (!needle) return -1
+  let only = -1
+  for (let i = 0; i < list.length; i += 1) {
+    if (loosely(list[i].player) !== needle) continue
+    if (only >= 0) return -1
+    only = i
+  }
+  return only
+}
+
 function findSpot(block: KeeperBlock | undefined, name: string): number {
-  if (!block) return -1
-  const needle = name.toLowerCase()
-  return block.endingRoster.findIndex((spot) => spot.player.trim().toLowerCase() === needle)
+  return block ? indexOfPlayer(block.endingRoster, name) : -1
 }
 
 /**
@@ -76,8 +112,7 @@ export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): 
   const swap = isSwap(trade.players)
 
   const moveContract = (from: KeeperBlock, to: KeeperBlock, player: string) => {
-    const needle = player.trim().toLowerCase()
-    const index = from.keepers.findIndex((pick) => pick.player.trim().toLowerCase() === needle)
+    const index = indexOfPlayer(from.keepers, player)
     if (index < 0) return
     const [pick] = from.keepers.splice(index, 1)
     to.keepers.push(pick)
