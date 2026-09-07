@@ -13,7 +13,7 @@ import { countdown, money, shortDate } from '../lib/format'
 import { friendlySaveError } from '../lib/github'
 import { useMe } from '../lib/me'
 import { antiDumpingCheck, marketCheckDeadline, tradeImpact } from '../lib/rules'
-import { applyTradeRoster } from '../lib/roster'
+import { applyTradeRoster, revertTradeRoster } from '../lib/roster'
 import type { LeagueData, Trade, TradeQueueFile, TradeStatus } from '../lib/types'
 
 type Tab = 'queue' | 'ledger' | 'archive'
@@ -21,24 +21,43 @@ type Tab = 'queue' | 'ledger' | 'archive'
 const TABS: Tab[] = ['queue', 'ledger', 'archive']
 
 /**
- * Approvals are two commits — the ruling, then the roster move. When the
- * second one fails the trade is approved and the players have not moved, so
- * the half that is owed is kept here, on this device, with a button to
- * finish it. Cleared the moment the roster commit lands.
+ * Rulings are two commits — the decision, then the roster move — and either
+ * order can be left half-done by a dropped connection. The half that is owed
+ * is kept here, on this device, with a button to finish it:
+ *
+ *   'move'   an approval landed and the players have not walked over yet.
+ *   'ruling' an undo carried the players home and the decision still reads
+ *            approved, so only the queue file is outstanding.
+ *
+ * Cleared the moment the missing commit lands.
  */
 const PENDING_KEY = 'wacl.pendingRosterMoves'
 
-function readPendingMoves(): Record<string, Trade> {
+interface OwedHalf {
+  trade: Trade
+  owes: 'move' | 'ruling'
+}
+
+function readPendingMoves(): Record<string, OwedHalf> {
   try {
     const raw = localStorage.getItem(PENDING_KEY)
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Trade>) : {}
-    return parsed && typeof parsed === 'object' ? parsed : {}
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    if (!parsed || typeof parsed !== 'object') return {}
+    const owed: Record<string, OwedHalf> = {}
+    for (const [id, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== 'object') continue
+      // Before undo existed this map held bare trades, all of them owing a
+      // roster move. A phone that saved one then reloads into this build.
+      if ('trade' in value) owed[id] = value as OwedHalf
+      else if ('id' in value) owed[id] = { trade: value as Trade, owes: 'move' }
+    }
+    return owed
   } catch {
     return {}
   }
 }
 
-function writePendingMoves(moves: Record<string, Trade>): void {
+function writePendingMoves(moves: Record<string, OwedHalf>): void {
   try {
     if (Object.keys(moves).length) localStorage.setItem(PENDING_KEY, JSON.stringify(moves))
     else localStorage.removeItem(PENDING_KEY)
@@ -91,7 +110,7 @@ export default function Trades() {
   // A failure is pinned to the trade it happened on; 'page' for anything else.
   const [fault, setFault] = useState<{ id: string; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [pendingMoves, setPendingMoves] = useState<Record<string, Trade>>(readPendingMoves)
+  const [pendingMoves, setPendingMoves] = useState<Record<string, OwedHalf>>(readPendingMoves)
 
   const pending = trades.filter(
     (trade) => trade.status === 'pending' || trade.status === 'market-check',
@@ -118,7 +137,7 @@ export default function Trades() {
 
   const faultFor = (id: string) => (fault?.id === id ? fault.message : null)
 
-  const setPending = (next: Record<string, Trade>) => {
+  const setPending = (next: Record<string, OwedHalf>) => {
     setPendingMoves(next)
     writePendingMoves(next)
   }
@@ -128,13 +147,14 @@ export default function Trades() {
    * and safe to run twice: applyTradeRoster reports players already on the
    * buyer as settled rather than carrying them back.
    */
-  async function moveRosters(trade: Trade) {
-    const preview = applyTradeRoster(data.keepers, trade)
+  async function moveRosters(trade: Trade, direction: 'apply' | 'revert' = 'apply') {
+    const walk = direction === 'revert' ? revertTradeRoster : applyTradeRoster
+    const preview = walk(data.keepers, trade)
     if (preview.moved.length > 0) {
       await save<LeagueData['keepers']>(
         'keepers.json',
-        (current) => applyTradeRoster(current, trade).keepers,
-        `Trade ${trade.id}: roster moves (${preview.moved
+        (current) => walk(current, trade).keepers,
+        `Trade ${trade.id}: ${direction === 'revert' ? 'roster moves undone' : 'roster moves'} (${preview.moved
           .map((move) => `${move.player} → ${managerName(managers, move.to)}`)
           .join(', ')})`,
       )
@@ -149,6 +169,9 @@ export default function Trades() {
       preview.unmatched.length > 0
         ? `Couldn't find ${preview.unmatched.join(', ')} on either roster — fix via Keepers → Edit keepers if a move is owed.`
         : ''
+    if (direction === 'revert' && !movedLine && !unmatchedLine) {
+      return 'Undone. No roster move was owed.'
+    }
     return [movedLine, settledLine, unmatchedLine].filter(Boolean).join('  ') || null
   }
 
@@ -188,7 +211,7 @@ export default function Trades() {
       try {
         setNotice(await moveRosters(updated))
       } catch (cause) {
-        setPending({ ...pendingMoves, [trade.id]: updated })
+        setPending({ ...pendingMoves, [trade.id]: { trade: updated, owes: 'move' } })
         setFault({
           id: trade.id,
           message: `Approved — but the roster move didn't save. ${friendlySaveError(cause)} Retry it from the Recorded tab.`,
@@ -208,11 +231,118 @@ export default function Trades() {
     setFault(null)
     try {
       setNotice(await moveRosters(trade))
-      const next = { ...pendingMoves }
-      delete next[trade.id]
-      setPending(next)
+      clearOwed(trade.id)
     } catch (cause) {
       setFault({ id: trade.id, message: `The roster move still didn't save. ${friendlySaveError(cause)}` })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  function clearOwed(id: string) {
+    const next = { ...pendingMoves }
+    delete next[id]
+    setPending(next)
+  }
+
+  /** The queue half of an undo: the ruling goes back to pending. */
+  async function returnToQueue(trade: Trade) {
+    await save<TradeQueueFile>(
+      'trade-queue.json',
+      (current) => {
+        const restored: Trade = { ...trade, status: 'pending', decidedAt: undefined }
+        const proposals = current.proposals.some((row) => row.id === trade.id)
+          ? current.proposals.map((row) => (row.id === trade.id ? restored : row))
+          : [...current.proposals, restored]
+        return { ...current, proposals }
+      },
+      `Trade ${trade.id}: ruling undone, back to the queue (${managerName(managers, trade.seller)} → ${managerName(managers, trade.buyer)})`,
+    )
+  }
+
+  /**
+   * Undo a ruling the commissioner entered wrong. The players come home
+   * first: if that commit fails nothing at all has changed and the trade
+   * still reads approved, so pressing Undo again simply tries the whole
+   * thing over. Only once they are back does the ruling return to pending,
+   * which is what takes the dollars out of every budget on the site.
+   */
+  async function undoRuling(trade: Trade) {
+    setBusyId(trade.id)
+    setFault(null)
+    setNotice(null)
+    let moved: string | null = null
+    if (trade.status === 'approved') {
+      try {
+        moved = await moveRosters(trade, 'revert')
+      } catch (cause) {
+        setFault({
+          id: trade.id,
+          message: `Nothing changed — the roster move didn't save. ${friendlySaveError(cause)} Press Undo again when you're back on a connection.`,
+        })
+        setBusyId(null)
+        return
+      }
+    }
+    try {
+      await returnToQueue(trade)
+    } catch (cause) {
+      // The players are home and the ruling is not: the only half left is
+      // the queue file, so that is the only half the retry repeats.
+      setPending({ ...pendingMoves, [trade.id]: { trade, owes: 'ruling' } })
+      setFault({
+        id: trade.id,
+        message: `The players moved back, but the ruling didn't save. ${friendlySaveError(cause)} Finish it from the Recorded tab.`,
+      })
+      setBusyId(null)
+      return
+    }
+    clearOwed(trade.id)
+    setNotice(
+      [`Undone — back in the Queue for a fresh ruling.`, moved].filter(Boolean).join('  '),
+    )
+    play('whistle')
+    if (!animationsDisabled()) setMoment('review')
+    setBusyId(null)
+  }
+
+  /** Finishes an undo whose queue commit failed; the rosters are already home. */
+  async function finishUndo(trade: Trade) {
+    setBusyId(trade.id)
+    setFault(null)
+    try {
+      await returnToQueue(trade)
+      clearOwed(trade.id)
+      setNotice('Undone — back in the Queue for a fresh ruling.')
+    } catch (cause) {
+      setFault({ id: trade.id, message: `The ruling still didn't save. ${friendlySaveError(cause)}` })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  /**
+   * Strike a proposal the app recorded. Only ever offered on app-entered
+   * trades: a workbook trade lives in the seeded ledger, so dropping the
+   * queue record would hand it straight back.
+   */
+  async function discardProposal(trade: Trade) {
+    setBusyId(trade.id)
+    setFault(null)
+    setNotice(null)
+    try {
+      await save<TradeQueueFile>(
+        'trade-queue.json',
+        (current) => ({
+          ...current,
+          proposals: current.proposals.filter((row) => row.id !== trade.id),
+        }),
+        `Trade ${trade.id}: discarded (${managerName(managers, trade.seller)} → ${managerName(managers, trade.buyer)})`,
+      )
+      clearOwed(trade.id)
+      setNotice('Discarded. It is off the books entirely.')
+    } catch (cause) {
+      setFault({ id: trade.id, message: friendlySaveError(cause) })
     } finally {
       setBusyId(null)
     }
@@ -244,6 +374,16 @@ export default function Trades() {
   }
 
   const involvesMe = (trade: Trade) => me !== null && (trade.seller === me || trade.buyer === me)
+
+  /** Says out loud what Undo is about to do, before it is done. */
+  const undoQuestion = (trade: Trade) => {
+    if (trade.status !== 'approved') return 'Undo — send it back to the queue?'
+    const back = revertTradeRoster(data.keepers, trade).moved
+    const players = back.map((move) => move.player).join(', ')
+    return players
+      ? `Undo — send ${players} back to ${managerName(managers, trade.seller)}?`
+      : 'Undo — take it off the books?'
+  }
 
   return (
     <>
@@ -457,6 +597,16 @@ export default function Trades() {
                         >
                           Reject
                         </ConfirmButton>
+                        {trade.source === 'app' && (
+                          <ConfirmButton
+                            className="btn"
+                            confirm="Delete it for good?"
+                            disabled={busy}
+                            onConfirm={() => void discardProposal(trade)}
+                          >
+                            Discard
+                          </ConfirmButton>
+                        )}
                       </div>
                     ) : (
                       <p className="mt-5 text-[12px] text-arc-ink-faint">
@@ -543,17 +693,43 @@ export default function Trades() {
                         {trade.terms && <span className="desk-terms md:hidden">{trade.terms}</span>}
                         {owed && (
                           <span className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <Chip tone="flag">Roster move pending</Chip>
+                            <Chip tone="flag">
+                              {owed.owes === 'move' ? 'Roster move pending' : 'Undo unfinished'}
+                            </Chip>
                             {commissioner && (
                               <button
                                 type="button"
                                 className="btn min-h-[40px] px-3 py-1 text-[12px]"
                                 disabled={busyId === trade.id}
-                                onClick={() => void retryRoster(owed)}
+                                onClick={() =>
+                                  void (owed.owes === 'move'
+                                    ? retryRoster(owed.trade)
+                                    : finishUndo(owed.trade))
+                                }
                               >
-                                {busyId === trade.id ? 'Working…' : 'Retry roster move'}
+                                {busyId === trade.id
+                                  ? 'Working…'
+                                  : owed.owes === 'move'
+                                    ? 'Retry roster move'
+                                    : 'Finish undo'}
                               </button>
                             )}
+                          </span>
+                        )}
+                        {/* Undo is for a ruling this app recorded. A workbook
+                            trade is the spreadsheet's word, not a typo to take
+                            back, so it is never offered one. */}
+                        {commissioner && !owed && trade.source === 'app' && (
+                          <span className="mt-1.5 flex">
+                            <ConfirmButton
+                              className="btn min-h-[40px] px-3 py-1 text-[12px]"
+                              confirm={undoQuestion(trade)}
+                              disabled={busyId === trade.id}
+                              ariaLabel={`Undo the ruling on ${managerName(managers, trade.seller)} to ${managerName(managers, trade.buyer)}`}
+                              onConfirm={() => void undoRuling(trade)}
+                            >
+                              {busyId === trade.id ? 'Working…' : 'Undo'}
+                            </ConfirmButton>
                           </span>
                         )}
                         {faultFor(trade.id) && (

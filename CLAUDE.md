@@ -92,7 +92,7 @@ the Shell offers a refresh when a newer build is live.
   `github.ts` (Contents API + `friendlySaveError`), `vault.ts`
   (password-sealed token), `rules.ts` (league rules), `stats.ts` +
   `analytics.ts` (career tables — `bookCareerTable` is the one to print —
-  and Lab metrics), `roster.ts` (approved trades move players), `me.ts`
+  and Lab metrics), `roster.ts` (approved trades move players; undo carries them home), `me.ts`
   (your seat), `season.ts` (league time), `dialog.ts` (focus manners for
   overlays), `search.ts` (palette index), `music.ts`, `motion.ts`.
 - `src/components/` — `Shell.tsx` (nav, tab bar, sheet, seat picker,

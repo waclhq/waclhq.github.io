@@ -109,7 +109,7 @@ export default function Guide() {
         <Panel
           id="trades"
           title="3 · approving or rejecting a trade"
-          subtitle="The main event. Trades wait in a queue until you rule."
+          subtitle="The main event. Trades wait in a queue until you rule — and a ruling can be taken back."
         >
           <ol className="space-y-3 px-5 py-5">
             <Step n={1}>
@@ -139,6 +139,16 @@ export default function Guide() {
               decision is recorded permanently with your name on it.
             </Step>
             <Step n={5}>
+              Got one wrong? Open <B>Recorded</B> and press <B>Undo</B> on the trade. It asks by
+              name — <em>Undo — send Bijan Robinson back to Stu?</em> — so you can see it is the
+              right one before you commit. Undo carries the players home, takes the dollars back
+              out of every budget, and puts the trade back in the <B>Queue</B> so you can rule on
+              it again. From there, either approve it properly, or press <B>Discard</B> to delete
+              it for good and re-enter it with <B>New trade</B>. Undo only appears on trades this
+              site recorded; the older ones that came from the league spreadsheet are its word,
+              not a typo to take back.
+            </Step>
+            <Step n={6}>
               To enter a brand-new trade yourself, use <B>New trade</B> on the same page — pick the
               two managers, type the players, enter the dollars per year, and it reads the trade
               back to you in a sentence before you save. It files under the current league week

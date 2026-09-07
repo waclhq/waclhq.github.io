@@ -42,6 +42,19 @@ function findSpot(block: KeeperBlock | undefined, name: string): number {
   return block.endingRoster.findIndex((spot) => spot.player.trim().toLowerCase() === needle)
 }
 
+/**
+ * Undoing an approval: the same walk with the two sides exchanged, so every
+ * player the trade carried is carried home. A one-way deal reverts safely
+ * twice over — on the second pass the names are already back on the seller,
+ * which reads as settled — while a swap, as ever, moves whoever it finds.
+ */
+export function revertTradeRoster(
+  keepers: LeagueData['keepers'],
+  trade: Trade,
+): RosterMoveResult {
+  return applyTradeRoster(keepers, { ...trade, seller: trade.buyer, buyer: trade.seller })
+}
+
 export function applyTradeRoster(keepers: LeagueData['keepers'], trade: Trade): RosterMoveResult {
   const yearKey = String(trade.season)
   const blocks = keepers[yearKey]
