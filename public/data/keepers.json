@@ -15945,6 +15945,11 @@
           "player": "Tyreek Hill",
           "cost": 30,
           "contractYear": "A"
+        },
+        {
+          "player": "Jayden Daniels",
+          "cost": 16,
+          "contractYear": "B"
         }
       ],
       "keepers": [
@@ -16021,11 +16026,6 @@
           "player": "Oronde Gadsden",
           "cost": 10,
           "contractYear": "A"
-        },
-        {
-          "player": "Jayden Daniels",
-          "cost": 16,
-          "contractYear": "B"
         },
         {
           "player": "Jayden Higgins",
