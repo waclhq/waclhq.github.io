@@ -120,6 +120,26 @@
       "source": "app",
       "proposedAt": "2026-08-21T02:56:47.101Z",
       "decidedAt": "2026-08-21T02:57:01.467Z"
+    },
+    {
+      "id": "t-mtqmj2ih-sfebv",
+      "batch": "2026 Preseason",
+      "season": 2026,
+      "preseason": true,
+      "seller": "waldman",
+      "buyer": "lalwani",
+      "players": "Zay Flowers and Kyle Pitts",
+      "terms": "$10 in 2026",
+      "totalDollars": 10,
+      "obligations": [
+        {
+          "year": 2026,
+          "amount": 10
+        }
+      ],
+      "status": "pending",
+      "source": "app",
+      "proposedAt": "2026-09-07T02:30:59.705Z"
     }
   ]
 }
