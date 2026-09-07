@@ -15216,11 +15216,6 @@
           "contractYear": "B"
         },
         {
-          "player": "Zay Flowers",
-          "cost": 20,
-          "contractYear": "A"
-        },
-        {
           "player": "Aaron Jones Sr.",
           "cost": 22,
           "contractYear": "A"
@@ -15484,6 +15479,11 @@
         },
         {
           "player": "Travis Hunter",
+          "cost": 20,
+          "contractYear": "A"
+        },
+        {
+          "player": "Zay Flowers",
           "cost": 20,
           "contractYear": "A"
         }
