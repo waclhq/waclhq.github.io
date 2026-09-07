@@ -15249,6 +15249,11 @@
           "player": "Cam Skattebo",
           "cost": 2,
           "contractYear": "A"
+        },
+        {
+          "player": "Zay Flowers",
+          "cost": 20,
+          "contractYear": "A"
         }
       ],
       "keepers": [
@@ -15271,9 +15276,14 @@
           "player": "Cam Skattebo",
           "salary": 2,
           "contractYear": "B"
+        },
+        {
+          "player": "Zay Flowers",
+          "salary": 20,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 30,
+      "keeperSalary": 50,
       "cashTraded": -60,
       "draftBudget": 111
     },
@@ -15481,11 +15491,6 @@
           "player": "Travis Hunter",
           "cost": 20,
           "contractYear": "A"
-        },
-        {
-          "player": "Zay Flowers",
-          "cost": 20,
-          "contractYear": "A"
         }
       ],
       "keepers": [
@@ -15503,14 +15508,9 @@
           "player": "Luther Burden III",
           "salary": 5,
           "contractYear": "B"
-        },
-        {
-          "player": "Zay Flowers",
-          "salary": 20,
-          "contractYear": "B"
         }
       ],
-      "keeperSalary": 97,
+      "keeperSalary": 77,
       "cashTraded": -8,
       "draftBudget": 51
     },
