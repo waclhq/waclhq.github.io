@@ -16055,11 +16055,6 @@
       ],
       "keepers": [
         {
-          "player": "Amon-Ra St. Brown",
-          "salary": 69,
-          "contractYear": "B"
-        },
-        {
           "player": "Trey McBride",
           "salary": 5,
           "contractYear": "D"
@@ -16073,9 +16068,14 @@
           "player": "Jaylen Waddle",
           "salary": 16,
           "contractYear": "B"
+        },
+        {
+          "player": "Omarion Hampton",
+          "salary": 51,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 91,
+      "keeperSalary": 73,
       "cashTraded": -8,
       "draftBudget": 51
     },
