@@ -15196,11 +15196,6 @@
           "contractYear": "D"
         },
         {
-          "player": "Kyle Pitts Sr.",
-          "cost": 1,
-          "contractYear": "A"
-        },
-        {
           "player": "Ja'Marr Chase",
           "cost": 81,
           "contractYear": "A"
@@ -15248,11 +15243,6 @@
         {
           "player": "Cam Skattebo",
           "cost": 2,
-          "contractYear": "A"
-        },
-        {
-          "player": "Zay Flowers",
-          "cost": 20,
           "contractYear": "A"
         }
       ],
@@ -15485,6 +15475,16 @@
         {
           "player": "Travis Hunter",
           "cost": 20,
+          "contractYear": "A"
+        },
+        {
+          "player": "Zay Flowers",
+          "cost": 20,
+          "contractYear": "A"
+        },
+        {
+          "player": "Kyle Pitts Sr.",
+          "cost": 1,
           "contractYear": "A"
         }
       ],
