@@ -15495,11 +15495,6 @@
           "contractYear": "B"
         },
         {
-          "player": "Rome Odunze",
-          "salary": 17,
-          "contractYear": "B"
-        },
-        {
           "player": "Quinshon Judkins",
           "salary": 4,
           "contractYear": "B"
@@ -15508,9 +15503,14 @@
           "player": "Luther Burden III",
           "salary": 5,
           "contractYear": "B"
+        },
+        {
+          "player": "Zay Flowers",
+          "salary": 20,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 94,
+      "keeperSalary": 97,
       "cashTraded": -8,
       "draftBudget": 51
     },
