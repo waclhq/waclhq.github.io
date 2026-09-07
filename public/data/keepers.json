@@ -15964,17 +15964,17 @@
           "contractYear": "B"
         },
         {
-          "player": "Josh Jacobs",
-          "salary": 58,
-          "contractYear": "B"
-        },
-        {
           "player": "Jayden Reed",
           "salary": 1,
           "contractYear": "B"
+        },
+        {
+          "player": "Jayden Daniels",
+          "salary": 16,
+          "contractYear": "C"
         }
       ],
-      "keeperSalary": 91,
+      "keeperSalary": 49,
       "cashTraded": 27,
       "draftBudget": 125
     },
