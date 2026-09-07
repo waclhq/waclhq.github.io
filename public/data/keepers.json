@@ -15490,11 +15490,6 @@
       ],
       "keepers": [
         {
-          "player": "Christian McCaffrey",
-          "salary": 68,
-          "contractYear": "B"
-        },
-        {
           "player": "Quinshon Judkins",
           "salary": 4,
           "contractYear": "B"
@@ -15503,9 +15498,19 @@
           "player": "Luther Burden III",
           "salary": 5,
           "contractYear": "B"
+        },
+        {
+          "player": "Zay Flowers",
+          "salary": 20,
+          "contractYear": "B"
+        },
+        {
+          "player": "Kyle Pitts Sr.",
+          "salary": 1,
+          "contractYear": "B"
         }
       ],
-      "keeperSalary": 77,
+      "keeperSalary": 30,
       "cashTraded": -8,
       "draftBudget": 51
     },
