@@ -14,6 +14,130 @@
 */
 
 @layer components {
+  /* ---- the scoreboard: this week's matchups while games are on -------- */
+
+  .desk-mus {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px 16px;
+    /* Six matchups: 300px cards make three-by-two on a desktop and two-by-three on a tablet, both full rows. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  }
+  .desk-mu {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg-deep);
+    min-width: 0;
+  }
+  .desk-mu.is-mine {
+    border-color: color-mix(in srgb, var(--me-color, var(--color-arc-blue)) 55%, var(--color-arc-line));
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--me-color, var(--color-arc-blue)) 10%, var(--color-arc-bg-deep)),
+      var(--color-arc-bg-deep)
+    );
+  }
+  .desk-mu-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+  .desk-mu-status {
+    font-size: 10.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .desk-mu-status.is-live {
+    color: var(--color-arc-green);
+  }
+  .desk-mu-status.is-final {
+    color: var(--color-arc-ink-faint);
+  }
+  .desk-mu-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--color-arc-green);
+    box-shadow: 0 0 8px var(--color-arc-green);
+    animation: desk-mu-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes desk-mu-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .desk-mu-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(52px, auto);
+    gap: 10px;
+    align-items: baseline;
+  }
+  .desk-mu-team {
+    min-width: 0;
+  }
+  .desk-mu-name {
+    display: block;
+    font-weight: 500;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .desk-mu-you {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--color-arc-ink-soft);
+    vertical-align: middle;
+  }
+  .desk-mu-manager {
+    display: block;
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+  }
+  .desk-mu-pts {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--color-arc-ink);
+  }
+  .desk-mu-proj {
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+    text-align: right;
+  }
+  .desk-mu-row.is-won .desk-mu-pts {
+    color: var(--color-arc-green);
+  }
+  .desk-mu-row.is-lost .desk-mu-pts,
+  .desk-mu-row.is-lost .desk-mu-name {
+    color: var(--color-arc-ink-faint);
+  }
+  .desk-mu-prob {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-arc-line);
+    overflow: hidden;
+    margin-top: 2px;
+  }
+  .desk-mu-prob i {
+    display: block;
+    height: 100%;
+    background: var(--color-arc-green);
+    transition: width 0.6s ease;
+  }
+  .desk-mu-foot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+  }
+
   /* ---- the word of the day ------------------------------------------- */
 
   .desk-quote {
@@ -668,6 +792,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .desk-mu-dot {
+    animation: none;
+  }
+  :root:not([data-motion='on']) .desk-mu-prob i {
+    transition: none;
+  }
   :root:not([data-motion='on']) .flap-fold-top,
   :root:not([data-motion='on']) .flap-fold-bot,
   :root:not([data-motion='on']) .desk-field .punt-x,

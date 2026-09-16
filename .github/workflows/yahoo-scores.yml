@@ -1,0 +1,97 @@
+name: Yahoo live scores
+
+# Every ten minutes while games are on, pull this week's matchups from the
+# Yahoo Fantasy API and publish scores.json to the orphan `live` branch. The
+# site reads that branch straight from raw.githubusercontent, so nothing here
+# touches main, triggers a deploy, or lands in the audit trail.
+#
+# Same posture as yahoo-sync.yml: with the four YAHOO_* secrets missing, a
+# scheduled run notes it and skips; a manual run fails and names them.
+on:
+  schedule:
+    # Windows in UTC, wide enough to hold Eastern time either side of the clock change.
+    - cron: '*/10 0-5 * * 5'    # Thursday night football (Fri 00–05 UTC)
+    - cron: '*/10 17-23 * * 6'  # Saturday slate, weeks 16–17
+    - cron: '*/10 0-5 * * 0'    # Saturday night
+    - cron: '*/10 17-23 * * 0'  # Sunday, 1pm ET onward
+    - cron: '*/10 0-5 * * 1'    # Sunday night football
+    - cron: '*/10 0-5 * * 2'    # Monday night football
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yahoo-scores
+  cancel-in-progress: true
+
+jobs:
+  scores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parser smoke test
+        run: node scripts/yahoo-scores.mjs --fixture scripts/fixtures/yahoo-scoreboard.json > /dev/null
+
+      - name: Are the Yahoo credentials set?
+        id: creds
+        env:
+          YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+          YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
+          YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
+          YAHOO_LEAGUE_KEY: ${{ secrets.YAHOO_LEAGUE_KEY }}
+        run: |
+          missing=""
+          for name in YAHOO_CLIENT_ID YAHOO_CLIENT_SECRET YAHOO_REFRESH_TOKEN YAHOO_LEAGUE_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -z "$missing" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Live scores skipped::Not provisioned yet. Missing secrets:$missing"
+            if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
+              echo "::error::Set the missing secrets in Settings -> Secrets and variables -> Actions, then run this again."
+              exit 1
+            fi
+          fi
+
+      - name: Pull this week's matchups
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+          YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
+          YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
+          YAHOO_LEAGUE_KEY: ${{ secrets.YAHOO_LEAGUE_KEY }}
+        run: node scripts/yahoo-scores.mjs --out "$RUNNER_TEMP/scores.json"
+
+      # The branch holds exactly one commit and is rewritten each time, so it
+      # never grows. Nothing is pushed unless a number moved: updatedAt is
+      # ignored in the comparison, which makes it "when the scores last
+      # changed" rather than "when the job last ran".
+      - name: Publish to the live branch if the scores moved
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          fresh="$RUNNER_TEMP/scores.json"
+          if git fetch -q origin live 2>/dev/null && git cat-file -e FETCH_HEAD:scores.json 2>/dev/null; then
+            git show FETCH_HEAD:scores.json > "$RUNNER_TEMP/current.json"
+            if [ "$(jq -S 'del(.updatedAt)' "$RUNNER_TEMP/current.json")" = "$(jq -S 'del(.updatedAt)' "$fresh")" ]; then
+              echo "No change."
+              exit 0
+            fi
+          fi
+          stage="$(mktemp -d)"
+          cp "$fresh" "$stage/scores.json"
+          git -C "$stage" init -q -b live
+          git -C "$stage" -c user.name='yahoo-scores[bot]' -c user.email='yahoo-scores[bot]@users.noreply.github.com' add scores.json
+          git -C "$stage" -c user.name='yahoo-scores[bot]' -c user.email='yahoo-scores[bot]@users.noreply.github.com' \
+            commit -q -m "Scores as of $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git -C "$stage" push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" live:live
+          echo "Published."

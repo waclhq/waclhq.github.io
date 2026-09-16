@@ -206,6 +206,36 @@ export interface LiveStandings {
   claims?: LiveClaim[]
 }
 
+export interface LiveMatchupTeam {
+  teamKey: string | null
+  teamName: string | null
+  manager: ManagerId | null
+  /** Points so far this week; final once the matchup is postevent. */
+  points: number
+  /** Yahoo's projected weekly total, or null when it isn't offering one. */
+  projected: number | null
+  /** 0–1. Yahoo's own where it sends one, otherwise implied from projections. */
+  winProbability: number | null
+}
+
+export interface LiveMatchup {
+  /** Yahoo's words: before kickoff, games on, all final. */
+  status: 'preevent' | 'midevent' | 'postevent'
+  isPlayoffs: boolean
+  winnerTeamKey: string | null
+  teams: LiveMatchupTeam[]
+}
+
+/** Written by the scores job to the orphan `live` branch; read by lib/scores.ts. */
+export interface LiveScoreboard {
+  season: number | null
+  week: number | null
+  leagueKey: string | null
+  updatedAt: string
+  unmapped: string[]
+  matchups: LiveMatchup[]
+}
+
 /** year -> normalised player name -> [standard fantasy points, position]. */
 export type PlayerPoints = Record<string, Record<string, [number, string]>>
 

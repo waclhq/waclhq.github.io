@@ -8,6 +8,7 @@ import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
 import { Bar, Chip, Panel, useRevealed } from '../components/ui'
 import KickoffClock from '../components/desk/KickoffClock'
+import Scoreboard from '../components/desk/Scoreboard'
 import WordOfTheDay from '../components/desk/WordOfTheDay'
 import { DeskHero } from '../components/desk/Odometer'
 import { ScoreTile } from '../components/desk/ScoreTile'
@@ -209,6 +210,11 @@ export default function Dashboard() {
       {/* Who has paid, and who is about to hear about it. */}
       <div className="mb-6">
         <DuesBoard season={season} />
+      </div>
+
+      {/* This week's matchups, while games are on. Renders nothing until the scores job has published. */}
+      <div className="desk-scoreboard mb-6 empty:hidden">
+        <Scoreboard />
       </div>
 
       {data.live && data.live.teams.length > 0 && (

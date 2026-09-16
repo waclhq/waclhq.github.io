@@ -17,82 +17,8 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const DATA = join(ROOT, 'public', 'data')
-
-const TOKEN_URL = 'https://api.login.yahoo.com/oauth2/get_token'
-const API_BASE = 'https://fantasysports.yahooapis.com/fantasy/v2'
-
-function required(name) {
-  const value = process.env[name]
-  if (!value) throw new Error(`Missing required environment variable ${name}`)
-  return value
-}
-
-async function accessToken() {
-  const body = new URLSearchParams({
-    client_id: required('YAHOO_CLIENT_ID'),
-    client_secret: required('YAHOO_CLIENT_SECRET'),
-    refresh_token: required('YAHOO_REFRESH_TOKEN'),
-    grant_type: 'refresh_token',
-    redirect_uri: process.env.YAHOO_REDIRECT_URI ?? 'oob',
-  })
-  const response = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  })
-  if (!response.ok) {
-    throw new Error(
-      `Yahoo token refresh failed (${response.status}). ` +
-        `If this is a 400, the refresh token has been revoked — re-run scripts/yahoo-auth.mjs.\n` +
-        (await response.text()),
-    )
-  }
-  const { access_token: token } = await response.json()
-  return token
-}
-
-async function api(path, token) {
-  const response = await fetch(`${API_BASE}/${path}?format=json`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!response.ok) {
-    throw new Error(`Yahoo API ${path} failed (${response.status}): ${await response.text()}`)
-  }
-  return response.json()
-}
-
-/**
- * Yahoo mixes arrays of single-key objects with numeric-keyed maps. Flatten one
- * branch into a plain object of scalars.
- */
-function flatten(chunk) {
-  const out = {}
-  const visit = (node) => {
-    if (Array.isArray(node)) {
-      node.forEach(visit)
-    } else if (node && typeof node === 'object') {
-      for (const [key, value] of Object.entries(node)) {
-        if (value !== null && typeof value === 'object') visit(value)
-        else out[key] = value
-      }
-    }
-  }
-  visit(chunk)
-  return out
-}
-
-/** Walk a numeric-keyed Yahoo collection ({0:…, 1:…, count:N}). */
-function collection(node) {
-  if (!node || typeof node !== 'object') return []
-  return Object.entries(node)
-    .filter(([key]) => key !== 'count')
-    .map(([, value]) => value)
-}
+import { join } from 'node:path'
+import { DATA, accessToken, api, collection, flatten, loadMap, required, resolver } from './lib/yahoo.mjs'
 
 export function parseStandings(payload) {
   const league = payload?.fantasy_content?.league
@@ -167,13 +93,6 @@ export function parseTransactions(payload) {
   return claims
 }
 
-async function loadMap() {
-  try {
-    return JSON.parse(await readFile(join(DATA, 'yahoo-map.json'), 'utf8'))
-  } catch {
-    return {}
-  }
-}
 
 async function main() {
   const fixtureFlag = process.argv.indexOf('--fixture')
@@ -202,10 +121,7 @@ async function main() {
 
   const parsed = parseStandings(standingsPayload)
   const claims = transactionsPayload ? parseTransactions(transactionsPayload) : []
-  const map = await loadMap()
-
-  const resolve = (key, name) =>
-    map[key] ?? map[name] ?? map[(name ?? '').toLowerCase()] ?? null
+  const resolve = resolver(await loadMap())
 
   const unmapped = new Set()
   const teams = parsed.teams.map((team) => {

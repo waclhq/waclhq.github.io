@@ -1,0 +1,219 @@
+{
+  "scoreboard": {
+    "fantasy_content": {
+      "league": [
+        {
+          "league_key": "461.l.134099",
+          "name": "Wharton Alum Champions League",
+          "season": "2026",
+          "current_week": "2"
+        },
+        {
+          "scoreboard": {
+            "week": "2",
+            "0": {
+              "matchups": {
+                "count": 6,
+                "0": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "postevent",
+                    "is_playoffs": "0",
+                    "is_tied": 0,
+                    "winner_team_key": "461.l.134099.t.6",
+                    "stat_winners": [
+                      { "stat_winner": { "stat_id": "4", "winner_team_key": "461.l.134099.t.10" } }
+                    ],
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.6" }, { "team_id": "6" }, { "name": "Juggernaut" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "141.62" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "141.62" },
+                              "win_probability": 1
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.10" }, { "team_id": "10" }, { "name": "no ragrets" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "88.40" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "88.40" },
+                              "win_probability": 0
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "1": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "midevent",
+                    "is_playoffs": "0",
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.2" }, { "team_id": "2" }, { "name": "Malikety Split" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "96.40" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "128.10" },
+                              "win_probability": 0.78
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.11" }, { "team_id": "11" }, { "name": "El Morro" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "71.90" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "109.30" },
+                              "win_probability": 0.22
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "2": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "midevent",
+                    "is_playoffs": "0",
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.9" }, { "team_id": "9" }, { "name": "Private Sector" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "88.20" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "121.40" }
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.5" }, { "team_id": "5" }, { "name": "Orchids of Asia" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "84.70" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "119.00" }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "3": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "midevent",
+                    "is_playoffs": "0",
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.1" }, { "team_id": "1" }, { "name": "I Must Break You" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "79.00" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "117.20" },
+                              "win_probability": 0.39
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.12" }, { "team_id": "12" }, { "name": "Quien Es Tu Papa" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "91.30" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "124.00" },
+                              "win_probability": 0.61
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "4": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "midevent",
+                    "is_playoffs": "0",
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.4" }, { "team_id": "4" }, { "name": "SuperBowlJesus" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "101.80" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "122.50" },
+                              "win_probability": 0.88
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.8" }, { "team_id": "8" }, { "name": "Bridge N Tunnel" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "68.50" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "96.10" },
+                              "win_probability": 0.12
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "5": {
+                  "matchup": {
+                    "week": "2",
+                    "status": "preevent",
+                    "is_playoffs": "0",
+                    "0": {
+                      "teams": {
+                        "count": 2,
+                        "0": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.7" }, { "team_id": "7" }, { "name": "Karma’s L-Ah-Ma-tized" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "54.30" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "113.40" },
+                              "win_probability": 0.61
+                            }
+                          ]
+                        },
+                        "1": {
+                          "team": [
+                            [ { "team_key": "461.l.134099.t.3" }, { "team_id": "3" }, { "name": "Whobody Wants It?" } ],
+                            {
+                              "team_points": { "coverage_type": "week", "week": "2", "total": "57.00" },
+                              "team_projected_points": { "coverage_type": "week", "week": "2", "total": "104.20" },
+                              "win_probability": 0.39
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -121,18 +121,40 @@ YAHOO_CLIENT_ID=xxx YAHOO_CLIENT_SECRET=yyy node scripts/yahoo-auth.mjs
 
 4. Run **Actions → Yahoo standings sync → Run workflow** once by hand. Nothing
    else needs switching on: the Tuesday and Wednesday runs start working by
-   themselves, and the Ledger's live panel appears as soon as the first
-   `live.json` is committed.
+   themselves, the Ledger's live panel appears as soon as the first
+   `live.json` is committed, and the scoreboard appears the first game window
+   after that.
 
 `public/data/yahoo-map.json` is pre-seeded with the 2026 team names, so teams
 resolve to managers on the first run. If a team was renamed on Yahoo, the run log
 and the dashboard both name it; add its Yahoo team key to that file.
 
-### Checking the parser without credentials
+### Live scores
+
+A second job, `.github/workflows/yahoo-scores.yml`, runs `scripts/yahoo-scores.mjs`
+every ten minutes inside the game windows (Thursday night, Saturday and Sunday
+from 1pm ET, Sunday and Monday nights) and publishes this week's matchups —
+points so far, Yahoo's projection, win probability — as `scores.json` on the
+repo's orphan **`live`** branch. Not `main`: eighty commits a Sunday would bury
+the trades and rulings that make `main`'s log the audit trail, and a push to
+`live` triggers no deploy. The branch holds exactly one commit and is rewritten
+each time, and nothing is pushed unless a number moved. The site reads it from
+`raw.githubusercontent.com` (`src/lib/scores.ts`), which caches for five
+minutes, so the Ledger's scoreboard runs about a quarter of an hour behind
+Yahoo and says so. It uses the same four secrets and the same skip-until-
+provisioned guard as the standings sync, and renders nothing until the branch
+exists.
+
+### Checking the parsers without credentials
 
 ```bash
-node scripts/yahoo-sync.mjs --fixture scripts/fixtures/yahoo-standings.json
+node scripts/yahoo-sync.mjs   --fixture scripts/fixtures/yahoo-standings.json
+node scripts/yahoo-scores.mjs --fixture scripts/fixtures/yahoo-scoreboard.json
 ```
+
+Both scripts share `scripts/lib/yahoo.mjs` (token refresh, one authenticated
+GET, the two helpers that make Yahoo's JSON readable, the team → manager map)
+and each still runs alone and writes only its own file.
 
 ## Notable views
 
