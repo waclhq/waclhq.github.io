@@ -60,31 +60,51 @@ The token stays in that browser. To revoke access, delete the token on GitHub �
 redeploy needed. Because writes are commits, GitHub Pages republishes a minute or
 two later; until it does, the app holds your edits locally so the numbers stay right.
 
-## Yahoo sync — not currently active
+## Yahoo sync — waiting on provisioning
 
-**Status: blocked on Yahoo, not on this repo.** Yahoo's developer console returns
-`invalid_scope` at the authorisation step for this account across two separate
-apps and every scope variant tried (`fspt-r`, `fspt-w`, `openid fspt-r`, and
-omitting the parameter entirely), with Fantasy Sports → Read enabled on the app.
-The workflow is therefore set to manual-trigger only so it does not fail on a
-schedule; the cron line is commented out in `.github/workflows/yahoo-sync.yml`.
+**Status: approved, not yet provisioned.** The `invalid_scope` wall this hit all
+of last season was Yahoo gating its Fantasy API behind an application. That
+application was **approved on 10 September 2026**; what remains are three steps
+on Yahoo's side, listed under *Finishing provisioning* below. Nothing in this
+repo is blocking.
 
-Everything on this side is written and tested against a fixture. To resume, get
-past the authorisation step, set the four secrets, run the workflow by hand, then
-uncomment the cron.
+The workflow runs on a schedule already and is safe to leave that way: it checks
+for the four `YAHOO_*` secrets first and, when they are missing, writes a notice
+and skips instead of failing, so an unprovisioned repo never mails a red run. A
+**manual** run with no secrets fails on purpose, so pressing the button is never
+answered with silence. Every run — provisioned or not — parses the fixture
+first, so the payload parsers cannot rot while this waits.
 
-Until then, waiver claims are logged on the Finances page, which applies the same
-keeper-cost sliding scale automatically.
+Until the standings land, waiver claims are logged on the Finances page, which
+applies the same keeper-cost sliding scale automatically.
 
 The action pulls standings **and waiver transactions** into
 `public/data/live.json`. Until the first successful run the app simply omits the
 live panels. FAAB bids that arrive this way are shown read-only on Finances, with
 keeper cost already computed from the sliding scale.
 
+### Finishing provisioning
+
+These three are on Yahoo's side and cannot be done from this repo. They come
+from the approval mail (10 Sep 2026, *Personal Use — API Access and Use
+Agreement*):
+
+1. Sign the DocuSign **API Access and Use Agreement**.
+2. On <https://developer.yahoo.com/apps/> confirm the app has **Fantasy Sports
+   → Read** permission, and note its **Client ID**.
+3. Submit the **Developer Application Confirmation Form** with the name, email
+   and client ID on the developer account. Send it whether or not Fantasy
+   Sports already appears in the permission list, and list every email address
+   used during the application in the notes field.
+
+Access is provisioned shortly after both the signature and that form arrive.
+
 ### One-time setup
 
 1. Create an app at <https://developer.yahoo.com/apps/create/> with
    **Fantasy Sports → Read** permission. Note the Client ID and Client Secret.
+   (If the approved app already exists, use it rather than making a second one —
+   provisioning is tied to the client ID submitted on the confirmation form.)
 
 2. Run the auth helper. It prints the refresh token **and lists your league keys**,
    so there is nothing to look up by hand:
@@ -93,10 +113,16 @@ keeper cost already computed from the sliding scale.
 YAHOO_CLIENT_ID=xxx YAHOO_CLIENT_SECRET=yyy node scripts/yahoo-auth.mjs
 ```
 
+   The league is **Wharton Alum Champions League, id 134099**, so the key the
+   helper prints for this season ends `.l.134099`.
+
 3. Add four [repository secrets](https://github.com/waclhq/waclhq.github.io/settings/secrets/actions):
    `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REFRESH_TOKEN`, `YAHOO_LEAGUE_KEY`.
 
-4. Run **Actions → Yahoo standings sync → Run workflow** once by hand.
+4. Run **Actions → Yahoo standings sync → Run workflow** once by hand. Nothing
+   else needs switching on: the Tuesday and Wednesday runs start working by
+   themselves, and the Ledger's live panel appears as soon as the first
+   `live.json` is committed.
 
 `public/data/yahoo-map.json` is pre-seeded with the 2026 team names, so teams
 resolve to managers on the first run. If a team was renamed on Yahoo, the run log

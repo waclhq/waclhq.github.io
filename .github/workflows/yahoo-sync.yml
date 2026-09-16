@@ -1,18 +1,28 @@
 name: Yahoo standings sync
 
-# Manual-only until Yahoo credentials exist. Yahoo's developer console returns
-# invalid_scope for this account across multiple apps and every scope variant
-# (fspt-r, fspt-w, openid fspt-r, and none at all), so the job has never been
-# able to authenticate. Re-enable the schedule by uncommenting the cron below
-# once the four YAHOO_* secrets are set and a manual run succeeds.
+# Pulls the live standings from the Yahoo Fantasy API into public/data/live.json,
+# which the Ledger renders. The four YAHOO_* repository secrets drive it; see
+# the Yahoo section of README.md for how to get them.
+#
+# The schedule is safe to leave on before the secrets exist: the job checks for
+# them first and skips with a notice rather than failing, so an unprovisioned
+# repo does not mail a failure every week. A manual run with no secrets fails
+# loudly instead, because pressing the button and getting silence is worse.
 on:
-  # schedule:
-  #   # Tuesdays 09:00 UTC, after Monday night football is final.
-  #   - cron: '0 9 * * 2'
+  schedule:
+    # Tuesdays, after Monday night football is final.
+    - cron: '0 9 * * 2'
+    # Again on Wednesday: Yahoo's stat corrections land through Tuesday, and
+    # the commit step is a no-op when nothing moved.
+    - cron: '0 9 * * 3'
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: yahoo-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
@@ -23,7 +33,36 @@ jobs:
         with:
           node-version: 22
 
+      # Needs no credentials, so every run proves the Yahoo payload parsers
+      # still work — including the weeks before access is provisioned.
+      - name: Parser smoke test
+        run: node scripts/yahoo-sync.mjs --fixture scripts/fixtures/yahoo-standings.json > /dev/null
+
+      - name: Are the Yahoo credentials set?
+        id: creds
+        env:
+          YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+          YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
+          YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
+          YAHOO_LEAGUE_KEY: ${{ secrets.YAHOO_LEAGUE_KEY }}
+        run: |
+          missing=""
+          for name in YAHOO_CLIENT_ID YAHOO_CLIENT_SECRET YAHOO_REFRESH_TOKEN YAHOO_LEAGUE_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -z "$missing" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Yahoo sync skipped::Not provisioned yet. Missing secrets:$missing"
+            if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
+              echo "::error::Set the missing secrets in Settings -> Secrets and variables -> Actions, then run this again."
+              exit 1
+            fi
+          fi
+
       - name: Pull standings from Yahoo
+        if: steps.creds.outputs.ready == 'true'
         env:
           YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
           YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
@@ -32,12 +71,16 @@ jobs:
         run: node scripts/yahoo-sync.mjs
 
       - name: Commit if the standings moved
+        if: steps.creds.outputs.ready == 'true'
         run: |
           git config user.name  "yahoo-sync[bot]"
           git config user.email "yahoo-sync[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain public/data/live.json)" ]; then
             git add public/data/live.json
             git commit -m "Yahoo sync: standings through $(date -u +'%Y-%m-%d')"
+            # The commissioner rules from a phone all week, so land on top of
+            # whatever they committed while this job was running.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push
           else
             echo "No change."
