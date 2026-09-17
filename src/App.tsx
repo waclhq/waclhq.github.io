@@ -163,6 +163,7 @@ export default function App() {
     return (
       <Boot
         onDone={() => setBooting(false)}
+        ready={!loading && Boolean(data)}
         championColor={data ? managerColor(data.seasons[0]?.champion) : undefined}
       />
     )

@@ -683,8 +683,7 @@
     padding: 5px 12px 5px 5px;
     border-radius: 999px;
     border: 1px solid var(--color-arc-line);
-    background: color-mix(in srgb, var(--color-arc-bg) 84%, transparent);
-    backdrop-filter: blur(6px);
+    background: color-mix(in srgb, var(--color-arc-bg) 92%, transparent);
   }
   .desk-tape-play .label {
     color: var(--color-arc-ink);
@@ -786,7 +785,7 @@
   }
   /* The yard lines behind the hero slide once as the number arrives, then
      hold. */
-  .desk-hero .field-stripes {
+  .desk-hero .field-stripes::before {
     animation: yard-scroll 6s linear 1 forwards;
   }
 }
@@ -803,7 +802,7 @@
   :root:not([data-motion='on']) .desk-field .punt-x,
   :root:not([data-motion='on']) .desk-field .punt-y,
   :root:not([data-motion='on']) .desk-field .punt-rot,
-  :root:not([data-motion='on']) .desk-hero .field-stripes {
+  :root:not([data-motion='on']) .desk-hero .field-stripes::before {
     animation: none !important;
   }
   :root:not([data-motion='on']) .odo-strip,

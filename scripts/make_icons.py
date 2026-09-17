@@ -80,12 +80,34 @@ def render_letter(size: int, glyph: str = 'W', grid: int = 9) -> Image.Image:
     return img
 
 
+def save_png(img: Image.Image, path) -> None:
+    """A PNG with 256 colours or fewer is written as an exact palette — every
+    colour its own index, pixel for pixel the same, a third of the bytes.
+    The 512 badge has 64 colours; the smaller ones pick up antialiasing and
+    stay truecolour."""
+    rgb = img.convert('RGB')
+    pixels = list(rgb.getdata())
+    colours = sorted(set(pixels))
+    if len(colours) > 256:
+        rgb.save(path, 'PNG', optimize=True)
+        return
+    index = {c: i for i, c in enumerate(colours)}
+    pal = Image.new('P', rgb.size)
+    pal.putdata([index[c] for c in pixels])
+    pal.putpalette([v for c in colours for v in c] + [0] * (768 - 3 * len(colours)))
+    pal.save(path, 'PNG', optimize=True)
+
+
 def main() -> None:
     if not BADGE.exists():
         raise SystemExit(f'missing badge art: {BADGE}')
 
     for name, size in (('apple-touch-icon.png', 180), ('icon-192.png', 192), ('icon-512.png', 512)):
-        render_badge(size).save(OUT / name, 'PNG', optimize=True)
+        save_png(render_badge(size), OUT / name)
+    # The badge as drawn on the page (Crest.tsx): WebP at the two sizes it is
+    # actually shown, a fifth of the PNG for the same pixels.
+    for name, size in (('crest-192.webp', 192), ('crest-128.webp', 128)):
+        render_badge(size).convert('RGB').save(OUT / name, 'WEBP', quality=90, method=6)
         print(f'{name:<22} {size}x{size}  badge  {(OUT / name).stat().st_size // 1024} KB')
 
     for name, size in (('favicon-32.png', 32), ('favicon-16.png', 16)):

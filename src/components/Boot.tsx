@@ -16,7 +16,7 @@ import { play } from '../lib/sfx'
  * icon was a brand new session and the desk was five seconds away every time.
  * An installed app should open like an app, so it gets the title screen once
  * a day; a browser visit, which is more often someone's first look at the
- * league, gets it once every six hours.
+ * league, gets it once a day; a home-screen app, once a week.
  */
 const BOOTED_KEY = 'wacl.bootedAt'
 const HOURS = 3_600_000
@@ -28,14 +28,21 @@ function installed(): boolean {
     return false
   }
 }
+/** The trophy is up by 3.6s; the screen never leaves before the payoff. */
+const TROPHY_UP_MS = 3900
+
 export default function Boot({
   onDone,
   championColor,
+  ready = false,
 }: {
   onDone: () => void
   championColor?: string
+  /** The league data has landed: the screen may close once the trophy is up. */
+  ready?: boolean
 }) {
   const [closing, setClosing] = useState(false)
+  const [trophyUp, setTrophyUp] = useState(false)
   const host = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,15 +52,22 @@ export default function Boot({
       /* private browsing: it will simply play again next load */
     }
     host.current?.focus({ preventScroll: true })
+    // The full ceremony is the ceiling; a fast connection leaves at the trophy.
     const timer = setTimeout(() => setClosing(true), HEAP_BOOT_SECONDS * 1000)
+    const payoff = setTimeout(() => setTrophyUp(true), TROPHY_UP_MS)
     // fanfare as the trophy goes up (only audible after a prior user gesture,
     // per browser autoplay rules — reloads and SPA navs qualify)
     const horn = setTimeout(() => play('fanfare'), 3600)
     return () => {
       clearTimeout(timer)
+      clearTimeout(payoff)
       clearTimeout(horn)
     }
   }, [])
+
+  useEffect(() => {
+    if (ready && trophyUp) setClosing(true)
+  }, [ready, trophyUp])
 
   useEffect(() => {
     if (!closing) return
@@ -124,7 +138,7 @@ export function shouldBoot(): boolean {
   try {
     if (animationsDisabled()) return false
     const last = Number(localStorage.getItem(BOOTED_KEY) ?? 0)
-    return Date.now() - last > (installed() ? 24 : 6) * HOURS
+    return Date.now() - last > (installed() ? 7 * 24 : 24) * HOURS
   } catch {
     return false
   }

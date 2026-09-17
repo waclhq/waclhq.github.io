@@ -16,7 +16,9 @@ export default function Crest({
   className?: string
   glow?: boolean
 }) {
-  const src = size > 180 ? 'icon-512.png' : 'icon-192.png'
+  // WebP at the two sizes the badge is drawn on the page; the 512 PNG serves
+  // only the desktop sidebar and the title screen. The manifest keeps its PNGs.
+  const src = size > 180 ? 'icon-512.png' : size > 64 ? 'crest-192.webp' : 'crest-128.webp'
   return (
     <img
       src={`${import.meta.env.BASE_URL}${src}`}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 /**
  * A wanted-poster mugshot. Prefers the league's own pixel portrait at
- * public/media/portraits/<managerId>.png; when a manager has no portrait on
+ * public/media/portraits/<managerId>.webp; when a manager has no portrait on
  * file it falls back to a generated sprite whose every feature — skin, hair
  * colour and cut, brow, expression, facial hair — is derived from a hash of
  * the manager id, so the face is distinct and stable across renders.
@@ -27,7 +27,7 @@ function hash(seed: string): number {
 export default function PixelMugshot({ seed, scale = 3 }: { seed: string; scale?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [usePortrait, setUsePortrait] = useState(true)
-  const portraitUrl = `${import.meta.env.BASE_URL}media/portraits/${seed}.png`
+  const portraitUrl = `${import.meta.env.BASE_URL}media/portraits/${seed}.webp`
 
   useEffect(() => {
     setUsePortrait(true)

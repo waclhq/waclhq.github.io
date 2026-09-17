@@ -8,6 +8,14 @@ import { useRevealed } from '../ui'
  * motion on, the video mounts a moment after the panel is seen and plays
  * muted; under reduced motion, or before that, a tap loads and plays it.
  */
+function finePointer(): boolean {
+  try {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  } catch {
+    return false
+  }
+}
+
 export default function Tape({
   src,
   poster,
@@ -28,7 +36,10 @@ export default function Tape({
   const video = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    if (!revealed || tapped || animationsDisabled()) return
+    // Autoplay is for a desktop with a real pointer. A phone gets the poster
+    // and a tap: 2.4MB and a running decoder are a lot to hand a device that
+    // is also trying to scroll the page.
+    if (!revealed || tapped || animationsDisabled() || !finePointer()) return
     // Let the odometer and the board finish before the decoder starts.
     const timer = setTimeout(() => setArmed(true), 1400)
     return () => clearTimeout(timer)
@@ -53,7 +64,7 @@ export default function Tape({
           className="block aspect-video w-full bg-black object-contain"
           src={src}
           poster={poster}
-          autoPlay={!animationsDisabled()}
+          autoPlay={armed && !animationsDisabled()}
           muted
           loop
           playsInline

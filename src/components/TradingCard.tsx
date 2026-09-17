@@ -89,7 +89,7 @@ export default function TradingCard({ id }: { id: ManagerId }) {
         )
 
       const [portrait] = await Promise.all([
-        loadImage(`${import.meta.env.BASE_URL}media/portraits/${id}.png`),
+        loadImage(`${import.meta.env.BASE_URL}media/portraits/${id}.webp`),
         document.fonts.load('italic 800 44px "Barlow Condensed"'),
         document.fonts.load('700 16px "Barlow Condensed"'),
         document.fonts.load('600 22px "Inter"'),

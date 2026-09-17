@@ -297,38 +297,6 @@
     );
   }
 
-  /* 3D neon sign: stacked em-based extrusion so it scales with font size,
-     under a two-tone green/amber glow that slowly breathes. */
-  .neon-3d {
-    color: var(--color-arc-green);
-    animation: neon-pulse 2.8s ease-in-out infinite;
-  }
-  @keyframes neon-pulse {
-    0%,
-    100% {
-      text-shadow:
-        0 0.035em 0 #2c8a1c,
-        0 0.07em 0 #216915,
-        0 0.105em 0 #17490e,
-        0 0.14em 0 #04070a,
-        0 0.2em 0.35em rgba(0, 0, 0, 0.65),
-        0 0 0.28em rgba(83, 211, 55, 0.9),
-        0 0 0.7em rgba(83, 211, 55, 0.55),
-        0 0.05em 1.4em rgba(255, 182, 54, 0.4);
-    }
-    50% {
-      text-shadow:
-        0 0.035em 0 #2c8a1c,
-        0 0.07em 0 #216915,
-        0 0.105em 0 #17490e,
-        0 0.14em 0 #04070a,
-        0 0.2em 0.35em rgba(0, 0, 0, 0.65),
-        0 0 0.2em rgba(83, 211, 55, 0.65),
-        0 0 0.5em rgba(83, 211, 55, 0.35),
-        0 0.05em 1em rgba(255, 182, 54, 0.22);
-    }
-  }
-
   /* Softer neon for page titles: shallow extrusion, quiet glow, no pulse. */
   .neon-soft {
     text-shadow:
@@ -383,6 +351,21 @@
     overflow: hidden;
     -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
     mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+  }
+  /* Charts draw in from the left: a clip reveal, paint-only, once. */
+  @keyframes chart-reveal {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  .chart-reveal {
+    animation: chart-reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .dot-wave[data-still] span {
+    animation-play-state: paused;
   }
   .dot-wave span {
     flex-shrink: 0;
@@ -709,17 +692,19 @@
     animation: pop-in 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both;
   }
 
+  /* Typed on, one clip step at a time. clip-path rather than max-width: the
+     line takes its full width from the first frame (no reflow as it types,
+     nothing beside it moves) and each step is paint, not layout. */
   @keyframes type-in {
     from {
-      max-width: 0;
+      clip-path: inset(0 100% 0 0);
     }
     to {
-      max-width: 100%;
+      clip-path: inset(0 0 0 0);
     }
   }
   .type-in {
     display: inline-block;
-    overflow: hidden;
     white-space: nowrap;
     animation: type-in 0.6s steps(30, end) both;
   }
@@ -764,7 +749,14 @@
   .marquee {
     animation: marquee var(--marquee-duration, 60s) linear infinite;
   }
-  .marquee-host:hover .marquee,
+  /* Hover pauses the tape only where hover exists. On a touch screen :hover
+     sticks to the last thing tapped, so a bare :hover rule left the tape
+     paused for good after one tap — the phone's own tap toggles data-paused. */
+  @media (hover: hover) {
+    .marquee-host:hover .marquee {
+      animation-play-state: paused;
+    }
+  }
   .marquee-host[data-paused] .marquee {
     animation-play-state: paused;
   }
@@ -797,20 +789,14 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .glow-blue .recharts-curve {
-    filter: drop-shadow(0 0 6px rgba(90, 131, 255, 0.45));
-  }
-  .glow-soft .recharts-curve {
-    filter: drop-shadow(0 0 4px rgba(238, 241, 246, 0.22));
-  }
-
   /* Anchored panels land clear of the sticky bars. */
   section[id] {
     scroll-margin-top: calc(116px + env(safe-area-inset-top, 0px));
   }
+  /* No backdrop blur here: it sits sticky over a scrolling page, and a blur
+     under a sticky bar is re-rendered every scroll frame on a phone. */
   .section-rail {
-    background: color-mix(in srgb, var(--color-arc-bg) 88%, transparent);
-    backdrop-filter: blur(8px);
+    background: color-mix(in srgb, var(--color-arc-bg) 96%, transparent);
     border-bottom: 1px solid var(--color-arc-line);
   }
 
@@ -878,34 +864,46 @@
   /* Yard lines drifting behind a hero number. */
   @keyframes yard-scroll {
     from {
-      background-position: 0 0;
+      transform: translateX(0);
     }
     to {
-      background-position: 64px 0;
+      transform: translateX(64px);
     }
   }
+  /* The mask holds still on the outer box; the stripes are an inner layer
+     one period wider on the left, sliding on transform, so no pixel is ever
+     uncovered and no frame repaints the gradient. */
   .field-stripes {
     position: absolute;
     inset: -8px -12px;
     z-index: -1;
+    overflow: hidden;
     pointer-events: none;
     opacity: 0.9;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 85%);
+    mask-image: linear-gradient(90deg, #000 0%, transparent 85%);
+  }
+  .field-stripes::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 0 -64px;
     background-image: repeating-linear-gradient(
       90deg,
       rgba(176, 124, 255, 0.3) 0 2px,
       transparent 2px 64px
     );
-    -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 85%);
-    mask-image: linear-gradient(90deg, #000 0%, transparent 85%);
     animation: yard-scroll 6s linear infinite;
   }
 
 
   /* Field-goal flight: linear ground speed, quadratic height — a real
      parabola — with a slow end-over-end tumble. Ends between the uprights. */
+  /* Travel is a transform against the stage's own width (container units),
+     never `left`: a layout per frame was the difference between a ball and a
+     stutter on a phone. The stage sets container-type. */
   @keyframes punt-x {
     0% {
-      left: -10px;
+      transform: translateX(0);
       opacity: 0;
     }
     6% {
@@ -915,9 +913,12 @@
       opacity: 1;
     }
     100% {
-      left: calc(100% - 64px);
+      transform: translateX(calc(100cqw - 54px));
       opacity: 0;
     }
+  }
+  .punt-stage {
+    container-type: inline-size;
   }
   .punt-x {
     position: absolute;
@@ -1053,29 +1054,6 @@
     animation: sprite-b 0.6s steps(1) infinite;
   }
 
-  /* Boot-screen kickoff: ball flies up and splits the uprights. `left`
-     animates against the container so it works at any screen width. */
-  @keyframes kick-arc {
-    0% {
-      opacity: 0;
-      left: 16px;
-      transform: translateY(0) rotate(0deg);
-    }
-    8% {
-      opacity: 1;
-    }
-    60% {
-      transform: translateY(-92px) rotate(400deg);
-    }
-    100% {
-      opacity: 1;
-      left: calc(100% - 54px);
-      transform: translateY(-64px) rotate(680deg);
-    }
-  }
-  .kickball {
-    animation: kick-arc 1.5s cubic-bezier(0.35, 0, 0.6, 1) 0.4s both;
-  }
   @keyframes good-pop {
     0% {
       opacity: 0;
@@ -1321,21 +1299,41 @@
     background: rgba(7, 9, 12, 0.55);
   }
   .live-dot {
+    position: relative;
     width: 7px;
     height: 7px;
     border-radius: 999px;
     background: var(--color-arc-green);
     animation: live-dot 1.6s ease-in-out infinite;
   }
+  /* The ring that used to be an animated box-shadow (a repaint per frame):
+     a pseudo that scales out and fades, which the compositor handles alone. */
+  .live-dot::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 999px;
+    background: rgba(83, 211, 55, 0.5);
+    animation: live-ring 1.6s ease-out infinite;
+  }
   @keyframes live-dot {
     0%,
     100% {
       opacity: 1;
-      box-shadow: 0 0 0 0 rgba(83, 211, 55, 0.5);
     }
     50% {
       opacity: 0.55;
-      box-shadow: 0 0 0 5px rgba(83, 211, 55, 0);
+    }
+  }
+  @keyframes live-ring {
+    0% {
+      transform: scale(0.42);
+      opacity: 0.9;
+    }
+    70%,
+    100% {
+      transform: scale(1);
+      opacity: 0;
     }
   }
   /* ---- opening a slip -----------------------------------------------------
@@ -1478,9 +1476,6 @@
     }
   }
   /* A tapped chart is not a focused control. */
-  .recharts-wrapper :focus:not(:focus-visible) {
-    outline: none;
-  }
   /* punched notches where the perforation meets the edges */
   .stub-notch {
     position: absolute;
@@ -1749,6 +1744,7 @@
     :root:not([data-motion='on']) .glint::after,
     :root:not([data-motion='on']) .tile-coals,
     :root:not([data-motion='on']) .live-dot,
+    :root:not([data-motion='on']) .live-dot::after,
     :root:not([data-motion='on']) .pop-in,
     :root:not([data-motion='on']) .line-in,
     :root:not([data-motion='on']) .rise-in,
@@ -1758,12 +1754,13 @@
     :root:not([data-motion='on']) .grow-x,
     :root:not([data-motion='on']) .hover-wiggle:hover,
     :root:not([data-motion='on']) .confetti,
-    :root:not([data-motion='on']) .field-stripes,
+    :root:not([data-motion='on']) .field-stripes::before,
     :root:not([data-motion='on']) .punt-x,
     :root:not([data-motion='on']) .punt-y,
     :root:not([data-motion='on']) .punt-rot,
     :root:not([data-motion='on']) .redzone,
-    :root:not([data-motion='on']) .cursor::after {
+    :root:not([data-motion='on']) .cursor::after,
+    :root:not([data-motion='on']) .chart-reveal {
       animation: none !important;
     }
     :root:not([data-motion='on']) .wipe-stripes,
@@ -1772,10 +1769,8 @@
     :root:not([data-motion='on']) .flag-drop,
     :root:not([data-motion='on']) .sprite-a,
     :root:not([data-motion='on']) .sprite-b,
-    :root:not([data-motion='on']) .kickball,
     :root:not([data-motion='on']) .dot-wave span,
     :root:not([data-motion='on']) .god-drop,
-    :root:not([data-motion='on']) .neon-3d,
     :root:not([data-motion='on']) .sparkle,
     :root:not([data-motion='on']) .boot-good {
       animation: none !important;

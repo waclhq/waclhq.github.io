@@ -104,6 +104,26 @@ export default function Rafters({
 
   const focusYear = current ?? hung[0]?.year
 
+  // Twenty-two cloths swaying forever is twenty-two compositor layers on a
+  // phone, most of them off the side of the rail. A cloth sways only while
+  // its slot is in view; the rest hold still and give their layer back.
+  useEffect(() => {
+    const host = rail.current
+    if (!host) return
+    const slots = host.querySelectorAll<HTMLElement>('.banner-slot')
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) entry.target.removeAttribute('data-still')
+          else entry.target.setAttribute('data-still', '')
+        }
+      },
+      { rootMargin: '120px 160px' },
+    )
+    slots.forEach((slot) => observer.observe(slot))
+    return () => observer.disconnect()
+  }, [hung.length])
+
   return (
     <section
       className="rafters -mx-4 sm:-mx-6 lg:-mx-9"

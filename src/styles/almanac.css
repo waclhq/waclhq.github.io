@@ -208,6 +208,11 @@
     animation: banner-sway var(--sway-dur, 7s) ease-in-out var(--sway-delay, 0s) infinite;
     will-change: transform;
   }
+  /* Out of the rail's view: hold still and give the compositor layer back. */
+  .banner-slot[data-still] .banner-cloth {
+    animation-play-state: paused;
+    will-change: auto;
+  }
   /* the field inside the trim */
   .banner-cloth::before {
     content: '';
@@ -320,12 +325,11 @@
     justify-content: center;
     border: 1px solid var(--color-arc-line);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-arc-bg) 86%, transparent);
+    background: color-mix(in srgb, var(--color-arc-bg) 94%, transparent);
     color: var(--color-arc-ink-soft);
     font-size: 22px;
     line-height: 1;
     cursor: pointer;
-    backdrop-filter: blur(6px);
     transition:
       color 0.15s,
       border-color 0.15s;

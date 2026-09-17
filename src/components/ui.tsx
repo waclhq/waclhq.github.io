@@ -320,6 +320,34 @@ export function Chip({
 }
 
 /** Command-prompt page header. */
+/**
+ * The LED wave under a page title. Forty-eight dots is every dot that fits
+ * inside max-w-md; the previous seventy-two ran twenty-four animations
+ * nobody could see. They also stop the moment the header scrolls away —
+ * forty-eight infinite animations on a long room were the single largest
+ * standing cost on a phone.
+ */
+function DotWave() {
+  const wave = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = wave.current
+    if (!node) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) node.removeAttribute('data-still')
+      else node.setAttribute('data-still', '')
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div ref={wave} aria-hidden className="dot-wave mt-3 w-full max-w-md text-arc-purple">
+      {Array.from({ length: 48 }, (_, i) => (
+        <span key={i} style={{ animationDelay: `${i * 0.055}s` }} />
+      ))}
+    </div>
+  )
+}
+
 export function PageHeader({
   eyebrow,
   title,
@@ -344,11 +372,7 @@ export function PageHeader({
           >
             {title}
           </h1>
-          <div aria-hidden className="dot-wave mt-3 w-full max-w-md text-arc-purple">
-            {Array.from({ length: 72 }, (_, i) => (
-              <span key={i} style={{ animationDelay: `${i * 0.055}s` }} />
-            ))}
-          </div>
+          <DotWave />
           {lede && <p className="mt-3 text-[14px] leading-relaxed text-arc-ink-soft">{lede}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}

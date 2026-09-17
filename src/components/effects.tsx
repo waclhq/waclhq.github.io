@@ -259,7 +259,7 @@ export function PlayMoment({ kind, onDone }: { kind: MomentKind; onDone: () => v
  */
 export function FieldGoalStrip({ championColor }: { championColor?: string }) {
   return (
-    <div className="relative mt-5 h-28 overflow-hidden" aria-hidden>
+    <div className="punt-stage relative mt-5 h-28 overflow-hidden" aria-hidden>
       <span className="boot-field absolute inset-x-0 bottom-0 h-9" />
       <span className="absolute right-2 bottom-1">
         <Goalpost size={72} />

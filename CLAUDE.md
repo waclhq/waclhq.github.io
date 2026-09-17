@@ -65,6 +65,16 @@ the Shell offers a refresh when a newer build is live.
    behind the content — the ground is static, and the only long-running
    canvases (the Book's fires) share one throttled clock in `lib/ticker.ts`.
 
+   Count what runs at rest. The audit that found the phone slow found 72
+   infinite sparkle animations under every title and 22 swaying banners on
+   the Almanac; now the title wave is 48 dots that stop when scrolled away
+   and a banner sways only while it is in the rail's view. A hover rule on
+   a running animation goes inside `@media (hover: hover)` — on a touch
+   screen `:hover` sticks to the last tap, which is how the ticker stayed
+   paused. Images are sized for where they are drawn: portraits and the
+   on-page crest are WebP (`scripts/make_icons.py` writes the crest sizes),
+   and a phone gets the tape's poster and a tap, never an autoplaying video.
+
 6. **Page styles live with the page.** `src/index.css` holds tokens and the
    shared primitives (`.win`, `.out`, `.tag`, `.badge`, `.btn`, rails, the
    reduced-motion guard). Each room has its own sheet in `src/styles/`
@@ -98,9 +108,11 @@ the Shell offers a refresh when a newer build is live.
   (focus manners for overlays), `search.ts` (palette index), `music.ts`,
   `motion.ts`.
 - `src/components/` — `Shell.tsx` (nav, tab bar, sheet, seat picker,
-  SaveStatus, new-version bar), canvas pieces
-  (`HeapScene`, `FireFrame`, `BurnAway`, `TradingCard`), editors
-  (`TradeForm`, `KeeperEditor`).
+  SaveStatus, new-version bar), `charts.tsx` (the SVG chart kit — `Plot`,
+  `Legend`, `TipRows`, `roundedScale`; there is no chart library, Recharts
+  was removed for costing every chart room 340KB and half a second on a
+  phone), canvas pieces (`HeapScene`, `FireFrame`, `BurnAway`,
+  `TradingCard`), editors (`TradeForm`, `KeeperEditor`).
 - `src/styles/` — one stylesheet per room (see rule 6).
 - Room-level component folders, each owned by its page: `desk/` (Ledger:
   word of the day, split-flap kickoff clock, scoreboard, odometer, score tiles, Your desk), `rafters/`
