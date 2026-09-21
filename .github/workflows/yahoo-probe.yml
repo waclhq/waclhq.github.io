@@ -1,0 +1,40 @@
+name: Yahoo provisioning probe
+
+# Asks Yahoo, once a day, whether the developer app has the Fantasy Sports
+# permission yet. Yahoo's authorize endpoint answers before any login: an app
+# without the permission is bounced straight back with error=invalid_scope,
+# so an anonymous request from a runner is enough to tell. Nothing is
+# written; the answer is in the run's log and its annotation. Delete this
+# file once the standings sync is green.
+
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Yahoo for the Fantasy Sports scope
+        env:
+          CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+        run: |
+          if [ -z "$CLIENT_ID" ]; then
+            echo "::error::YAHOO_CLIENT_ID is not set in repository secrets."
+            exit 1
+          fi
+          url="https://api.login.yahoo.com/oauth2/request_auth?client_id=${CLIENT_ID}&redirect_uri=https%3A%2F%2Fwaclhq.github.io%2F&response_type=code&scope=fspt-r"
+          answer=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "$url" || true)
+          echo "Yahoo answered: $answer"
+          case "$answer" in
+            *invalid_scope*)
+              echo "::notice title=Yahoo not provisioned yet::Fantasy Sports is still missing from the app. Nothing to do." ;;
+            3??*|200*)
+              echo "::warning title=Yahoo accepted the Fantasy Sports scope::Provisioning looks done. Run scripts/yahoo-setup.mjs for a fresh token, replace YAHOO_REFRESH_TOKEN, then run the standings sync." ;;
+            *)
+              echo "::warning title=Unexpected answer from Yahoo::$answer" ;;
+          esac
