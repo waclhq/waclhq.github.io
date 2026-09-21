@@ -99,6 +99,15 @@ Agreement*):
 
 Access is provisioned shortly after both the signature and that form arrive.
 
+Yahoo countersigned the agreement on 21 Sep 2026; the permission had not yet
+appeared on the app. Until it does, any token minted is refused with
+`additional_authorization_required`, and the setup script cannot list leagues.
+`.github/workflows/yahoo-probe.yml` asks Yahoo once a day whether the app may
+request the Fantasy Sports scope (an unprovisioned app is bounced with
+`invalid_scope` before any login) and says which in its run annotation. Once it
+flips, mint a fresh refresh token and replace that secret; the old one does not
+gain the permission. Delete the probe once the standings sync is green.
+
 ### One-time setup
 
 1. Create an app at <https://developer.yahoo.com/apps/create/> with
