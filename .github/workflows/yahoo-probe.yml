@@ -4,7 +4,8 @@ name: Yahoo provisioning probe
 # permission yet. Yahoo's authorize endpoint answers before any login: an app
 # without the permission is bounced straight back with error=invalid_scope,
 # so an anonymous request from a runner is enough to tell. Nothing is
-# written; the answer is in the run's log and its annotation. Delete this
+# written; the answer is in the run's log and its annotation. A second step
+# pings the API itself once the secrets exist. Delete this
 # file once the standings sync is green.
 
 on:
@@ -37,4 +38,36 @@ jobs:
               echo "::warning title=Yahoo accepted the Fantasy Sports scope::Provisioning looks done. Run scripts/yahoo-setup.mjs for a fresh token, replace YAHOO_REFRESH_TOKEN, then run the standings sync." ;;
             *)
               echo "::warning title=Unexpected answer from Yahoo::$answer" ;;
+          esac
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Once the four secrets exist, ask the API itself. The scope can be
+      # granted while Yahoo has still not enabled the Client ID, which the
+      # authorize endpoint cannot see and a real call answers with 403.
+      - name: Ping the Fantasy API with the real token
+        env:
+          YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+          YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
+          YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
+          YAHOO_LEAGUE_KEY: ${{ secrets.YAHOO_LEAGUE_KEY }}
+        run: |
+          if [ -z "$YAHOO_REFRESH_TOKEN" ] || [ -z "$YAHOO_LEAGUE_KEY" ]; then
+            echo "Yahoo API answered: skipped (no refresh token or league key yet)"
+            exit 0
+          fi
+          answer=$(node scripts/yahoo-ping.mjs)
+          echo "$answer"
+          case "$answer" in
+            *"standings=200"*)
+              echo "::warning title=Yahoo API is open::Standings read fine. Run the standings sync; this probe can be deleted." ;;
+            *"leagues=200"*)
+              echo "::warning title=League not readable::The app works but this account cannot read the league. Authorise as a league member, or check YAHOO_LEAGUE_KEY." ;;
+            *"leagues=403"*)
+              echo "::notice title=Client ID not enabled yet::Yahoo has the scope but has not enabled this app. Wait for the confirmation form to be processed." ;;
+            *)
+              echo "::warning title=Unexpected API answer::$answer" ;;
           esac
