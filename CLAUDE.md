@@ -124,8 +124,8 @@ the Shell offers a refresh when a newer build is live.
   `receipts/` (the Book: tiles, slip, stub, composer, editor, share), `live/`
   (the Live room: NFL game strip and red-zone alerts, split-flap tote board,
   matchup face-offs with win odds, heartbeat monitors and living portraits,
-  head-to-head with fire/ice players and a swing chart, the win-odds
-  mountains (oblique-projection SVG, no library), the big-plays wire, bonus
+  head-to-head with fire/ice players and a swing chart, the radar clock
+  (win odds through the day as rings on a tilted dial, SVG, no library), the big-plays wire, bonus
   watch, leader boards, score alerts, share cards and the story-style recap;
   helpers are `lib/live-view.ts`, `lib/live-cards.ts` and the canvas card
   renderer `lib/live-share.ts`). Their

@@ -7,7 +7,7 @@ import BonusWatch from '../components/live/BonusWatch'
 import Leaders from '../components/live/Leaders'
 import ScoreAlert from '../components/live/ScoreAlert'
 import ToteBoard from '../components/live/ToteBoard'
-import Mountains from '../components/live/Mountains'
+import RadarClock from '../components/live/RadarClock'
 import Recap from '../components/live/Recap'
 import { useClock } from '../components/desk/hooks'
 import { managerName, useLeagueData } from '../lib/data'
@@ -206,11 +206,11 @@ export default function Live() {
       {(board.matchups?.length ?? 0) > 0 && (
         <div className="mb-8">
           <Panel
-            title="Win-odds mountains"
-            subtitle="The whole day's odds as a mountain range: one ridge per matchup, your matchup in front."
+            title="The radar clock"
+            subtitle="Game day as a dial: kickoff at the top, now under the green hand, one ring per matchup swelling toward whoever is favoured."
             flush
           >
-            <Mountains board={board} me={me} />
+            <RadarClock board={board} me={me} />
           </Panel>
         </div>
       )}

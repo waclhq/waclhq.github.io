@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import Mountains from './Mountains'
+import RadarClock from './RadarClock'
 import ShareCardButton from './ShareCardButton'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
@@ -13,8 +13,8 @@ import type { LivePoints, ManagerId } from '../../lib/types'
 /**
  * The week as a story: full-screen slides you tap through, like the ones in
  * everyone's phone already. Results, the blowout and the nail-biter, the
- * comeback, the star, the bench of shame, the ghost, and the mountain range
- * of the day. Every slide has its own share card. Slides advance on their own
+ * comeback, the star, the bench of shame, the ghost, and the radar clock
+ * of the day on the radar clock. Every slide has its own share card. Slides advance on their own
  * every six seconds unless motion is off or you are holding a finger down.
  */
 
@@ -190,14 +190,14 @@ export default function Recap({ board, me, onClose }: { board: LivePoints; me: M
       })
     }
     list.push({
-      key: 'mountains',
+      key: 'radar',
       accent: 'var(--color-arc-cyan)',
       card: recapCard(facts, nameOf),
       text: `WACL week ${facts.week}: the day in win odds.`,
       body: (
         <>
           <div className="lv-rc-eyebrow">The day in win odds</div>
-          <Mountains board={board} me={me} compact />
+          <RadarClock board={board} me={me} compact />
         </>
       ),
     })

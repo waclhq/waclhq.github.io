@@ -1242,63 +1242,159 @@
     color: var(--color-arc-green);
   }
 
-  /* ---- mountains ---- */
-  .lv-mtn {
-    padding: 8px 6px 12px;
+  /* ---- the radar clock ---- */
+  .lv-radar {
+    padding: 10px 12px 14px;
   }
-  .lv-mtn svg {
-    display: block;
-    width: 100%;
-    height: auto;
+  .lv-radar-stage {
+    perspective: 1100px;
     touch-action: pan-y;
     cursor: grab;
     user-select: none;
+    max-width: 560px;
+    margin: 0 auto;
   }
-  .lv-mtn.is-compact svg {
+  .lv-radar.is-compact .lv-radar-stage {
     cursor: default;
+    max-width: 380px;
   }
-  .lv-mtn-row {
+  .lv-radar-disc {
+    transform-origin: 50% 50%;
+    transition: transform 0.25s ease-out;
+    filter: drop-shadow(0 24px 24px color-mix(in srgb, var(--color-arc-bg-deep) 85%, transparent));
+  }
+  .lv-radar-disc svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .lv-radar-ring {
+    cursor: pointer;
     transition: opacity 0.3s ease;
-    animation: lv-rise-up 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-    animation-delay: calc(var(--r, 0) * 90ms);
   }
-  @keyframes lv-rise-up {
-    from {
-      transform: scaleY(0.05);
-      opacity: 0;
-    }
-  }
-  .lv-mtn-row.is-mine .lv-mtn-label {
-    font-weight: 700;
-  }
-  .lv-mtn-label {
-    font-family: var(--font-body);
+  .lv-radar-hour {
+    font-family: var(--font-mono);
     font-size: 15px;
-    font-weight: 600;
+    fill: var(--color-arc-ink-soft);
   }
-  .lv-mtn-odds {
+  .lv-radar-kick {
     font-family: var(--font-display);
     font-style: italic;
     font-weight: 700;
-    font-size: 17px;
+    font-size: 16px;
+    letter-spacing: 0.12em;
+    fill: var(--color-arc-green);
   }
-  .lv-mtn-axis {
-    font-family: var(--font-mono);
-    font-size: 12px;
+  .lv-radar-odds {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 58px;
+  }
+  .lv-radar-hubsub {
+    font-family: var(--font-body);
+    font-size: 14px;
     fill: var(--color-arc-ink-faint);
   }
-  .lv-mtn-flat {
-    margin: 0 10px 8px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px dashed color-mix(in srgb, var(--color-arc-cyan) 45%, transparent);
-    font-size: 12.5px;
-    color: var(--color-arc-ink-soft);
+  .lv-radar-ping {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lv-ping 1.2s ease-out 1 forwards;
   }
-  .lv-mtn-hint {
-    padding: 0 10px;
+  @keyframes lv-ping {
+    from {
+      transform: scale(1);
+      opacity: 0.9;
+    }
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  .lv-radar-flash {
+    animation: lv-flash 1s ease-out 1;
+  }
+  @keyframes lv-flash {
+    30% {
+      opacity: 0.35;
+    }
+  }
+  .lv-radar-note,
+  .lv-radar-hint {
+    padding: 0 6px;
     font-size: 11.5px;
     color: var(--color-arc-ink-faint);
+  }
+  .lv-radar-note {
+    margin: 6px auto 4px;
+    max-width: 520px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px dashed color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+    color: var(--color-arc-ink-soft);
+    text-align: center;
+  }
+  .lv-radar-key {
+    display: grid;
+    gap: 4px;
+    margin: 10px auto 8px;
+    max-width: 560px;
+  }
+  .lv-radar-key button {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) 70px minmax(0, 1fr) 40px;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .lv-radar-key button.is-mine {
+    background: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 10%, transparent);
+  }
+  .lv-radar-key button.is-focus {
+    outline: 1px solid var(--color-arc-green);
+  }
+  .lv-radar-key-ring {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-arc-ink-faint);
+  }
+  .lv-radar-key-a,
+  .lv-radar-key-b {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lv-radar-key-a {
+    color: var(--ca);
+    text-align: right;
+  }
+  .lv-radar-key-b {
+    color: var(--cb);
+  }
+  .lv-radar-key-bar {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--cb);
+    overflow: hidden;
+  }
+  .lv-radar-key-bar i {
+    position: absolute;
+    inset: 0;
+    background: var(--ca);
+    transform-origin: left;
+    transform: scaleX(var(--pa, 0.5));
+  }
+  .lv-radar-key-pct {
+    font-weight: 700;
+    text-align: right;
   }
 
   /* ---- recap call to action ---- */
@@ -1557,13 +1653,15 @@
   :root:not([data-motion='on']) .lv-face.is-cheer,
   :root:not([data-motion='on']) .lv-h2h-cell.is-fire::after,
   :root:not([data-motion='on']) .lv-board li.is-fire::after,
-  :root:not([data-motion='on']) .lv-mtn-row,
+  :root:not([data-motion='on']) .lv-radar-ping,
+  :root:not([data-motion='on']) .lv-radar-flash,
   :root:not([data-motion='on']) .lv-rc-body,
   :root:not([data-motion='on']) .lv-rc-bars i.is-now::after {
     animation: none;
   }
   :root:not([data-motion='on']) .lv-face,
-  :root:not([data-motion='on']) .lv-mtn-row {
+  :root:not([data-motion='on']) .lv-radar-disc,
+  :root:not([data-motion='on']) .lv-radar-ring {
     transition: none;
   }
 }
