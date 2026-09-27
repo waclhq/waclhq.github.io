@@ -19,7 +19,7 @@ const RAW = 'https://raw.githubusercontent.com/waclhq/waclhq.github.io/points/po
  * Empty until the Cloudflare setup has run; the branch is always the
  * fallback, so a Cloudflare outage only costs freshness.
  */
-const EDGE = ''
+const EDGE = 'https://wacl-live.tajar-varghese.workers.dev/points.json'
 
 const LIVE_MS = EDGE ? 45_000 : 2 * 60_000
 const IDLE_MS = 10 * 60_000
