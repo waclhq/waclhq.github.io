@@ -1184,59 +1184,83 @@
     gap: 8px;
   }
 
-  /* ---- score tape ---- */
-  .lv-tape {
-    position: relative;
-    overflow: hidden;
+  /* ---- latest scores ---- */
+  .lv-latest {
+    display: grid;
+    gap: 3px;
+    padding: 5px;
     border-radius: 8px;
     border: 1px solid var(--color-arc-line);
     background: var(--color-arc-bg-deep);
-    /* Chips enter and leave through soft edges rather than popping. */
-    mask-image: linear-gradient(90deg, transparent, var(--color-arc-ink) 18px, var(--color-arc-ink) calc(100% - 18px), transparent);
   }
-  .lv-tape-run {
-    display: flex;
-    width: max-content;
-    gap: 8px;
-    padding: 7px 10px;
-  }
-  .lv-tape-item {
-    display: inline-flex;
+  .lv-latest-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     align-items: baseline;
-    gap: 5px;
-    flex: none;
-    padding: 2px 8px 2px 7px;
+    gap: 8px;
+    width: 100%;
+    padding: 4px 8px 4px 9px;
     border-radius: 5px;
     border-left: 3px solid var(--c);
-    background: color-mix(in srgb, var(--c) 16%, transparent);
-    font-size: 11.5px;
-    white-space: nowrap;
-    color: var(--color-arc-ink);
+    background: color-mix(in srgb, var(--c) 10%, transparent);
+    text-align: left;
+    font-size: 12px;
   }
-  .lv-tape-item b {
-    color: var(--c);
+  .lv-latest-pts {
+    font-family: var(--font-display);
+    font-style: italic;
     font-weight: 700;
+    font-size: 16px;
+    color: var(--c);
   }
-  .lv-tape-arrow {
-    font-size: 9px;
-  }
-  .lv-tape-item.is-down .lv-tape-arrow,
-  .lv-tape-item.is-down b.tnum {
+  .lv-latest-row.is-down .lv-latest-pts {
     color: var(--color-arc-red);
   }
-  .lv-tape-what {
+  .lv-latest-who {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .lv-latest-name {
+    flex: none;
+    font-weight: 600;
+    color: var(--color-arc-ink);
+  }
+  .lv-latest-what {
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--color-arc-ink-faint);
   }
-  .lv-tape.is-empty {
+  .lv-latest-ago {
+    font-size: 10.5px;
+    color: var(--color-arc-ink-faint);
+  }
+  /* Anything from the latest update lights once. */
+  .lv-latest-row.is-fresh::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--c) 30%, transparent);
+    pointer-events: none;
+    animation: lv-latest-in 1.4s ease-out both;
+  }
+  @keyframes lv-latest-in {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .lv-latest.is-empty {
     padding: 8px 12px;
     font-size: 11.5px;
     color: var(--color-arc-ink-faint);
-    mask-image: none;
   }
-  .lv-tape.is-still {
-    overflow-x: auto;
-    cursor: default;
-  }
+
 
 
   /* ---- living portraits ---- */
@@ -1850,11 +1874,16 @@
   :root:not([data-motion='on']) .lv-h2h-cell.is-fire::after,
   :root:not([data-motion='on']) .lv-board li.is-fire::after,
   :root:not([data-motion='on']) .lv-match.is-lit::after,
+  :root:not([data-motion='on']) .lv-latest-row.is-fresh::after,
   :root:not([data-motion='on']) .lv-radar-ping,
   :root:not([data-motion='on']) .lv-radar-flash,
   :root:not([data-motion='on']) .lv-rc-body,
   :root:not([data-motion='on']) .lv-rc-bars i.is-now::after {
     animation: none;
+  }
+  /* Held still, a fresh score doesn't flash; it just arrives. */
+  :root:not([data-motion='on']) .lv-latest-row.is-fresh::after {
+    display: none;
   }
   :root:not([data-motion='on']) .lv-face,
   :root:not([data-motion='on']) .lv-radar-disc,

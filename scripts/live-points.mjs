@@ -761,9 +761,83 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       milestones,
       chases: chases.slice(0, 12),
       history: { teams: order, matchups: pairing, samples: history },
+      scores: scoreChanges(previous, teams, now, scoreboard.week?.number ?? null),
     },
     noLine: [...new Set(unmatched)],
   }
+}
+
+/* -------------------------------------------------------- score changes */
+
+const plural = (n, one, many = `${one}s`) => `${n} ${Math.abs(n) === 1 ? one : many}`
+
+/**
+ * What moved a player's box score between two passes, in a few words:
+ * "1 catch, 12 yds", "rush TD", "2/3, 24 pass yds", "7 pts allowed". Stat
+ * corrections come out negative, which is what they are.
+ */
+export function statDiff(before = {}, after = {}, pos = '') {
+  const d = (key) => (after?.[key] ?? 0) - (before?.[key] ?? 0)
+  const bits = []
+  if (pos === 'DEF') {
+    if (d('td') > 0) bits.push(d('td') > 1 ? `${d('td')} DEF TDs` : 'DEF TD')
+    if (d('int') > 0) bits.push(d('int') > 1 ? `${d('int')} INTs` : 'INT')
+    if (d('fumRec') > 0) bits.push(d('fumRec') > 1 ? `${d('fumRec')} fumble recs` : 'fumble rec')
+    if (d('safety') > 0) bits.push('safety')
+    if (d('sacks') > 0) bits.push(plural(d('sacks'), 'sack'))
+    if (d('allowed')) bits.push(`${d('allowed') > 0 ? '' : '−'}${Math.abs(d('allowed'))} pts allowed`)
+    return bits.join(', ')
+  }
+  for (const [key, label] of [['passTD', 'pass TD'], ['rushTD', 'rush TD'], ['recTD', 'rec TD']]) {
+    const n = d(key)
+    if (n > 0) bits.push(n > 1 ? `${n} ${label}s` : label)
+  }
+  if (d('int') > 0) bits.push(d('int') > 1 ? `${d('int')} INTs` : 'INT')
+  if (d('fumLost') > 0) bits.push('fumble lost')
+  // With no new attempt it's a stat correction: just the yards.
+  if (d('att')) bits.push(`${d('comp')}/${d('att')}, ${d('passYds')} pass yds`)
+  else if (d('passYds')) bits.push(`${d('passYds')} pass yds`)
+  if (d('car')) bits.push(`${plural(d('car'), 'carry', 'carries')}, ${d('rushYds')} yds`)
+  else if (d('rushYds')) bits.push(`${d('rushYds')} rush yds`)
+  if (d('rec')) bits.push(`${plural(d('rec'), 'catch', 'catches')}, ${d('recYds')} yds`)
+  else if (d('recYds')) bits.push(`${d('recYds')} rec yds`)
+  return bits.join(', ')
+}
+
+/**
+ * Every change in a player's points since the previous pass, newest first,
+ * carried from the previous file through the week: the "latest scores" each
+ * matchup shows. Two passes a minute apart give one entry per player who
+ * moved, so a 12-yard catch shows up, not only the big plays.
+ */
+export function scoreChanges(previous, teams, now, week) {
+  const carried = previous && previous.week === week && Array.isArray(previous.scores) ? previous.scores : []
+  if (!previous || previous.week !== week || !Array.isArray(previous.teams)) return carried
+  const before = new Map()
+  for (const t of previous.teams) for (const p of [...(t.starters ?? []), ...(t.bench ?? [])]) before.set(`${t.team}|${p.name}`, p)
+  const fresh = []
+  for (const t of teams) {
+    for (const p of [...t.starters, ...t.bench]) {
+      const was = before.get(`${t.team}|${p.name}`)
+      if (!was) continue
+      const delta = round(p.pts - (was.pts ?? 0))
+      if (Math.abs(delta) < 0.05) continue
+      fresh.push({
+        t: now.toISOString(),
+        team: t.team,
+        manager: t.manager,
+        player: p.name,
+        pos: p.pos,
+        starter: p.slot !== 'BN' && p.slot !== 'IR',
+        delta,
+        pts: p.pts,
+        what: statDiff(was.stats, p.stats, p.pos) || 'scoring update',
+        clock: p.clock ?? (p.state === 'final' ? 'Final' : ''),
+      })
+    }
+  }
+  fresh.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  return [...fresh, ...carried].slice(0, 150)
 }
 
 /* ----------------------------------------------------------------- run */

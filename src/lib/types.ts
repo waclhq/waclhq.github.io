@@ -359,6 +359,24 @@ export interface LivePoints {
   milestones?: LivePointsMilestone[]
   chases?: LivePointsMilestone[]
   history?: { teams: string[]; matchups?: string[]; samples: { t: string; v: number[]; p: number[]; w?: number[] }[] }
+  /** Every change in a player's points between passes, newest first. */
+  scores?: LivePointsScore[]
+}
+
+export interface LivePointsScore {
+  /** When the pass that saw it ran. */
+  t: string
+  team: string
+  manager: ManagerId | null
+  player: string
+  pos: string
+  starter: boolean
+  delta: number
+  /** His total after the change. */
+  pts: number
+  /** What moved in his box score: "1 catch, 12 yds". */
+  what: string
+  clock: string
 }
 
 /** year -> normalised player name -> [standard fantasy points, position]. */
