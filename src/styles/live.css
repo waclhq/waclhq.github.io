@@ -1189,39 +1189,57 @@
   /* ---- tote board ---- */
   .lv-tote {
     display: grid;
-    gap: 6px;
-    padding: 14px 12px 16px;
-    justify-content: center;
+    gap: 10px;
+    padding: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     background: color-mix(in srgb, var(--color-arc-bg-deep) 80%, transparent);
   }
-  .lv-tote-row {
+  .lv-tote-match {
     display: grid;
-    grid-template-columns: auto auto auto auto;
-    gap: 8px;
+    gap: 5px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg-deep);
+  }
+  .lv-tote-match.is-mine {
+    border-color: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 60%, var(--color-arc-line));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--me-color, var(--color-arc-green)) 25%, transparent);
+  }
+  .lv-tote-line {
+    display: grid;
+    grid-template-columns: 5px auto 1fr auto;
     align-items: center;
-    padding: 3px 6px;
-    border-radius: 6px;
+    gap: 8px;
   }
-  .lv-tote-row.is-mine {
-    background: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 14%, transparent);
+  .lv-tote-chip {
+    width: 5px;
+    height: 100%;
+    min-height: 26px;
+    border-radius: 3px;
+    background: var(--c);
   }
+  .lv-tote-name {
+    grid-column: 2;
+  }
+  .lv-tote-score {
+    grid-column: 4;
+  }
+  /* Big enough to read across a table on a phone. */
   .lv-tote .flap-sm {
-    --w: 11px;
-    --h: 17px;
-    --fs: 13px;
+    --w: 20px;
+    --h: 30px;
+    --fs: 22px;
   }
-  @media (min-width: 640px) {
+  @media (max-width: 360px) {
     .lv-tote .flap-sm {
-      --w: 16px;
-      --h: 24px;
-      --fs: 18px;
+      --w: 18px;
+      --h: 27px;
+      --fs: 20px;
     }
   }
-  .lv-tote-cell {
-    opacity: 0.72;
-  }
-  .lv-tote-cell.is-up {
-    opacity: 1;
+  .lv-tote-line.is-up .lv-tote-score .flap-half {
+    color: var(--color-arc-green);
   }
 
   /* ---- mountains ---- */
