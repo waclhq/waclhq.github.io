@@ -321,12 +321,12 @@
   .flap-fold-top {
     z-index: 2;
     transform-origin: 50% 100%;
-    animation: flap-top-down 420ms linear var(--flap-delay, 0ms) both;
+    animation: flap-top-down var(--flap-ms, 420ms) linear var(--flap-delay, 0ms) both;
   }
   .flap-fold-bot {
     z-index: 3;
     transform-origin: 50% 0%;
-    animation: flap-bot-down 420ms linear var(--flap-delay, 0ms) both;
+    animation: flap-bot-down var(--flap-ms, 420ms) linear var(--flap-delay, 0ms) both;
   }
   @keyframes flap-top-down {
     0% {

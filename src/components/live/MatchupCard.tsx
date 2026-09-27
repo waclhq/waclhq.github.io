@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import PixelMugshot from '../PixelMugshot'
 import Heartbeat from './Heartbeat'
 import ShareCardButton from './ShareCardButton'
@@ -7,6 +7,7 @@ import { matchupCard } from '../../lib/live-cards'
 import { Plot, roundedScale } from '../charts'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
+import { animationsDisabled } from '../../lib/motion'
 import {
   fmt,
   gameClock,
@@ -15,6 +16,7 @@ import {
   matchupLine,
   momentum,
   mood,
+  pairingKey,
   sideStatus,
   signed,
   swingSeries,
@@ -152,6 +154,13 @@ function Swing({ board, matchup }: { board: LivePoints; matchup: LivePointsMatch
   )
 }
 
+const JUMP = 'wacl:matchup-jump'
+
+/** Bring a matchup's card into view with its head-to-head open (the tote board's cards call this). */
+export function jumpToMatchup(key: string) {
+  window.dispatchEvent(new CustomEvent(JUMP, { detail: key }))
+}
+
 export default function MatchupCard({
   matchup,
   board,
@@ -173,13 +182,32 @@ export default function MatchupCard({
   const [a, b] = matchup.teams
   const mine = [a, b].some((side) => side.manager && side.manager === me)
   const [open, setOpen] = useState(mine)
+  const [lit, setLit] = useState(0)
+  const ref = useRef<HTMLElement>(null)
+  const key = pairingKey(matchup)
+  useEffect(() => {
+    const onJump = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== key) return
+      setOpen(true)
+      setLit((n) => n + 1)
+      ref.current?.scrollIntoView({ behavior: animationsDisabled() ? 'auto' : 'smooth', block: 'start' })
+    }
+    window.addEventListener(JUMP, onJump)
+    return () => window.removeEventListener(JUMP, onJump)
+  }, [key])
+  useEffect(() => {
+    if (!lit) return
+    const timer = window.setTimeout(() => setLit(0), 1600)
+    return () => window.clearTimeout(timer)
+  }, [lit])
   const ta = teams.get(a.team)
   const tb = teams.get(b.team)
   const pa = Math.round(a.winProb * 100)
   const live = a.live + b.live > 0
   return (
     <article
-      className={`lv-match ${mine ? 'is-mine' : ''} ${matchup.settled ? 'is-final' : ''} ${live ? 'is-live' : ''}`}
+      ref={ref}
+      className={`lv-match ${mine ? 'is-mine' : ''} ${matchup.settled ? 'is-final' : ''} ${live ? 'is-live' : ''} ${lit ? 'is-lit' : ''}`}
       style={{ '--i': index, '--ca': managerColor(a.manager), '--cb': managerColor(b.manager), '--pa': a.winProb } as CSSProperties}
     >
       <div className="lv-match-top">

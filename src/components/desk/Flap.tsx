@@ -8,16 +8,37 @@ import { animationsDisabled } from '../../lib/motion'
  * half falls in behind it, one card after the next. Transform-only, so a row
  * of thirty costs nothing, and under reduced motion the cards simply sit at
  * their final characters with no fold layers at all.
+ *
+ * A digit card can run on a drum, like a real departures board: instead of
+ * jumping from 3 to 7 it clacks through 4, 5 and 6 on the way, so a score
+ * rolls up to its number.
  */
 
 const FLIP_MS = 420
 const STAGGER_MS = 42
+const DRUM = '0123456789'
+const STEP_MS = 85
+const LAND_MS = 300
 
 interface Flip {
   from: string
   to: string
   id: number
   delay: number
+  ms: number
+}
+
+/** The glyphs a drum card passes through from one digit to the next, ending on the target. */
+function drumPath(from: string, to: string): string[] {
+  if (from === to) return []
+  if (!DRUM.includes(to)) return [to]
+  const path: string[] = []
+  let i = DRUM.indexOf(from)
+  do {
+    i = (i + 1) % DRUM.length
+    path.push(DRUM[i])
+  } while (DRUM[i] !== to)
+  return path
 }
 
 let flipCounter = 0
@@ -26,11 +47,14 @@ export function Flap({
   char,
   index = 0,
   size = 'sm',
+  drum = false,
 }: {
   char: string
   /** Position on the board, for the left-to-right stagger. */
   index?: number
   size?: 'sm' | 'lg'
+  /** Roll through the digits in between instead of jumping straight there. */
+  drum?: boolean
 }) {
   const still = animationsDisabled()
   // The card at rest shows `rest`; a flip in flight carries the old and new
@@ -38,37 +62,56 @@ export function Flap({
   // render is the cards flipping in; still boards start on the answer.
   const [rest, setRest] = useState(still ? char : ' ')
   const [flip, setFlip] = useState<Flip | null>(null)
-  const firstRun = useRef(true)
+  // Only the board's first change staggers left to right; later ones flip at once.
+  const flipped = useRef(false)
   const flipRef = useRef<Flip | null>(null)
   flipRef.current = flip
+  // Drum steps still to come after the flip in flight.
+  const queue = useRef<string[]>([])
 
   useEffect(() => {
     const current = flipRef.current
     const showing = current ? current.to : rest
-    if (showing === char) return
+    const heading = queue.current.length ? queue.current[queue.current.length - 1] : showing
+    if (heading === char) return
     if (animationsDisabled()) {
+      queue.current = []
       setRest(char)
       setFlip(null)
       return
     }
-    const delay = firstRun.current ? index * STAGGER_MS : 0
-    setFlip({ from: showing, to: char, id: ++flipCounter, delay })
+    if (current) {
+      // Mid-flip: finish this card, then head for the new glyph from there.
+      queue.current = drum ? drumPath(showing, char) : [char]
+      return
+    }
+    const path = drum ? drumPath(showing, char) : [char]
+    const [first, ...later] = path
+    queue.current = later
+    const delay = flipped.current ? 0 : index * STAGGER_MS
+    flipped.current = true
+    setFlip({ from: showing, to: first, id: ++flipCounter, delay, ms: later.length ? STEP_MS : drum ? LAND_MS : FLIP_MS })
     // rest here is the resting glyph; changing it never needs a new flip.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [char, index])
 
-  useEffect(() => {
-    firstRun.current = false
-  }, [])
-
-  // Commit the flip once the bottom half has landed. A timer backs up the
-  // animationend event, which a background tab can swallow.
+  // Commit the flip once the bottom half has landed, or take the next drum
+  // step. A timer rather than animationend, which a background tab can swallow.
   useEffect(() => {
     if (!flip) return
-    const timer = setTimeout(() => {
-      setRest(flip.to)
-      setFlip((current) => (current?.id === flip.id ? null : current))
-    }, FLIP_MS + flip.delay + 80)
+    const timer = setTimeout(
+      () => {
+        const next = queue.current.shift()
+        if (next !== undefined) {
+          const landing = queue.current.length === 0
+          setFlip({ from: flip.to, to: next, id: ++flipCounter, delay: 0, ms: landing ? LAND_MS : STEP_MS })
+          return
+        }
+        setRest(flip.to)
+        setFlip((current) => (current?.id === flip.id ? null : current))
+      },
+      flip.ms + flip.delay + (flip.ms === STEP_MS ? 10 : 80),
+    )
     return () => clearTimeout(timer)
   }, [flip])
 
@@ -77,7 +120,7 @@ export function Flap({
   const top = flip ? flip.to : rest
   const bottom = flip ? flip.from : rest
   const style = flip
-    ? ({ '--flap-delay': `${flip.delay}ms` } as CSSProperties)
+    ? ({ '--flap-delay': `${flip.delay}ms`, '--flap-ms': `${flip.ms}ms` } as CSSProperties)
     : undefined
 
   return (

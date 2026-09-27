@@ -244,6 +244,8 @@
   }
   .lv-match {
     position: relative;
+    /* Lands clear of the sticky bars when the tote board jumps here. */
+    scroll-margin-top: calc(116px + env(safe-area-inset-top, 0px));
     display: grid;
     gap: 10px;
     padding: 12px 14px 10px;
@@ -1206,6 +1208,22 @@
     border: 1px solid var(--color-arc-line);
     background: var(--color-arc-bg-deep);
   }
+  button.lv-tote-match {
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  button.lv-tote-match:focus-visible {
+    outline: 2px solid var(--color-arc-green);
+    outline-offset: 2px;
+  }
+  @media (hover: hover) {
+    button.lv-tote-match:hover {
+      border-color: color-mix(in srgb, var(--color-arc-green) 55%, var(--color-arc-line));
+    }
+  }
   .lv-tote-match.is-mine {
     border-color: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 60%, var(--color-arc-line));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--me-color, var(--color-arc-green)) 25%, transparent);
@@ -1244,6 +1262,26 @@
   }
   .lv-tote-line.is-up .lv-tote-score .flap-half {
     color: var(--color-arc-green);
+  }
+  /* The matchup a tote card jumped to lights up once. */
+  .lv-match.is-lit::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 2px solid var(--color-arc-green);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+    pointer-events: none;
+    animation: lv-lit 1.6s ease-out both;
+  }
+  @keyframes lv-lit {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 
   /* ---- the radar clock ---- */
@@ -1669,6 +1707,7 @@
   :root:not([data-motion='on']) .lv-face.is-cheer,
   :root:not([data-motion='on']) .lv-h2h-cell.is-fire::after,
   :root:not([data-motion='on']) .lv-board li.is-fire::after,
+  :root:not([data-motion='on']) .lv-match.is-lit::after,
   :root:not([data-motion='on']) .lv-radar-ping,
   :root:not([data-motion='on']) .lv-radar-flash,
   :root:not([data-motion='on']) .lv-rc-body,
