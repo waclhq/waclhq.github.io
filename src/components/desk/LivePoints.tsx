@@ -43,7 +43,7 @@ function when(player: LivePointsPlayer): string {
 function subtitle(board: Board): string {
   const live = board.games.filter((g) => g.state === 'in').length
   const final = board.games.filter((g) => g.state === 'post').length
-  const method = `Estimated from ESPN box scores with Yahoo's default half-PPR scoring; Yahoo's numbers are the official ones.`
+  const method = `Scored from ESPN box scores with the league's Yahoo rules; Yahoo's numbers are the official ones.`
   if (live) return `${live} game${live === 1 ? '' : 's'} on, ${final} final. As of ${clock(board.updatedAt)} (${ago(board.updatedAt)}), a few minutes behind the TV. ${method}`
   if (final === board.games.length) return `Every game this week is final. ${method}`
   if (final) return `${final} game${final === 1 ? '' : 's'} final, the rest still to come. As of ${clock(board.updatedAt)}. ${method}`

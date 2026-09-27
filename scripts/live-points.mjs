@@ -28,14 +28,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl'
 
 /*
- * The league's scoring. The workbook does not record it, so this is Yahoo's
- * default half-point PPR, with no kickers (the league has no K slot). Change
- * a number here and every total follows; the panel says "estimate" either way.
+ * The league's scoring, from its Yahoo settings (League > Settings, 27 Sep
+ * 2026). Half-PPR with 5-point passing TDs, -2 interceptions, one-time
+ * yardage bonuses, and a richer points-allowed ladder than Yahoo's default.
+ * No kickers (the league has no K slot). Not modelled because ESPN's box
+ * score does not carry them: blocked kicks, returned extra points, and
+ * offensive fumble-return TDs. All are rare.
  */
 export const RULES = {
   passYards: 1 / 25,
-  passTD: 4,
-  interception: -1,
+  passTD: 5,
+  interception: -2,
   rushYards: 1 / 10,
   rushTD: 6,
   reception: 0.5,
@@ -46,9 +49,12 @@ export const RULES = {
   // Credited from the scoring plays: the player who ran or caught it, and the passer.
   twoPoint: 2,
   passTwoPoint: 2,
-  // Yardage bonuses, each paid once when a line reaches it: { stat, at, pts }.
-  // stat is one of passYds, rushYds, recYds.
-  bonuses: [],
+  // One-time yardage bonuses: { stat, at, pts }, stat one of passYds, rushYds, recYds.
+  bonuses: [
+    { stat: 'passYds', at: 300, pts: 2 },
+    { stat: 'rushYds', at: 100, pts: 3 },
+    { stat: 'recYds', at: 100, pts: 2 },
+  ],
   def: {
     sack: 1,
     interception: 2,
@@ -57,10 +63,10 @@ export const RULES = {
     safety: 2,
     // [upper bound of points allowed, fantasy points]
     pointsAllowed: [
-      [0, 10],
-      [6, 7],
-      [13, 4],
-      [20, 1],
+      [0, 12],
+      [6, 8],
+      [13, 5],
+      [20, 2],
       [27, 0],
       [34, -1],
       [Infinity, -4],
@@ -429,7 +435,7 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
   return {
     board: {
       source: 'ESPN box scores',
-      scoring: 'Yahoo default half-PPR (estimate)',
+      scoring: 'League Yahoo scoring (27 Sep 2026 settings)',
       season: scoreboard.season?.year ?? null,
       week: scoreboard.week?.number ?? null,
       updatedAt: now.toISOString(),

@@ -143,11 +143,15 @@ and the dashboard both name it; add its Yahoo team key to that file.
 Until Yahoo enables the app, `.github/workflows/live-points.yml` runs
 `scripts/live-points.mjs` through every game window: it reads the week's
 scoreboard and each started game's box score from ESPN's public endpoints,
-scores every player in `scripts/data/lineups.json` with Yahoo's default
-half-PPR (the `RULES` object; change it there if the league scores
-differently), and publishes `points.json` to the orphan **`points`** branch.
-The Ledger's *Live points* panel reads it. Totals are estimates; Yahoo's are
-official. Two-point conversions are not counted.
+scores every player in `scripts/data/lineups.json` with the league's Yahoo
+scoring (the `RULES` object, copied from League > Settings: half-PPR, 5-point
+passing TDs, -2 interceptions, yardage bonuses at 300 passing / 100 rushing /
+100 receiving, and the league's points-allowed ladder), and publishes
+`points.json` to the orphan **`points`** branch. The Ledger's *Live points*
+panel reads it. Yahoo's numbers stay official; blocked kicks, returned extra
+points and offensive fumble-return TDs are not in ESPN's box score and are
+not counted. Each pass pulls the latest scripts, so a rules fix pushed during
+the games applies within a couple of minutes.
 
 `lineups.json` is a snapshot of Yahoo's roster export and must be refreshed
 each week (or whenever a lineup changes) until the Yahoo sync can supply it.
