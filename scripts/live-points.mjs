@@ -842,7 +842,9 @@ async function main() {
   if (week || fixture) done = true
   else if (live > 0) nextPollSeconds = 60
   else if (soonest !== undefined && soonest <= 30 * 60_000) nextPollSeconds = 120
-  else if (soonest !== undefined && soonest <= horizon * 60_000) nextPollSeconds = Math.max(120, Math.round((soonest - 15 * 60_000) / 1000))
+  // Waiting for kickoff: wake at least every 15 minutes, so a scoring fix
+  // pushed in the morning is published within a quarter hour, not at noon.
+  else if (soonest !== undefined && soonest <= horizon * 60_000) nextPollSeconds = Math.min(900, Math.max(120, Math.round((soonest - 15 * 60_000) / 1000)))
   else done = true
 
   console.log(JSON.stringify({ done, nextPollSeconds, live, final, pre: upcoming.length, week: board.week, noLine }))
