@@ -78,7 +78,7 @@ the Shell offers a refresh when a newer build is live.
 6. **Page styles live with the page.** `src/index.css` holds tokens and the
    shared primitives (`.win`, `.out`, `.tag`, `.badge`, `.btn`, rails, the
    reduced-motion guard). Each room has its own sheet in `src/styles/`
-   (`ledger`, `book`, `almanac`, `profile`, `boards`, `tables`, `ops`),
+   (`ledger`, `live`, `book`, `almanac`, `profile`, `boards`, `tables`, `ops`),
    imported at the top of `index.css`; a page's animations are guarded in
    its own sheet. Keep it that way so parallel work merges cleanly.
 
@@ -94,9 +94,9 @@ the Shell offers a refresh when a newer build is live.
 
 ## Layout
 
-- `src/pages/` — one file per route (Dashboard is "Ledger", plus Trades,
-  Keepers, Draft, Finances, Standings, Managers, Records, Lab, Almanac,
-  Rules, Guide).
+- `src/pages/` — one file per route (Dashboard is "Ledger", plus Live,
+  Trades, Keepers, Draft, Finances, Standings, Managers, Records, Lab,
+  Almanac, Rules, Guide).
 - `src/lib/` — `data.tsx` (loader, writable-overlay, `save()` which also
   broadcasts `wacl:save` events for the Shell's SaveStatus strip),
   `github.ts` (Contents API + `friendlySaveError`), `vault.ts`
@@ -121,7 +121,10 @@ the Shell offers a refresh when a newer build is live.
   header, tale of the tape, Book panel), `tables/` (season scrubber, sortable
   leaderboard bits), `boards/` (the shared podium `Board`, Elo constellation,
   odds board, roast teleprompter, shrine), `ops/` (stadium dues section),
-  `receipts/` (the Book: tiles, slip, stub, composer, editor, share). Their
+  `receipts/` (the Book: tiles, slip, stub, composer, editor, share), `live/`
+  (the Live room: NFL game strip and red-zone alerts, matchup face-offs with
+  win odds, head-to-head and swing chart, the big-plays wire, bonus watch,
+  leader boards, score alerts; its helpers are `lib/live-view.ts`). Their
   pure helpers live beside them as `src/lib/<room>-*.ts`.
 - `scripts/` — Python ETL/extractors, `manager_icons.mjs` (exports every
   manager badge to `assets/manager-icons/`, read-only on league data), and the

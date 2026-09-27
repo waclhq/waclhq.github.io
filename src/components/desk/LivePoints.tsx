@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { Panel } from '../ui'
 import { managerName, useLeagueData } from '../../lib/data'
 import { useMe } from '../../lib/me'
@@ -138,7 +139,11 @@ export default function LivePoints() {
       subtitle={subtitle(board)}
       delay={40}
       flush
-      action={live ? <span className="label lp-livetag"><span className="desk-mu-dot" aria-hidden /> Live</span> : undefined}
+      action={
+        <Link to="/live" className="label lp-livetag no-underline">
+          {live && <span className="desk-mu-dot" aria-hidden />} Open Live →
+        </Link>
+      }
     >
       {feed.length > 0 && (
         <ol className="lp-feed" aria-label="Latest scores involving league rosters">

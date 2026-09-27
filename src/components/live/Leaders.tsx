@@ -1,0 +1,56 @@
+import type { CSSProperties } from 'react'
+import { managerName, useLeagueData } from '../../lib/data'
+import { managerColor } from '../../lib/identity'
+import { boards, fmt } from '../../lib/live-view'
+import type { LivePoints, ManagerId } from '../../lib/types'
+
+/**
+ * Three short boards, in the Lab's voice: the week's best starters, the
+ * points that sat on a bench, and the starters who played a full game and
+ * gave nothing back.
+ */
+export default function Leaders({ board, me }: { board: LivePoints; me: ManagerId | null }) {
+  const { managers } = useLeagueData()
+  const { stars, bench, ghosts } = boards(board)
+  const column = (
+    title: string,
+    sub: string,
+    rows: ReturnType<typeof boards>['stars'],
+    empty: string,
+    tone: 'star' | 'bench' | 'ghost',
+  ) => (
+    <section className={`lv-board is-${tone}`}>
+      <h3 className="lv-board-title">{title}</h3>
+      <p className="lv-board-sub">{sub}</p>
+      {rows.length === 0 ? (
+        <p className="lv-empty">{empty}</p>
+      ) : (
+        <ol>
+          {rows.map(({ player, team }, i) => (
+            <li
+              key={`${team.team}-${player.name}`}
+              className={team.manager === me && me ? 'is-mine' : ''}
+              style={{ '--c': managerColor(team.manager) } as CSSProperties}
+            >
+              <span className="lv-board-rank tnum">{i + 1}</span>
+              <span className="lv-board-who">
+                <span className="lv-board-name">{player.name}</span>
+                <span className="lv-board-meta">
+                  {managerName(managers, team.manager)} · {player.line || (player.state === 'final' ? 'nothing' : 'just started')}
+                </span>
+              </span>
+              <span className="lv-board-pts tnum">{fmt(player.pts)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+  return (
+    <div className="lv-boards">
+      {column('Carrying the week', 'Top starters so far.', stars, 'Nobody has scored yet.', 'star')}
+      {column('Left on the bench', 'Real points, zero credit.', bench, 'The benches have kept quiet. For now.', 'bench')}
+      {column('Ghosts', 'Started, played the whole game, returned three points or fewer.', ghosts, 'No ghosts yet. Give it time.', 'ghost')}
+    </div>
+  )
+}

@@ -250,6 +250,12 @@ export interface LivePointsPlayer {
   opp?: string
   kickoff?: string
   clock?: string
+  /** Expected final points: points so far plus the prior for the share still to play. */
+  proj?: number
+  /** Share of this player's game still to play, 0..1. */
+  left?: number
+  prior?: number
+  yds?: { passYds: number; rushYds: number; recYds: number }
 }
 
 export interface LivePointsTeam {
@@ -262,6 +268,49 @@ export interface LivePointsTeam {
   done: number
   starters: LivePointsPlayer[]
   bench: LivePointsPlayer[]
+  proj?: number
+}
+
+export interface LiveMatchupSide {
+  team: string
+  manager: ManagerId | null
+  record: string | null
+  rank: number | null
+  total: number
+  proj: number
+  winProb: number
+  live: number
+  toPlay: number
+}
+
+export interface LivePointsMatchup {
+  teams: [LiveMatchupSide, LiveMatchupSide]
+  settled: boolean
+}
+
+export type LivePlayKind = 'td' | 'boom' | 'turnover' | 'sack' | 'safety'
+
+export interface LivePointsPlay {
+  id: string
+  kind: LivePlayKind
+  text: string
+  yards: number
+  when: string
+  game: string
+  hits: { team: string; manager: ManagerId | null; player: string; starter: boolean; pts: number }[]
+}
+
+export interface LivePointsMilestone {
+  team: string
+  manager: ManagerId | null
+  player: string
+  starter: boolean
+  stat: 'passYds' | 'rushYds' | 'recYds'
+  label: string
+  have: number
+  pts: number
+  at?: number
+  clock?: string
 }
 
 export interface LivePointsEvent {
@@ -282,6 +331,12 @@ export interface LivePointsGame {
   away: string
   homeScore: number
   awayScore: number
+  period?: number
+  elapsed?: number
+  possession?: string | null
+  redZone?: boolean
+  down?: string | null
+  lastPlay?: string | null
 }
 
 /** points.json on the `points` branch: the week scored from ESPN box scores. */
@@ -295,6 +350,11 @@ export interface LivePoints {
   games: LivePointsGame[]
   teams: LivePointsTeam[]
   events: LivePointsEvent[]
+  matchups?: LivePointsMatchup[]
+  plays?: LivePointsPlay[]
+  milestones?: LivePointsMilestone[]
+  chases?: LivePointsMilestone[]
+  history?: { teams: string[]; samples: { t: string; v: number[]; p: number[] }[] }
 }
 
 /** year -> normalised player name -> [standard fantasy points, position]. */

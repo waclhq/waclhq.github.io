@@ -28,6 +28,7 @@ const IS_IOS =
 // Each destination owns a colour, so the nav reads as a row of cabinet buttons.
 const NAV = [
   { to: '/', label: 'Ledger', color: 'var(--color-arc-blue)', end: true, hint: 'The desk' },
+  { to: '/live', label: 'Live', color: 'var(--color-arc-green)', hint: 'Game day, as it happens' },
   { to: '/trades', label: 'Trades', color: 'var(--color-arc-red)', hint: 'Queue & history' },
   { to: '/keepers', label: 'Keepers', color: 'var(--color-arc-lime)', hint: 'Contracts by team' },
   { to: '/draft', label: 'Draft', color: 'var(--color-arc-green)', hint: 'Budgets & war room' },
@@ -43,7 +44,7 @@ const NAV = [
 ]
 
 /** The four destinations that earn a permanent thumb-reach slot. */
-const TABS = ['/', '/bets', '/standings', '/records']
+const TABS = ['/', '/live', '/bets', '/standings', '/records']
 
 /**
  * Three equalizer bars that dance to the theme actually playing — the UI

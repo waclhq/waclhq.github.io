@@ -153,8 +153,16 @@ points and offensive fumble-return TDs are not in ESPN's box score and are
 not counted. Each pass pulls the latest scripts, so a rules fix pushed during
 the games applies within a couple of minutes.
 
+The same file feeds the **Live** room (`/live`): this week's matchups from
+`scripts/data/matchups.json` with win odds (each team's projection is
+calibrated to Yahoo's at the moment the matchups page was read, then moves
+with the real points), a strip of every NFL game with possession and red-zone
+flags, a wire of touchdowns, 20-yard plays, turnovers and sacks with what each
+was worth to whom, bonus chases, and a swing chart of each matchup's day.
+
 `lineups.json` is a snapshot of Yahoo's roster export and must be refreshed
-each week (or whenever a lineup changes) until the Yahoo sync can supply it.
+each week (or whenever a lineup changes) until the Yahoo sync can supply it,
+and `matchups.json` each week likewise.
 To test against real data, run the workflow by hand with a finished week
 number; it scores that week once and publishes it.
 

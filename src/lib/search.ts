@@ -13,6 +13,7 @@ export interface SearchResult {
 
 export const PAGES: { title: string; subtitle: string; to: string; aliases: string }[] = [
   { title: 'Ledger', subtitle: 'The desk: what changed, what needs a ruling', to: '/', aliases: 'home desk dashboard budgets overview' },
+  { title: 'Live', subtitle: 'Matchups, big plays and win odds, live on game day', to: '/live', aliases: 'live scores scoreboard matchups game day win probability red zone touchdown' },
   { title: 'Trades', subtitle: 'Approval queue and trade history', to: '/trades', aliases: 'queue pending approve trade history' },
   { title: 'Keepers', subtitle: 'Rosters, contracts, and the contract board', to: '/keepers', aliases: 'contracts rosters keeper team' },
   { title: 'Draft Board', subtitle: 'Top-ranked players still available at auction', to: '/draft', aliases: 'auction war room rankings available' },

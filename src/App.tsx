@@ -72,6 +72,7 @@ const Almanac = room(() => import('./pages/Almanac'))
 const ManagerDetail = room(() => import('./pages/ManagerDetail'))
 const PlayerDetail = room(() => import('./pages/PlayerDetail'))
 const Records = room(() => import('./pages/Records'))
+const Live = room(() => import('./pages/Live'))
 const Rules = room(() => import('./pages/Rules'))
 const Trades = room(() => import('./pages/Trades'))
 
@@ -222,6 +223,7 @@ export default function App() {
         <Route path="/managers/:id" element={<ManagerDetail />} />
         <Route path="/players/:name" element={<PlayerDetail />} />
         <Route path="/records" element={<Records />} />
+        <Route path="/live" element={<Live />} />
         <Route path="/lab" element={<Lab />} />
         <Route path="/almanac" element={<Almanac />} />
         <Route path="/rules" element={<Rules />} />
