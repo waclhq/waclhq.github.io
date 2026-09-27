@@ -779,7 +779,7 @@ async function main() {
   let nextPollSeconds = 0
   let done = false
   if (week || fixture) done = true
-  else if (live > 0) nextPollSeconds = 90
+  else if (live > 0) nextPollSeconds = 60
   else if (soonest !== undefined && soonest <= 30 * 60_000) nextPollSeconds = 120
   else if (soonest !== undefined && soonest <= horizon * 60_000) nextPollSeconds = Math.max(120, Math.round((soonest - 15 * 60_000) / 1000))
   else done = true

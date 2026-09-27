@@ -6,28 +6,45 @@ import type { LivePoints } from './types'
  * live-points job and published to the repo's orphan `points` branch (not
  * public/data, so a Sunday of updates never touches main or triggers a
  * deploy). raw.githubusercontent caches for five minutes on top of the job's
- * ninety-second passes, so call it a few minutes behind and say so.
+ * sixty-second passes; the Cloudflare mirror below cuts that to about a minute.
  *
  * Until the job has published once, and whenever the file is more than four
  * days old, this returns null and the panel stays hidden.
  */
 const RAW = 'https://raw.githubusercontent.com/waclhq/waclhq.github.io/points/points.json'
 
-const LIVE_MS = 2 * 60_000
+/*
+ * The same file mirrored to a Cloudflare Worker (worker/live.js) with a
+ * short cache, so phones see a pass within about a minute instead of five.
+ * Empty until the Cloudflare setup has run; the branch is always the
+ * fallback, so a Cloudflare outage only costs freshness.
+ */
+const EDGE = ''
+
+const LIVE_MS = EDGE ? 45_000 : 2 * 60_000
 const IDLE_MS = 10 * 60_000
 const STALE_MS = 4 * 24 * 3600_000
 
-export async function readPoints(): Promise<LivePoints | null> {
+async function readFrom(url: string): Promise<LivePoints | null> {
   try {
-    const response = await fetch(RAW, { cache: 'no-store' })
+    const response = await fetch(url, { cache: 'no-store' })
     if (!response.ok) return null
     const board = (await response.json()) as LivePoints
     if (!Array.isArray(board?.teams) || board.teams.length === 0) return null
-    if (Date.now() - new Date(board.updatedAt).getTime() > STALE_MS) return null
     return board
   } catch {
     return null
   }
+}
+
+export async function readPoints(): Promise<LivePoints | null> {
+  const [edge, branch] = await Promise.all([EDGE ? readFrom(EDGE) : Promise.resolve(null), EDGE ? Promise.resolve(null) : readFrom(RAW)])
+  let board = edge ?? branch
+  // Edge unreachable or empty: the branch, a few minutes older, still works.
+  if (!board && EDGE) board = await readFrom(RAW)
+  if (!board) return null
+  if (Date.now() - new Date(board.updatedAt).getTime() > STALE_MS) return null
+  return board
 }
 
 export function pointsLive(board: LivePoints | null): boolean {

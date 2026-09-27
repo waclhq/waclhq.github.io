@@ -4,7 +4,7 @@ name: Live points
 # on, and publishes points.json to the orphan `points` branch (one commit,
 # force-pushed, so main's log stays the audit trail). The Ledger reads it.
 #
-# Each run loops: score, publish if anything moved, sleep 90 s while a game is
+# Each run loops: score, publish if anything moved, sleep 60 s while a game is
 # live, then stop when nothing is live or due inside the run's remaining time.
 # Hourly starts on game days hand over to one another through the
 # concurrency group; a start with nothing to do exits in seconds.
@@ -46,10 +46,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WEEK: ${{ inputs.week }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -uo pipefail
           started=$(date +%s)
           cap=$((340 * 60))
+          # Cloudflare mirror: the site reads the Worker first (about a minute
+          # behind) and falls back to the branch (up to five). Found once per run.
+          kv=""
+          if [ -n "${CF_TOKEN:-}" ] && [ -n "${CF_ACCOUNT:-}" ]; then
+            kv=$(curl -sS -H "Authorization: Bearer $CF_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/storage/kv/namespaces?per_page=100" \
+              | jq -r '.result[]? | select(.title=="wacl-live") | .id' || true)
+            [ -n "$kv" ] && echo "Mirroring to Cloudflare KV $kv." || echo "::notice::Cloudflare secrets set but no wacl-live namespace; run Cloudflare live setup."
+          fi
+          mirror() {
+            [ -n "$kv" ] || return 0
+            curl -sS -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer $CF_TOKEN" --data-binary @"$1" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/storage/kv/namespaces/$kv/values/points.json" \
+              | grep -q '^2' && echo "Mirrored." || echo "::warning::Cloudflare write failed; the branch still has it."
+          }
           publish() {
             local fresh="$1"
             if git fetch -q origin points 2>/dev/null && git cat-file -e FETCH_HEAD:points.json 2>/dev/null; then
@@ -67,6 +84,7 @@ jobs:
               commit -q -m "Points as of $(date -u +'%Y-%m-%d %H:%M UTC')"
             git -C "$stage" push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" points:points \
               && echo "Published." || echo "::warning::Publish failed; will retry next pass."
+            mirror "$fresh"
           }
           while :; do
             # Take the latest scoring code each pass, so a rules fix pushed
