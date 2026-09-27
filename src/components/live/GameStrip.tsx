@@ -41,6 +41,7 @@ export default function GameStrip({ board }: { board: LivePoints }) {
             key={game.id}
             role="listitem"
             className={`lv-game is-${game.state} ${game.redZone ? 'is-redzone' : ''}`}
+            data-teams={`${game.away} ${game.home}`}
             aria-label={`${game.away} ${game.awayScore}, ${game.home} ${game.homeScore}, ${when(game)}`}
           >
             <div className="lv-game-row">

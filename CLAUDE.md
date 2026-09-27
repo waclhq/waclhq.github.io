@@ -123,7 +123,9 @@ the Shell offers a refresh when a newer build is live.
   leaderboard bits), `boards/` (the shared podium `Board`, Elo constellation,
   odds board, roast teleprompter, shrine), `ops/` (stadium dues section),
   `receipts/` (the Book: tiles, slip, stub, composer, editor, share), `live/`
-  (the Live room: NFL game strip and red-zone alerts, split-flap tote board,
+  (the Live room: NFL game strip and red-zone alerts, the tote board (a one-shot
+  broadcast open per visit, slot-reel scores, and score moments: football flight,
+  confetti, cracked glass, lead-change flip; effects in `live/tote-fx.ts`),
   matchup face-offs with win odds, latest scores in team colours and living portraits,
   head-to-head with fire/ice players and a swing chart, the radar clock
   (win odds through the day as rings on a tilted dial, SVG, no library), the big-plays wire, bonus

@@ -1366,15 +1366,23 @@
     content: ' 🔥';
   }
 
-  /* ---- tote board ---- */
+  /* ---- tote board: a primetime open ----
+     Cards of two lines over bars of each manager's colour filled to his
+     share of the points; names on flaps, scores on slot reels. The boot
+     sequence runs once per visit under .is-boot, timed from --i (the card's
+     place); score moments are one-shot classes. Transform and opacity only. */
   .lv-tote {
+    position: relative;
     display: grid;
     gap: 10px;
     padding: 14px;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
     background: color-mix(in srgb, var(--color-arc-bg-deep) 80%, transparent);
+    overflow: hidden;
+    perspective: 900px;
   }
   .lv-tote-match {
+    position: relative;
     display: grid;
     gap: 5px;
     padding: 8px 10px;
@@ -1403,10 +1411,21 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--me-color, var(--color-arc-green)) 25%, transparent);
   }
   .lv-tote-line {
+    position: relative;
+    container-type: inline-size;
     display: grid;
     grid-template-columns: 5px auto 1fr auto;
     align-items: center;
     gap: 8px;
+    padding: 3px 6px 3px 4px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  /* The line's content sits above its share bar. */
+  .lv-tote-chip,
+  .lv-tote-name,
+  .lv-tote-score {
+    position: relative;
   }
   .lv-tote-chip {
     width: 5px;
@@ -1420,23 +1439,515 @@
   }
   .lv-tote-score {
     grid-column: 4;
+    display: inline-flex;
+    gap: 2px;
+    overflow: hidden;
   }
   /* Big enough to read across a table on a phone. */
-  .lv-tote .flap-sm {
+  .lv-tote .flap-sm,
+  .lv-reel,
+  .lv-reel-gap {
     --w: 20px;
     --h: 30px;
     --fs: 22px;
   }
   @media (max-width: 360px) {
-    .lv-tote .flap-sm {
+    .lv-tote .flap-sm,
+    .lv-reel,
+    .lv-reel-gap {
       --w: 18px;
       --h: 27px;
       --fs: 20px;
     }
   }
-  .lv-tote-line.is-up .lv-tote-score .flap-half {
+
+  /* The share bar: his colour, filled to his share, with a bright front. */
+  .lv-tote-fill {
+    position: absolute;
+    inset: 0;
+    transform-origin: left;
+    transform: scaleX(var(--w));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--c) 10%, transparent), color-mix(in srgb, var(--c) 38%, transparent));
+    transition: transform 0.9s cubic-bezier(0.3, 1.25, 0.45, 1);
+  }
+  .lv-tote-front {
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: 0;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--c);
+    box-shadow: 0 0 10px var(--c);
+    transform: translateX(calc(var(--w) * 100cqw - 3px));
+    transition: transform 0.9s cubic-bezier(0.3, 1.25, 0.45, 1);
+  }
+  /* The slosh: the front wobbles as the bar settles at its new split. */
+  .lv-tote-front.is-slosh {
+    animation: lv-slosh 0.9s ease-out 1;
+  }
+  @keyframes lv-slosh {
+    0%, 100% {
+      transform: translateX(calc(var(--w) * 100cqw - 3px)) skewX(0deg);
+    }
+    20% {
+      transform: translateX(calc(var(--w) * 100cqw + 5px)) skewX(-14deg);
+    }
+    45% {
+      transform: translateX(calc(var(--w) * 100cqw - 8px)) skewX(10deg);
+    }
+    70% {
+      transform: translateX(calc(var(--w) * 100cqw)) skewX(-4deg);
+    }
+  }
+
+  /* Slot reels, dressed as flap cards. */
+  .lv-reel {
+    position: relative;
+    display: inline-block;
+    width: var(--w);
+    height: var(--h);
+    overflow: hidden;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--color-arc-raised) 50%, var(--color-arc-panel) 50%);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs);
+    line-height: var(--h);
+    text-align: center;
+    color: var(--color-arc-ink);
+  }
+  .lv-reel::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: var(--color-arc-bg-deep);
+  }
+  .lv-reel.is-dot {
+    width: calc(var(--w) * 0.6);
+  }
+  .lv-reel-gap {
+    display: inline-block;
+    width: calc(var(--w) * 0.5);
+  }
+  .lv-reel-strip {
+    display: block;
+    transform: translateY(calc(var(--k) * var(--h) * -1));
+  }
+  .lv-reel-strip.is-moving {
+    transition: transform var(--dur) cubic-bezier(0.2, 0.85, 0.3, 1.12) var(--delay);
+  }
+  .lv-reel-strip > span {
+    display: block;
+    height: var(--h);
+  }
+  .lv-tote-line.is-up .lv-reel {
     color: var(--color-arc-green);
   }
+
+  /* ---- score moments ---- */
+  /* The scorer's line flashes in his colour. */
+  .lv-tote-line.is-hit::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--c);
+    pointer-events: none;
+    animation: lv-hit 0.9s ease-out both;
+  }
+  .lv-tote-line.is-td::before {
+    animation-delay: 0.85s;
+  }
+  .lv-tote-line.is-turnover::before {
+    background: var(--color-arc-red);
+  }
+  @keyframes lv-hit {
+    from {
+      opacity: 0.6;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  /* "+6.8" rises out of the line and fades. */
+  .lv-tote-pop {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    z-index: 2;
+    margin-top: -12px;
+    padding: 0 6px;
+    border-radius: 5px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 18px;
+    line-height: 24px;
+    color: var(--color-arc-bg-deep);
+    background: var(--c);
+    box-shadow: 0 0 14px var(--c);
+    pointer-events: none;
+    animation: lv-pop 1.6s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .lv-tote-line.is-td .lv-tote-pop {
+    animation-delay: 0.85s;
+  }
+  .lv-tote-line.is-turnover .lv-tote-pop {
+    background: var(--color-arc-red);
+    box-shadow: 0 0 14px var(--color-arc-red);
+  }
+  @keyframes lv-pop {
+    0% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.5);
+    }
+    14% {
+      opacity: 1;
+      transform: translateY(0) scale(1.2);
+    }
+    24% {
+      transform: translateY(0) scale(1);
+    }
+    75% {
+      opacity: 1;
+      transform: translateY(-14px);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-28px);
+    }
+  }
+  /* A turnover cracks the line's glass, then it heals. */
+  .lv-tote-crack {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    animation: lv-crack-fade 1.6s ease-in both;
+  }
+  .lv-tote-crack path {
+    fill: none;
+    stroke: var(--color-arc-red);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    animation: lv-crack 0.28s ease-out forwards;
+  }
+  @keyframes lv-crack {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes lv-crack-fade {
+    0%, 60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  /* A lead change turns the whole card over under a stamp. */
+  .lv-tote-match.is-flip {
+    animation: lv-flip 0.75s cubic-bezier(0.4, 0, 0.2, 1) 1;
+  }
+  @keyframes lv-flip {
+    from {
+      transform: rotateX(0deg);
+    }
+    to {
+      transform: rotateX(360deg);
+    }
+  }
+  .lv-tote-stamp {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 3;
+    padding: 2px 12px;
+    border: 3px solid var(--c);
+    border-radius: 6px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--c);
+    background: color-mix(in srgb, var(--color-arc-bg-deep) 88%, transparent);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--c) 55%, transparent);
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-6deg);
+    animation: lv-stamp 2s cubic-bezier(0.2, 0.9, 0.3, 1) 0.55s both;
+  }
+  @keyframes lv-stamp {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-14deg) scale(2.6);
+    }
+    16% {
+      opacity: 1;
+      transform: translate(-50%, -50%) rotate(-6deg) scale(0.94);
+    }
+    22% {
+      transform: translate(-50%, -50%) rotate(-6deg) scale(1);
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-6deg) scale(1);
+    }
+  }
+  /* The flying football and the confetti canvas live on <body>. */
+  .lv-fly-ball {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 60;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 6px color-mix(in srgb, var(--color-arc-bg-deep) 70%, transparent));
+  }
+  .lv-fly-ball ellipse {
+    fill: var(--color-arc-orange);
+  }
+  .lv-fly-ball path {
+    fill: none;
+    stroke: var(--color-arc-ink);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+  }
+  .lv-confetti {
+    position: fixed;
+    z-index: 59;
+    pointer-events: none;
+  }
+
+  /* ---- the open ---- */
+  /* Before it's seen: dark outlines, nothing lit. */
+  .lv-tote.is-hold .lv-tote-match {
+    opacity: 0.18;
+  }
+  .lv-tote.is-hold .lv-tote-line {
+    opacity: 0;
+  }
+  .lv-tote.is-hold .lv-tote-fill {
+    transform: scaleX(0);
+  }
+  .lv-tote.is-hold .lv-tote-front {
+    transform: translateX(-4px);
+  }
+  /* Stadium lights: the board starts dark and two beams sweep across it. */
+  .lv-tote-lights {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .lv-tote-dark {
+    position: absolute;
+    inset: 0;
+    background: var(--color-arc-bg-deep);
+    animation: lv-dark 1.1s ease-in 0.1s both;
+  }
+  @keyframes lv-dark {
+    from {
+      opacity: 0.85;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .lv-tote-beam {
+    position: absolute;
+    top: -30%;
+    left: 0;
+    width: 45%;
+    height: 160%;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-arc-ink) 22%, transparent), transparent);
+    transform: translateX(-120%) rotate(18deg);
+    animation: lv-beam 1.15s cubic-bezier(0.4, 0, 0.3, 1) 0.1s both;
+  }
+  .lv-tote-beam.is-back {
+    animation-name: lv-beam-back;
+    animation-delay: 0.3s;
+  }
+  @keyframes lv-beam {
+    from {
+      transform: translateX(-120%) rotate(18deg);
+    }
+    to {
+      transform: translateX(260%) rotate(18deg);
+    }
+  }
+  @keyframes lv-beam-back {
+    from {
+      transform: translateX(260%) rotate(-18deg);
+    }
+    to {
+      transform: translateX(-120%) rotate(-18deg);
+    }
+  }
+  /* Each card flickers on as the lights reach it, then shakes when its lines slam together. */
+  .lv-tote.is-boot .lv-tote-match {
+    animation:
+      lv-power 0.42s steps(1, end) calc(0.15s + var(--i) * 0.07s) both,
+      lv-shake 0.3s ease-out calc(0.65s + var(--i) * 0.07s) 1;
+  }
+  @keyframes lv-power {
+    0% {
+      opacity: 0.18;
+    }
+    25% {
+      opacity: 0.85;
+    }
+    40% {
+      opacity: 0.3;
+    }
+    60% {
+      opacity: 0.95;
+    }
+    75% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes lv-shake {
+    20% {
+      transform: translate(-3px, 1px);
+    }
+    40% {
+      transform: translate(3px, -1px);
+    }
+    60% {
+      transform: translate(-2px, 0);
+    }
+    80% {
+      transform: translate(1px, 0);
+    }
+  }
+  /* The collision: top line in from the left, bottom line from the right, accelerating into each other. */
+  .lv-tote.is-boot .lv-tote-line {
+    animation: lv-in-left 0.3s cubic-bezier(0.55, 0, 1, 0.45) calc(0.35s + var(--i) * 0.07s) both;
+  }
+  .lv-tote.is-boot .lv-tote-line[data-row='1'] {
+    animation-name: lv-in-right;
+  }
+  @keyframes lv-in-left {
+    from {
+      transform: translateX(-115%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes lv-in-right {
+    from {
+      transform: translateX(115%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  /* The shockwave where they meet. */
+  .lv-tote-shock {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border-radius: 50%;
+    border: 2px solid var(--color-arc-ink);
+    pointer-events: none;
+    animation: lv-shock 0.55s ease-out calc(0.65s + var(--i) * 0.07s) both;
+  }
+  @keyframes lv-shock {
+    0% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    10% {
+      opacity: 0.9;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(9);
+    }
+  }
+  /* The colours flood out to the split, overshooting and settling. */
+  .lv-tote.is-boot .lv-tote-fill {
+    animation: lv-flood 0.9s cubic-bezier(0.25, 1.35, 0.4, 1) calc(0.7s + var(--i) * 0.07s) both;
+  }
+  .lv-tote.is-boot .lv-tote-front {
+    animation: lv-front 0.9s cubic-bezier(0.25, 1.35, 0.4, 1) calc(0.7s + var(--i) * 0.07s) both;
+  }
+  @keyframes lv-flood {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(var(--w));
+    }
+  }
+  @keyframes lv-front {
+    from {
+      transform: translateX(-4px);
+    }
+    to {
+      transform: translateX(calc(var(--w) * 100cqw - 3px));
+    }
+  }
+  /* A glint across each leader's score once the reels have landed. */
+  .lv-tote.is-boot .lv-tote-line.is-up .lv-tote-score::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--color-arc-yellow) 70%, transparent) 50%, transparent 70%);
+    transform: translateX(-120%);
+    animation: lv-glint 0.7s ease-out calc(2.35s + var(--i) * 0.07s) both;
+  }
+  @keyframes lv-glint {
+    to {
+      transform: translateX(120%);
+    }
+  }
+  /* Your card is picked out last. */
+  .lv-tote.is-boot .lv-tote-match.is-mine::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 12px;
+    border: 2px solid var(--me-color, var(--color-arc-green));
+    box-shadow: 0 0 24px var(--me-color, var(--color-arc-green));
+    pointer-events: none;
+    animation: lv-spot 1s ease-out 2.6s both;
+  }
+  @keyframes lv-spot {
+    0% {
+      opacity: 0;
+      transform: scale(1.08);
+    }
+    35% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
   /* The matchup a tote card jumped to lights up once. */
   .lv-match.is-lit::after {
     content: '';
@@ -1919,6 +2430,9 @@
   :root:not([data-motion='on']) .lv-h2h-cell.is-fire::after,
   :root:not([data-motion='on']) .lv-board li.is-fire::after,
   :root:not([data-motion='on']) .lv-match.is-lit::after,
+  :root:not([data-motion='on']) .lv-tote *,
+  :root:not([data-motion='on']) .lv-tote *::before,
+  :root:not([data-motion='on']) .lv-tote *::after,
   :root:not([data-motion='on']) .lv-latest-row.is-fresh::after,
   :root:not([data-motion='on']) .lv-radar-ping,
   :root:not([data-motion='on']) .lv-radar-flash,
@@ -1930,6 +2444,9 @@
   :root:not([data-motion='on']) .lv-latest-row.is-fresh::after {
     display: none;
   }
+  :root:not([data-motion='on']) .lv-tote-fill,
+  :root:not([data-motion='on']) .lv-tote-front,
+  :root:not([data-motion='on']) .lv-reel-strip,
   :root:not([data-motion='on']) .lv-face,
   :root:not([data-motion='on']) .lv-radar-disc,
   :root:not([data-motion='on']) .lv-radar-ring {

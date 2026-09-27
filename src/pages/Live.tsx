@@ -176,7 +176,7 @@ export default function Live() {
 
       {(board.matchups?.length ?? 0) > 0 && (
         <div className="mb-6">
-          <Panel title="The tote board" subtitle="Every matchup on the flaps. Managers left and right, scores in the middle." flush>
+          <Panel title="The tote board" subtitle="Every matchup, each side's bar filled to its share of the points. Touchdowns, turnovers and lead changes land here first. Tap a card for the matchup." flush>
             <ToteBoard board={board} me={me} />
           </Panel>
         </div>
