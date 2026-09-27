@@ -213,6 +213,23 @@ export function inRedZone(player: LivePointsPlayer, teams: Set<string>): boolean
   return player.state === 'live' && player.pos !== 'DEF' && teams.has(player.nfl)
 }
 
+/** For every NFL team in a live game with a known possession: is its offense or its defense out there? */
+export function sidesOnField(board: LivePoints): Map<string, 'offense' | 'defense'> {
+  const sides = new Map<string, 'offense' | 'defense'>()
+  for (const game of board.games) {
+    if (game.state !== 'in' || !game.possession) continue
+    sides.set(game.possession, 'offense')
+    sides.set(game.possession === game.home ? game.away : game.home, 'defense')
+  }
+  return sides
+}
+
+/** Is this player's side of the ball on the field right now? A defense when the other team has it, anyone else when his team does. */
+export function onField(player: LivePointsPlayer, sides: Map<string, 'offense' | 'defense'>): boolean {
+  if (player.state !== 'live') return false
+  return sides.get(player.nfl) === (player.pos === 'DEF' ? 'defense' : 'offense')
+}
+
 /* ----------------------------------------------------- living portraits */
 
 /** How a manager's face should look: flush with a lead, grey when it's gone, jolted by a fresh play. */

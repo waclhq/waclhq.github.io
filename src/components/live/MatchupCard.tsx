@@ -4,6 +4,7 @@ import FireFrame from '../FireFrame'
 import Heartbeat from './Heartbeat'
 import ShareCardButton from './ShareCardButton'
 import StateTag from './StateTag'
+import Football from './Football'
 import { usePlayerPick } from './PlayerSheet'
 import { matchupCard } from '../../lib/live-cards'
 import { Plot, roundedScale } from '../charts'
@@ -17,11 +18,13 @@ import {
   heat,
   inRedZone,
   matchupLine,
+  onField,
   momentum,
   mood,
   pairingKey,
   redZoneTeams,
   sideStatus,
+  sidesOnField,
   signed,
   swingSeries,
 } from '../../lib/live-view'
@@ -92,7 +95,20 @@ function Side({
   )
 }
 
-function PlayerCell({ player, team, align, hot = false }: { player?: LivePointsPlayer; team: string; align: 'left' | 'right'; hot?: boolean }) {
+function PlayerCell({
+  player,
+  team,
+  align,
+  hot = false,
+  ball = false,
+}: {
+  player?: LivePointsPlayer
+  team: string
+  align: 'left' | 'right'
+  hot?: boolean
+  /** His side of the ball is on the field. */
+  ball?: boolean
+}) {
   const pick = usePlayerPick()
   if (!player) return <div className={`lv-h2h-cell is-${align}`} />
   const shown = player.state === 'pre' || player.state === 'bye'
@@ -101,9 +117,10 @@ function PlayerCell({ player, team, align, hot = false }: { player?: LivePointsP
       type="button"
       className={`lv-h2h-cell lv-pick is-${align} is-${player.state} ${heat(player) ? `is-${heat(player)}` : ''} ${hot ? 'is-redzone' : ''}`}
       onClick={() => pick(player.name, team)}
-      aria-label={`${player.name}, ${player.state === 'pre' || player.state === 'bye' ? 'not played yet' : `${player.pts.toFixed(1)} points`}${hot ? ', in the red zone' : ''}. Show stats.`}
+      aria-label={`${player.name}, ${player.state === 'pre' || player.state === 'bye' ? 'not played yet' : `${player.pts.toFixed(1)} points`}${hot ? ', in the red zone' : ball ? ', on the field' : ''}. Show stats.`}
     >
       <span className="lv-h2h-name">
+        {ball && <Football />}
         {player.name}
         {player.status && <em>{player.status}</em>}
       </span>
@@ -214,6 +231,7 @@ export default function MatchupCard({
   const pa = Math.round(a.winProb * 100)
   const live = a.live + b.live > 0
   const rz = redZoneTeams(board)
+  const sides = sidesOnField(board)
   return (
     <article
       ref={ref}
@@ -265,9 +283,9 @@ export default function MatchupCard({
         <div className="lv-h2h">
           {headToHead(ta, tb).map((row, i) => (
             <div key={`${row.slot}-${i}`} className="lv-h2h-row">
-              <PlayerCell player={row.left} team={ta.team} align="left" hot={!!row.left && inRedZone(row.left, rz)} />
+              <PlayerCell player={row.left} team={ta.team} align="left" hot={!!row.left && inRedZone(row.left, rz)} ball={!!row.left && onField(row.left, sides)} />
               <span className="lv-h2h-slot label">{row.slot === 'W/R/T' ? 'FLEX' : row.slot}</span>
-              <PlayerCell player={row.right} team={tb.team} align="right" hot={!!row.right && inRedZone(row.right, rz)} />
+              <PlayerCell player={row.right} team={tb.team} align="right" hot={!!row.right && inRedZone(row.right, rz)} ball={!!row.right && onField(row.right, sides)} />
             </div>
           ))}
           <div className="lv-h2h-bench">

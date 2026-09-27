@@ -4,7 +4,8 @@ import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
 import { useDialog } from '../../lib/dialog'
 import { playerSlug } from '../../lib/search'
-import { fmt, gameClock, heat, inRedZone, KIND_LABEL, redZoneTeams, signed } from '../../lib/live-view'
+import { fmt, gameClock, heat, inRedZone, KIND_LABEL, onField, redZoneTeams, sidesOnField, signed } from '../../lib/live-view'
+import Football from './Football'
 import type { LivePoints, LivePointsPlayer, LivePointsTeam } from '../../lib/types'
 
 /**
@@ -122,6 +123,7 @@ function PlayerSheet({
   const starter = player.slot !== 'BN' && player.slot !== 'IR'
   const flame = heat(player)
   const hot = inRedZone(player, redZoneTeams(board))
+  const ball = onField(player, sidesOnField(board))
   const played = player.state === 'live' || player.state === 'final'
   const plays = (board.plays ?? []).filter((play) => play.hits.some((h) => h.player === player.name && h.team === team.team))
   const chase = (board.chases ?? []).find((c) => c.player === player.name && c.team === team.team)
@@ -146,7 +148,13 @@ function PlayerSheet({
             <div className="label lv-sheet-eyebrow">
               {player.pos} · {player.nfl} {player.opp ?? ''} · {gameClock(player)}
               {player.status && <span className="lv-sheet-status">{player.status}</span>}
-              {hot && <span className="lv-rz-chip">Red zone</span>}
+              {hot ? (
+                <span className="lv-rz-chip">Red zone</span>
+              ) : ball ? (
+                <span className="lv-field-chip">
+                  <Football /> {player.pos === 'DEF' ? 'Defending' : 'On the field'}
+                </span>
+              ) : null}
             </div>
             <h2 className="lv-sheet-name">{player.name}</h2>
             <div className="lv-sheet-owner">

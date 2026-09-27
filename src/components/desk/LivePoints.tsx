@@ -7,7 +7,8 @@ import { pointsLive, useLivePoints } from '../../lib/points'
 import { PlayerSheetProvider, usePlayerPick } from '../live/PlayerSheet'
 import FireFrame from '../FireFrame'
 import StateTag from '../live/StateTag'
-import { inRedZone, redZoneTeams } from '../../lib/live-view'
+import Football from '../live/Football'
+import { inRedZone, onField, redZoneTeams, sidesOnField } from '../../lib/live-view'
 import type { LivePoints as Board, LivePointsPlayer, LivePointsTeam } from '../../lib/types'
 
 /**
@@ -56,13 +57,26 @@ function subtitle(board: Board): string {
   return `Nothing has kicked off yet${next ? `; first game ${kickoff(next)}` : ''}. Lineups as of ${board.lineupsAsOf ?? 'this week'}. ${method}`
 }
 
-function PlayerRow({ player, team, bench, hot = false }: { player: LivePointsPlayer; team: string; bench?: boolean; hot?: boolean }) {
+function PlayerRow({
+  player,
+  team,
+  bench,
+  hot = false,
+  ball = false,
+}: {
+  player: LivePointsPlayer
+  team: string
+  bench?: boolean
+  hot?: boolean
+  ball?: boolean
+}) {
   const pick = usePlayerPick()
   const row = (
     <button type="button" className={`lp-player lv-pick is-${player.state} ${bench ? 'is-bench' : ''} ${hot ? 'is-redzone' : ''}`} onClick={() => pick(player.name, team)}>
       <span className="lp-slot label">{player.slot === 'W/R/T' ? 'FLEX' : player.slot}</span>
       <span className="lp-who">
         <span className="lp-name">
+          {ball && <Football />}
           {player.name}
           {player.status && <span className="lp-status">{player.status}</span>}
         </span>
@@ -89,6 +103,7 @@ function TeamCard({
   mine,
   managers,
   rz,
+  sides,
 }: {
   team: LivePointsTeam
   rank: number
@@ -96,6 +111,8 @@ function TeamCard({
   managers: ReturnType<typeof useLeagueData>['managers']
   /** NFL teams in the red zone right now. */
   rz: Set<string>
+  /** Which side of the ball each NFL team in a live game has on the field. */
+  sides: ReturnType<typeof sidesOnField>
 }) {
   const bits = [
     team.live ? `${team.live} playing` : null,
@@ -124,13 +141,13 @@ function TeamCard({
         </summary>
         <div className="lp-roster">
           {team.starters.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} hot={inRedZone(player, rz)} />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} hot={inRedZone(player, rz)} ball={onField(player, sides)} />
           ))}
           <div className="lp-benchhead label">
             Bench <span className="tnum">{pts(team.benchTotal)}</span>
           </div>
           {team.bench.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} bench hot={inRedZone(player, rz)} />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} bench hot={inRedZone(player, rz)} ball={onField(player, sides)} />
           ))}
         </div>
       </details>
@@ -147,6 +164,7 @@ export default function LivePoints() {
   const live = pointsLive(board)
   const feed = board.events.slice(0, 6)
   const rz = redZoneTeams(board)
+  const sides = sidesOnField(board)
 
   return (
     <PlayerSheetProvider board={board}>
@@ -193,6 +211,7 @@ export default function LivePoints() {
             mine={me !== null && team.manager === me}
             managers={managers}
             rz={rz}
+            sides={sides}
           />
         ))}
       </ol>
