@@ -1184,69 +1184,60 @@
     gap: 8px;
   }
 
-  /* ---- heartbeat ---- */
-  .lv-beat {
+  /* ---- score tape ---- */
+  .lv-tape {
     position: relative;
-    height: 44px;
-    border-radius: 8px;
-    background:
-      repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-arc-green) 7%, transparent) 0 1px, transparent 1px 22px),
-      repeating-linear-gradient(0deg, color-mix(in srgb, var(--color-arc-green) 7%, transparent) 0 1px, transparent 1px 11px),
-      var(--color-arc-bg-deep);
     overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg-deep);
+    /* Chips enter and leave through soft edges rather than popping. */
+    mask-image: linear-gradient(90deg, transparent, var(--color-arc-ink) 18px, var(--color-arc-ink) calc(100% - 18px), transparent);
   }
-  .lv-beat svg {
-    width: 100%;
-    height: 100%;
-    display: block;
+  .lv-tape-run {
+    display: flex;
+    width: max-content;
+    gap: 8px;
+    padding: 7px 10px;
   }
-  .lv-beat-base {
-    stroke: var(--color-arc-line);
-    stroke-width: 1;
-    vector-effect: non-scaling-stroke;
+  .lv-tape-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    flex: none;
+    padding: 2px 8px 2px 7px;
+    border-radius: 5px;
+    border-left: 3px solid var(--c);
+    background: color-mix(in srgb, var(--c) 16%, transparent);
+    font-size: 11.5px;
+    white-space: nowrap;
+    color: var(--color-arc-ink);
   }
-  .lv-beat-trace {
-    fill: none;
-    stroke: var(--c);
-    stroke-width: 2;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 0 3px var(--c));
+  .lv-tape-item b {
+    color: var(--c);
+    font-weight: 700;
   }
-  .lv-beat.is-flat .lv-beat-trace {
-    stroke: var(--color-arc-red);
-    filter: drop-shadow(0 0 3px var(--color-arc-red));
+  .lv-tape-arrow {
+    font-size: 9px;
   }
-  .lv-beat-dot {
-    fill: var(--c);
-  }
-  .lv-beat-dot.is-live {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: lv-beat 1.1s ease-out infinite;
-  }
-  @keyframes lv-beat {
-    0%, 60%, 100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    15% {
-      transform: scale(1.9);
-      opacity: 0.7;
-    }
-  }
-  .lv-beat-label {
-    position: absolute;
-    right: 8px;
-    top: 4px;
-    font-size: 9.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-arc-ink-faint);
-  }
-  .lv-beat.is-flat .lv-beat-label {
+  .lv-tape-item.is-down .lv-tape-arrow,
+  .lv-tape-item.is-down b.tnum {
     color: var(--color-arc-red);
   }
+  .lv-tape-what {
+    color: var(--color-arc-ink-faint);
+  }
+  .lv-tape.is-empty {
+    padding: 8px 12px;
+    font-size: 11.5px;
+    color: var(--color-arc-ink-faint);
+    mask-image: none;
+  }
+  .lv-tape.is-still {
+    overflow-x: auto;
+    cursor: default;
+  }
+
 
   /* ---- living portraits ---- */
   .lv-face {
@@ -1854,7 +1845,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='on']) .lv-beat-dot.is-live,
   :root:not([data-motion='on']) .lv-face.is-hit,
   :root:not([data-motion='on']) .lv-face.is-cheer,
   :root:not([data-motion='on']) .lv-h2h-cell.is-fire::after,

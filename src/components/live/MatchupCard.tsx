@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import PixelMugshot from '../PixelMugshot'
 import FireFrame from '../FireFrame'
-import Heartbeat from './Heartbeat'
+import ScoreTape from './ScoreTape'
 import ShareCardButton from './ShareCardButton'
 import StateTag from './StateTag'
 import Football from './Football'
@@ -267,7 +267,7 @@ export default function MatchupCard({
         </div>
         <span className="lv-tug-b tnum">{100 - pa}%</span>
       </div>
-      <Heartbeat board={board} matchup={matchup} live={live} />
+      <ScoreTape board={board} matchup={matchup} />
       <p className="lv-line">{matchupLine(matchup)}</p>
       <div className="lv-match-actions">
         <button type="button" className="lv-open" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
