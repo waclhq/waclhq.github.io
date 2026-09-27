@@ -75,7 +75,8 @@ jobs:
             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/storage/kv/namespaces/${{ steps.kv.outputs.id }}/values/points.json" | jq -c '{success, errors}'
           url="https://wacl-live.${{ steps.sub.outputs.sub }}.workers.dev/points.json"
           sleep 5
-          code=$(curl -sS -o served.json -w '%{http_code}' "$url")
+          code=$(curl -sS -D headers.txt -H 'Origin: https://waclhq.github.io' -o served.json -w '%{http_code}' "$url")
+          grep -i -E '^(access-control-allow-origin|cache-control|content-type):' headers.txt || true
           echo "Worker address: $url"
           echo "Answered: $code, $(wc -c < served.json) bytes, week $(jq -r '.week' served.json 2>/dev/null)"
           echo "::notice title=Worker address::$url"
