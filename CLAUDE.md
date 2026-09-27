@@ -104,7 +104,8 @@ the Shell offers a refresh when a newer build is live.
   `analytics.ts` (career tables — `bookCareerTable` is the one to print —
   and Lab metrics), `roster.ts` (approved trades move players; undo carries them home), `me.ts`
   (your seat), `season.ts` (league time), `scores.ts` (this week's matchups,
-  read from the orphan `live` branch, never `public/data`), `dialog.ts`
+  read from the orphan `live` branch, never `public/data`), `points.ts` (this week's
+  league-wide points from ESPN box scores, read from the orphan `points` branch), `dialog.ts`
   (focus manners for overlays), `search.ts` (palette index), `music.ts`,
   `motion.ts`.
 - `src/components/` — `Shell.tsx` (nav, tab bar, sheet, seat picker,
@@ -127,7 +128,9 @@ the Shell offers a refresh when a newer build is live.
   two Yahoo jobs — `yahoo-sync.mjs` (standings, into `main` twice a week) and
   `yahoo-scores.mjs` (matchups every ten minutes on game days, force-pushed as
   a single commit to the orphan `live` branch so `main`'s log stays the audit
-  trail) — sharing `scripts/lib/yahoo.mjs`. Both skip until the four `YAHOO_*`
+  trail) — sharing `scripts/lib/yahoo.mjs`. A third job, `live-points.yml` (`scripts/live-points.mjs`), scores
+  `scripts/data/lineups.json` from ESPN's public box scores into the orphan `points`
+  branch while Yahoo is not enabled; the lineups file is a weekly snapshot. The Yahoo jobs skip until the four `YAHOO_*`
   secrets exist; the API application was approved 10 Sep 2026 and is awaiting
   provisioning (README, *Yahoo sync*).
 - `public/media/` — league video and the original `wacl-theme.mid`, which is

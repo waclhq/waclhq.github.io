@@ -138,6 +138,22 @@ YAHOO_CLIENT_ID=xxx YAHOO_CLIENT_SECRET=yyy node scripts/yahoo-auth.mjs
 resolve to managers on the first run. If a team was renamed on Yahoo, the run log
 and the dashboard both name it; add its Yahoo team key to that file.
 
+### Live points (ESPN, no key)
+
+Until Yahoo enables the app, `.github/workflows/live-points.yml` runs
+`scripts/live-points.mjs` through every game window: it reads the week's
+scoreboard and each started game's box score from ESPN's public endpoints,
+scores every player in `scripts/data/lineups.json` with Yahoo's default
+half-PPR (the `RULES` object; change it there if the league scores
+differently), and publishes `points.json` to the orphan **`points`** branch.
+The Ledger's *Live points* panel reads it. Totals are estimates; Yahoo's are
+official. Two-point conversions are not counted.
+
+`lineups.json` is a snapshot of Yahoo's roster export and must be refreshed
+each week (or whenever a lineup changes) until the Yahoo sync can supply it.
+To test against real data, run the workflow by hand with a finished week
+number; it scores that week once and publishes it.
+
 ### Live scores
 
 A second job, `.github/workflows/yahoo-scores.yml`, runs `scripts/yahoo-scores.mjs`
