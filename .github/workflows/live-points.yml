@@ -1,0 +1,88 @@
+name: Live points
+
+# Scores the league's lineups from ESPN's public box scores while games are
+# on, and publishes points.json to the orphan `points` branch (one commit,
+# force-pushed, so main's log stays the audit trail). The Ledger reads it.
+#
+# Each run loops: score, publish if anything moved, sleep 90 s while a game is
+# live, then stop when nothing is live or due inside the run's remaining time.
+# Hourly starts on game days hand over to one another through the
+# concurrency group; a start with nothing to do exits in seconds.
+
+on:
+  schedule:
+    - cron: '50 12-23 * * 0'   # Sunday, London kickoffs through the late window
+    - cron: '50 0-4 * * 1'     # Sunday night
+    - cron: '50 23 * * 1'      # Monday night
+    - cron: '50 0-4 * * 2'
+    - cron: '50 23 * * 4'      # Thursday night
+    - cron: '50 0-4 * * 5'
+    - cron: '50 16-23 * * 6'   # Saturdays, late season
+  workflow_dispatch:
+    inputs:
+      week:
+        description: 'Score a finished regular-season week once (a test); blank for live'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-points
+  cancel-in-progress: false
+
+jobs:
+  points:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Score and publish until the games are done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEEK: ${{ inputs.week }}
+        run: |
+          set -uo pipefail
+          started=$(date +%s)
+          cap=$((340 * 60))
+          publish() {
+            local fresh="$1"
+            if git fetch -q origin points 2>/dev/null && git cat-file -e FETCH_HEAD:points.json 2>/dev/null; then
+              if [ "$(git show FETCH_HEAD:points.json | jq -S 'del(.updatedAt)')" = "$(jq -S 'del(.updatedAt)' "$fresh")" ]; then
+                echo "No change."
+                return 0
+              fi
+            fi
+            local stage
+            stage="$(mktemp -d)"
+            cp "$fresh" "$stage/points.json"
+            git -C "$stage" init -q -b points
+            git -C "$stage" -c user.name='live-points[bot]' -c user.email='live-points[bot]@users.noreply.github.com' add points.json
+            git -C "$stage" -c user.name='live-points[bot]' -c user.email='live-points[bot]@users.noreply.github.com' \
+              commit -q -m "Points as of $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git -C "$stage" push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" points:points \
+              && echo "Published." || echo "::warning::Publish failed; will retry next pass."
+          }
+          while :; do
+            left=$(( (cap - ($(date +%s) - started)) / 60 ))
+            args=(--out "$RUNNER_TEMP/points.json" --horizon "$left")
+            [ -n "$WEEK" ] && args+=(--week "$WEEK")
+            if meta=$(node scripts/live-points.mjs "${args[@]}"); then
+              echo "$meta"
+              publish "$RUNNER_TEMP/points.json"
+              done=$(jq -r '.done' <<<"$meta")
+              wait=$(jq -r '.nextPollSeconds' <<<"$meta")
+            else
+              echo "::warning::Scoring pass failed; retrying in two minutes."
+              done=false
+              wait=120
+            fi
+            [ "$done" = "true" ] && break
+            [ $(( $(date +%s) - started + wait )) -ge "$cap" ] && { echo "Out of time; the next start takes over."; break; }
+            sleep "$wait"
+          done
