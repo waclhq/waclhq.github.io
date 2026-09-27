@@ -1,0 +1,37 @@
+name: Yahoo settings peek (temporary)
+
+# One-off: can the league's scoring settings be read without logging in?
+# Prints the scoring table's text if the page is public. Delete after use.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  peek:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the settings page
+        run: |
+          set -u
+          url="https://football.fantasysports.yahoo.com/f1/134099/settings"
+          code=$(curl -sS -L -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36' \
+            -o page.html -w '%{http_code} %{url_effective}' "$url" || true)
+          echo "Answered: $code"
+          python3 - <<'PY'
+          import re, html
+          raw = open('page.html', encoding='utf-8', errors='ignore').read()
+          text = html.unescape(re.sub(r'<[^>]+>', '\n', re.sub(r'(?s)<(script|style)[^>]*>.*?</\1>', '', raw)))
+          lines = [l.strip() for l in text.splitlines() if l.strip()]
+          print('lines:', len(lines))
+          hits = [i for i, l in enumerate(lines) if re.search(r'scoring|reception|passing yards|rushing yards|points allowed|bonus', l, re.I)]
+          seen = set()
+          for i in hits[:40]:
+              for j in range(max(0, i - 1), min(len(lines), i + 3)):
+                  if j not in seen:
+                      seen.add(j); print(lines[j][:160])
+          if not hits:
+              print('\n'.join(lines[:40]))
+          PY
