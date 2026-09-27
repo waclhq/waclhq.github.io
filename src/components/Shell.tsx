@@ -424,9 +424,13 @@ export default function Shell({ children }: { children: ReactNode }) {
       if (document.visibilityState === 'hidden') hiddenAt = Date.now()
       else if (Date.now() - hiddenAt > 90_000) void check()
     }
+    // Once shortly after opening too: a home-screen launch or a page served
+    // from cache in the ten minutes after a deploy is exactly when it's stale.
+    const first = window.setTimeout(check, 4000)
     const timer = window.setInterval(check, 10 * 60_000)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      window.clearTimeout(first)
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
