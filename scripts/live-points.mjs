@@ -170,7 +170,12 @@ function categoryRows(summary, categoryName) {
           if (index < 0 && label) index = labels.indexOf(label)
           return index < 0 ? 0 : num(stats[index])
         }
-        rows.push({ name: entry.athlete?.displayName ?? '', id: String(entry.athlete?.id ?? ''), team: code, stat })
+        const raw = (key, label) => {
+          let index = keys.indexOf(key)
+          if (index < 0 && label) index = labels.indexOf(label)
+          return index < 0 ? '' : String(stats[index] ?? '')
+        }
+        rows.push({ name: entry.athlete?.displayName ?? '', id: String(entry.athlete?.id ?? ''), team: code, stat, raw })
       }
     }
   }
@@ -188,6 +193,7 @@ function playerLines(summary) {
         rushYds: 0, rushTD: 0, car: 0,
         rec: 0, recYds: 0, recTD: 0,
         retTD: 0, fumLost: 0, twoPt: 0, passTwoPt: 0,
+        tgt: 0, longRush: 0, longRec: 0, sacked: 0,
       })
     }
     return lines.get(row.id)
@@ -198,18 +204,23 @@ function playerLines(summary) {
     l.passTD += row.stat('passingTouchdowns', 'TD')
     l.int += row.stat('interceptions', 'INT')
     l.comp += row.stat('completions/passingAttempts', 'C/ATT')
+    l.att += Number(row.raw('completions/passingAttempts', 'C/ATT').split('/')[1] ?? 0) || 0
+    l.sacked += row.stat('sacks-sackYardsLost', 'SACKS')
   }
   for (const row of categoryRows(summary, 'rushing')) {
     const l = line(row)
     l.car += row.stat('rushingAttempts', 'CAR')
     l.rushYds += row.stat('rushingYards', 'YDS')
     l.rushTD += row.stat('rushingTouchdowns', 'TD')
+    l.longRush = Math.max(l.longRush, row.stat('longRushing', 'LONG'))
   }
   for (const row of categoryRows(summary, 'receiving')) {
     const l = line(row)
     l.rec += row.stat('receptions', 'REC')
     l.recYds += row.stat('receivingYards', 'YDS')
     l.recTD += row.stat('receivingTouchdowns', 'TD')
+    l.tgt += row.stat('receivingTargets', 'TGTS')
+    l.longRec = Math.max(l.longRec, row.stat('longReception', 'LONG'))
   }
   for (const row of categoryRows(summary, 'fumbles')) {
     line(row).fumLost += row.stat('fumblesLost', 'LOST')
@@ -305,6 +316,44 @@ export function scoreDefense(d, rules = RULES) {
     d.sacks * rules.def.sack + d.int * rules.def.interception + d.fumRec * rules.def.fumbleRecovery +
       d.td * rules.def.touchdown + d.safety * rules.def.safety + (tier ? tier[1] : 0),
   )
+}
+
+/* How a score was built, line by line, for the player card. Sums to the score. */
+export function breakdownPlayer(l, rules = RULES) {
+  const rows = []
+  const add = (label, pts) => {
+    if (Math.abs(pts) >= 0.005) rows.push([label, round(pts)])
+  }
+  add(`Passing yards (${l.passYds})`, l.passYds * rules.passYards)
+  add(`Passing TDs (${l.passTD})`, l.passTD * rules.passTD)
+  add(`Interceptions (${l.int})`, l.int * rules.interception)
+  add(`Rushing yards (${l.rushYds})`, l.rushYds * rules.rushYards)
+  add(`Rushing TDs (${l.rushTD})`, l.rushTD * rules.rushTD)
+  add(`Receptions (${l.rec})`, l.rec * rules.reception)
+  add(`Receiving yards (${l.recYds})`, l.recYds * rules.recYards)
+  add(`Receiving TDs (${l.recTD})`, l.recTD * rules.recTD)
+  add(`Return TDs (${l.retTD})`, l.retTD * rules.returnTD)
+  add(`Fumbles lost (${l.fumLost})`, l.fumLost * rules.fumbleLost)
+  add(`Two-point conversions (${(l.twoPt ?? 0) + (l.passTwoPt ?? 0)})`, (l.twoPt ?? 0) * (rules.twoPoint ?? 0) + (l.passTwoPt ?? 0) * (rules.passTwoPoint ?? 0))
+  const name = { passYds: 'passing', rushYds: 'rushing', recYds: 'receiving' }
+  for (const b of rules.bonuses ?? []) if ((l[b.stat] ?? 0) >= b.at) add(`${b.at}-yard ${name[b.stat]} bonus`, b.pts)
+  return rows
+}
+
+export function breakdownDefense(d, rules = RULES) {
+  const rows = []
+  const add = (label, pts) => {
+    if (Math.abs(pts) >= 0.005) rows.push([label, round(pts)])
+  }
+  const tier = rules.def.pointsAllowed.find(([upTo]) => d.allowed <= upTo)
+  add(`Points allowed (${d.allowed})`, tier ? tier[1] : 0)
+  add(`Sacks (${d.sacks})`, d.sacks * rules.def.sack)
+  add(`Interceptions (${d.int})`, d.int * rules.def.interception)
+  add(`Fumble recoveries (${d.fumRec})`, d.fumRec * rules.def.fumbleRecovery)
+  add(`Touchdowns (${d.td})`, d.td * rules.def.touchdown)
+  add(`Safeties (${d.safety})`, d.safety * rules.def.safety)
+  if (!rows.length) rows.push([`Points allowed (${d.allowed})`, 0])
+  return rows
 }
 
 function statLine(l) {
@@ -521,6 +570,8 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       if (d) {
         base.pts = scoreDefense(d, rules)
         base.line = defenseStatLine(d)
+        base.stats = { allowed: d.allowed, sacks: d.sacks, int: d.int, fumRec: d.fumRec, td: d.td, safety: d.safety }
+        base.breakdown = breakdownDefense(d, rules)
       }
       return base
     }
@@ -529,6 +580,9 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       base.pts = scorePlayer(l, rules)
       base.line = statLine(l)
       base.yds = { passYds: l.passYds, rushYds: l.rushYds, recYds: l.recYds }
+      const { name: _name, team: _team, ...stats } = l
+      base.stats = Object.fromEntries(Object.entries(stats).filter(([, v]) => v))
+      base.breakdown = breakdownPlayer(l, rules)
     } else if (state === 'final') {
       base.line = 'no stats'
     }
