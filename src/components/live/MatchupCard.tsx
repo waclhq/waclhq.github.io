@@ -7,7 +7,7 @@ import StateTag from './StateTag'
 import Football from './Football'
 import { usePlayerPick } from './PlayerSheet'
 import { matchupCard } from '../../lib/live-cards'
-import { Plot, roundedScale } from '../charts'
+import { Legend, Plot, roundedScale } from '../charts'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
 import { animationsDisabled } from '../../lib/motion'
@@ -26,7 +26,7 @@ import {
   sideStatus,
   sidesOnField,
   signed,
-  swingSeries,
+  raceSeries,
 } from '../../lib/live-view'
 import type { LiveMatchupSide, LivePoints, LivePointsMatchup, LivePointsPlay, LivePointsPlayer, LivePointsTeam, ManagerId } from '../../lib/types'
 
@@ -140,41 +140,51 @@ function PlayerCell({
   return hot ? <FireFrame>{cell}</FireFrame> : cell
 }
 
-function Swing({ board, matchup }: { board: LivePoints; matchup: LivePointsMatchup }) {
-  const series = swingSeries(board, matchup)
+/** The race: both sides' scores through the day, one line each in its team's colour. */
+function Race({ board, matchup }: { board: LivePoints; matchup: LivePointsMatchup }) {
+  const series = raceSeries(board, matchup)
   if (series.length < 2) {
-    return <p className="lv-swing-empty">The swing chart draws itself as the scores move.</p>
+    return <p className="lv-swing-empty">The race draws itself as the scores move.</p>
   }
-  const { domain, ticks } = roundedScale([0, ...series.flatMap((s) => [s.margin, s.projMargin])])
+  const { domain, ticks } = roundedScale([0, ...series.flatMap((s) => [s.a, s.b])])
   const [a, b] = matchup.teams
+  const ca = managerColor(a.manager)
+  const cb = managerColor(b.manager)
   return (
     <div className="lv-swing">
-      <div className="label lv-swing-title">
-        The swing · above the line {a.team} leads, below {b.team}
-      </div>
+      <div className="label lv-swing-title">The race · points through the day</div>
+      <Legend
+        items={[
+          { label: `${a.team} ${fmt(a.total)}`, color: ca },
+          { label: `${b.team} ${fmt(b.total)}`, color: cb },
+        ]}
+      />
       <Plot
         xs={series.map((s) => new Date(s.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/, ''))}
         height={170}
         yDomain={domain}
         yTicks={ticks}
-        yFormat={(v) => (v > 0 ? `+${v}` : String(v))}
-        refLines={[{ y: 0, label: 'tied', color: 'var(--color-arc-ink-faint)' }]}
-        cursorColor={managerColor(a.manager)}
+        cursorColor="var(--color-arc-ink-faint)"
         series={[
-          { key: 'proj', values: series.map((s) => s.projMargin), color: 'var(--color-arc-ink-faint)', width: 1.5, dash: '4 3' },
-          { key: 'margin', values: series.map((s) => s.margin), color: managerColor(a.manager), width: 2.5 },
+          { key: 'b', values: series.map((s) => s.b), color: cb, width: 2.5 },
+          { key: 'a', values: series.map((s) => s.a), color: ca, width: 2.5 },
         ]}
-        tooltip={(i) => (
-          <>
-            <div className="label">{new Date(series[i].t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
-            <div className="mt-1">
-              {series[i].margin === 0 ? 'Tied' : `${series[i].margin > 0 ? a.team : b.team} by ${fmt(Math.abs(series[i].margin))}`}
-            </div>
-            <div className="text-arc-ink-faint">
-              projected {series[i].projMargin >= 0 ? a.team : b.team} by {fmt(Math.abs(series[i].projMargin))}
-            </div>
-          </>
-        )}
+        tooltip={(i) => {
+          const s = series[i]
+          const lead = Math.round((s.a - s.b) * 10) / 10
+          return (
+            <>
+              <div className="label">{new Date(s.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+              <div className="mt-1" style={{ color: ca }}>
+                {a.team} {fmt(s.a)}
+              </div>
+              <div style={{ color: cb }}>
+                {b.team} {fmt(s.b)}
+              </div>
+              <div className="text-arc-ink-faint">{lead === 0 ? 'Tied' : `${lead > 0 ? a.team : b.team} by ${fmt(Math.abs(lead))}`}</div>
+            </>
+          )
+        }}
       />
     </div>
   )
@@ -297,7 +307,7 @@ export default function MatchupCard({
               <b className="tnum">{fmt(tb.benchTotal)}</b> Bench
             </span>
           </div>
-          <Swing board={board} matchup={matchup} />
+          <Race board={board} matchup={matchup} />
         </div>
       )}
     </article>

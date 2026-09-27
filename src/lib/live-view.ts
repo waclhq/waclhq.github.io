@@ -50,18 +50,29 @@ export function momentum(board: LivePoints, teamName: string, minutes = 20): num
   return last.v[index] - earlier.v[index]
 }
 
-/** A matchup's margin (first team minus second) and win odds through the day. */
-export function swingSeries(board: LivePoints, matchup: LivePointsMatchup) {
+/**
+ * Both sides' scores through the day, from the history samples. It starts at
+ * the day's first kickoff (points carried from earlier in the week make the
+ * opening level), so the quiet hours before the games don't take up the
+ * chart.
+ */
+export function raceSeries(board: LivePoints, matchup: LivePointsMatchup) {
   const history = board.history
   if (!history) return []
   const a = history.teams.indexOf(matchup.teams[0].team)
   const b = history.teams.indexOf(matchup.teams[1].team)
   if (a < 0 || b < 0) return []
-  return history.samples.map((sample) => ({
-    t: sample.t,
-    margin: Math.round((sample.v[a] - sample.v[b]) * 10) / 10,
-    projMargin: Math.round((sample.p[a] - sample.p[b]) * 10) / 10,
-  }))
+  const all = history.samples.map((sample) => ({ t: sample.t, a: sample.v[a], b: sample.v[b] }))
+  const updated = new Date(board.updatedAt).getTime()
+  const kicks = board.games
+    .map((g) => new Date(g.kickoff).getTime())
+    .filter((k) => k >= updated - 14 * 3600_000 && k <= updated)
+    .sort((x, y) => x - y)
+  if (!kicks.length) return all
+  const start = kicks[0]
+  const day = all.filter((s) => new Date(s.t).getTime() >= start)
+  const before = all.filter((s) => new Date(s.t).getTime() < start).pop()
+  return before ? [{ ...before, t: new Date(start).toISOString() }, ...day] : day
 }
 
 /** Plays that touch a manager, for the "mine" filter and for alerts. */
