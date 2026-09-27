@@ -18,8 +18,11 @@ import type { LivePoints, LivePointsMatchup, ManagerId } from '../../lib/types'
  * and turns itself so now faces you, where the tilt makes it biggest; drag to
  * spin and tilt it, tap a ring (or its row) to single it out.
  *
- * Plain SVG, no library. Nothing loops: when a new score lands the beacons
- * ping once and the hand flashes, and only with motion allowed.
+ * It is a solid thing: the face sits on a machined edge and the hub stands
+ * proud of it, built from a few flat CSS 3D layers (no WebGL). Plain SVG, no
+ * library. Nothing loops: it spins in once when it first comes into view,
+ * and when a new score lands it kicks a few degrees, the beacons ping and
+ * the hand flashes, all only with motion allowed.
  */
 
 const SIZE = 600
@@ -28,8 +31,16 @@ const OUTER = 262
 const INNER = 96
 const TAU = Math.PI * 2
 const PAD = 30
-const TILT = 26
-const TILT_COMPACT = 20
+const TILT = 32
+const TILT_COMPACT = 26
+/** The machined edge: layers under the face, px apart in depth. */
+const EDGE_LAYERS = 10
+const EDGE_STEP = 2.8
+/** The hub's height above the face, in the same layers. */
+const HUB_LAYERS = 5
+const HUB_STEP = 3.2
+/** Where the spin-in starts, in degrees back from where it settles. */
+const INTRO = -110
 
 function polar(r: number, a: number) {
   return { x: C + r * Math.cos(a), y: C + r * Math.sin(a) }
@@ -67,7 +78,11 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const clock = useMinuteClock()
   // Spin is an offset from the automatic turn that keeps "now" at the front.
-  const [spin, setSpin] = useState(0)
+  // Motion allowed: start a quarter turn back and spin in once the dial is seen.
+  const [spin, setSpin] = useState(() => (animationsDisabled() ? 0 : INTRO))
+  const [intro, setIntro] = useState(false)
+  const [kick, setKick] = useState(0)
+  const stage = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState(compact ? TILT_COMPACT : TILT)
   const [focus, setFocus] = useState<string | null>(null)
   const drag = useRef<{ x: number; y: number; spin: number; tilt: number; moved: boolean } | null>(null)
@@ -91,6 +106,41 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
     if (last.current !== board.updatedAt && !animationsDisabled()) setPing((n) => n + 1)
     last.current = board.updatedAt
   }, [board.updatedAt])
+
+  // A new score kicks the dial a few degrees, and it settles back.
+  useEffect(() => {
+    if (!ping) return
+    setKick(7)
+    const timer = window.setTimeout(() => setKick(0), 320)
+    return () => window.clearTimeout(timer)
+  }, [ping])
+
+  // The spin-in, once, the first time the dial is on screen.
+  const introDone = useRef(false)
+  useEffect(() => {
+    const node = stage.current
+    if (!node || introDone.current) return
+    if (animationsDisabled()) {
+      introDone.current = true
+      setSpin((value) => (value === INTRO ? 0 : value))
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return
+        io.disconnect()
+        introDone.current = true
+        setIntro(true)
+        // Next frame, so the start angle has painted before the transition runs.
+        requestAnimationFrame(() => requestAnimationFrame(() => setSpin(0)))
+        window.setTimeout(() => setIntro(false), 2000)
+      },
+      { threshold: 0.35 },
+    )
+    io.observe(node)
+    return () => io.disconnect()
+    // The stage exists once there are rings to draw.
+  }, [rings.length > 0])
 
   if (!rings.length) return null
 
@@ -151,17 +201,38 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
     <div className={`lv-radar ${compact ? 'is-compact' : ''}`}>
       <div
         className="lv-radar-stage"
+        ref={stage}
         style={{ '--squash': squash } as CSSProperties}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
         onDoubleClick={() => {
+          introDone.current = true
           setSpin(0)
           setTilt(compact ? TILT_COMPACT : TILT)
         }}
       >
-        <div className="lv-radar-disc" style={{ transform: `rotateX(${tilt}deg) rotateZ(${autoTurn + spin}deg)` }}>
+        <div
+          className={`lv-radar-disc ${intro ? 'is-intro' : ''} ${kick ? 'is-kick' : ''}`}
+          style={{ transform: `rotateX(${tilt}deg) rotateZ(${autoTurn + spin + kick}deg)` }}
+        >
+          {/* The machined edge under the face, deepest first. */}
+          {Array.from({ length: EDGE_LAYERS }, (_, k) => EDGE_LAYERS - k).map((n) => (
+            <i
+              key={`edge-${n}`}
+              className={`lv-radar-edge ${n === EDGE_LAYERS ? 'is-base' : ''}`}
+              aria-hidden
+              style={{
+                transform: `translateZ(${-n * EDGE_STEP}px)`,
+                // The band just under the face is lit green like the rim; below it, graphite darkening to the base.
+                background:
+                  n <= 2
+                    ? `color-mix(in srgb, var(--color-arc-green) ${n === 1 ? 70 : 40}%, var(--color-arc-raised))`
+                    : `color-mix(in srgb, var(--color-arc-line) ${Math.round(100 - (n / EDGE_LAYERS) * 75)}%, var(--color-arc-bg-deep))`,
+              }}
+            />
+          ))}
           <svg viewBox={`${-PAD} ${-PAD} ${SIZE + PAD * 2} ${SIZE + PAD * 2}`} role="img" aria-label={`Win odds through the day. ${rings.map(({ m }) => `${m.teams[0].team} ${Math.round(m.teams[0].winProb * 100)}% against ${m.teams[1].team}`).join('; ')}.`}>
             <defs>
               <radialGradient id={`${uid}-face`} cx="50%" cy="50%" r="50%">
@@ -294,15 +365,34 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
               </g>
             )}
 
-            {/* Hub */}
-            <circle cx={C} cy={C} r={INNER - 10} fill="var(--color-arc-bg-deep)" stroke={managerColor(hubSide.manager)} strokeOpacity="0.8" strokeWidth="3" />
+            {/* The hub's socket; the hub itself stands above the face. */}
+            <circle cx={C} cy={C} r={INNER - 10} fill="var(--color-arc-bg-deep)" />
+          </svg>
+          {Array.from({ length: HUB_LAYERS }, (_, k) => k + 1).map((n) => (
+            <i
+              key={`post-${n}`}
+              className="lv-radar-post"
+              aria-hidden
+              style={{
+                transform: `translateZ(${n * HUB_STEP}px)`,
+                background: `color-mix(in srgb, ${managerColor(hubSide.manager)} ${20 + n * 6}%, var(--color-arc-bg-deep))`,
+              }}
+            />
+          ))}
+          <svg
+            className="lv-radar-hubtop"
+            viewBox={`${-PAD} ${-PAD} ${SIZE + PAD * 2} ${SIZE + PAD * 2}`}
+            aria-hidden
+            style={{ transform: `translateZ(${(HUB_LAYERS + 1) * HUB_STEP}px)` }}
+          >
+            <circle cx={C} cy={C} r={INNER - 10} fill="var(--color-arc-bg-deep)" stroke={managerColor(hubSide.manager)} strokeOpacity="0.9" strokeWidth="3" />
             <g transform={upright(C, C)}>
-            <text x={C} y={C + 10} textAnchor="middle" className="lv-radar-odds" fill={managerColor(hubSide.manager)}>
-              {hubOdds}%
-            </text>
-            <text x={C} y={C + 44} textAnchor="middle" className="lv-radar-hubsub">
-              {hubSide.manager === me && me ? 'your odds' : hubSide.team.length > 16 ? `${hubSide.team.slice(0, 15)}…` : hubSide.team}
-            </text>
+              <text x={C} y={C + 10} textAnchor="middle" className="lv-radar-odds" fill={managerColor(hubSide.manager)}>
+                {hubOdds}%
+              </text>
+              <text x={C} y={C + 44} textAnchor="middle" className="lv-radar-hubsub">
+                {hubSide.manager === me && me ? 'your odds' : hubSide.team.length > 16 ? `${hubSide.team.slice(0, 15)}…` : hubSide.team}
+              </text>
             </g>
           </svg>
         </div>
