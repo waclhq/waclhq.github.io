@@ -69,6 +69,9 @@ jobs:
               && echo "Published." || echo "::warning::Publish failed; will retry next pass."
           }
           while :; do
+            # Take the latest scoring code each pass, so a rules fix pushed
+            # mid-game applies within ninety seconds instead of next run.
+            git fetch -q origin main && git checkout -q FETCH_HEAD -- scripts/ || echo "::warning::Could not refresh scripts; using the checked-out copy."
             left=$(( (cap - ($(date +%s) - started)) / 60 ))
             args=(--out "$RUNNER_TEMP/points.json" --horizon "$left")
             [ -n "$WEEK" ] && args+=(--week "$WEEK")

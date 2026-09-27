@@ -43,6 +43,12 @@ export const RULES = {
   recTD: 6,
   returnTD: 6,
   fumbleLost: -2,
+  // Credited from the scoring plays: the player who ran or caught it, and the passer.
+  twoPoint: 2,
+  passTwoPoint: 2,
+  // Yardage bonuses, each paid once when a line reaches it: { stat, at, pts }.
+  // stat is one of passYds, rushYds, recYds.
+  bonuses: [],
   def: {
     sack: 1,
     interception: 2,
@@ -157,7 +163,7 @@ function playerLines(summary) {
         passYds: 0, passTD: 0, int: 0, comp: 0, att: 0,
         rushYds: 0, rushTD: 0, car: 0,
         rec: 0, recYds: 0, recTD: 0,
-        retTD: 0, fumLost: 0,
+        retTD: 0, fumLost: 0, twoPt: 0, passTwoPt: 0,
       })
     }
     return lines.get(row.id)
@@ -236,12 +242,37 @@ function defenseLines(summary, game) {
 }
 
 export function scorePlayer(l, rules = RULES) {
+  const bonus = (rules.bonuses ?? []).reduce((sum, b) => sum + ((l[b.stat] ?? 0) >= b.at ? b.pts : 0), 0)
   return round(
     l.passYds * rules.passYards + l.passTD * rules.passTD + l.int * rules.interception +
       l.rushYds * rules.rushYards + l.rushTD * rules.rushTD +
       l.rec * rules.reception + l.recYds * rules.recYards + l.recTD * rules.recTD +
-      l.retTD * rules.returnTD + l.fumLost * rules.fumbleLost,
+      l.retTD * rules.returnTD + l.fumLost * rules.fumbleLost +
+      (l.twoPt ?? 0) * (rules.twoPoint ?? 0) + (l.passTwoPt ?? 0) * (rules.passTwoPoint ?? 0) +
+      bonus,
   )
+}
+
+/*
+ * Two-point conversions live only in the scoring-play text, e.g.
+ * "(Michael Penix Jr. Pass to Chris Blair for Two-Point Conversion)" or
+ * "(Bijan Robinson Run for Two-Point Conversion)". Failed tries say so.
+ */
+function twoPointConversions(summary) {
+  const out = []
+  for (const play of summary.scoringPlays ?? []) {
+    const text = String(play.text ?? '')
+    const m = text.match(/\(([^()]*?)\s+for\s+Two-Point Conversion\)/i)
+    if (!m || /fail|no good|aborted/i.test(m[1])) continue
+    const code = team(play.team?.abbreviation)
+    const pass = m[1].match(/^(.*?)\s+Pass\s+to\s+(.*)$/i)
+    if (pass) out.push({ team: code, scorer: pass[2].trim(), passer: pass[1].trim() })
+    else {
+      const run = m[1].match(/^(.*?)\s+(?:Run|Rush)$/i)
+      if (run) out.push({ team: code, scorer: run[1].trim(), passer: null })
+    }
+  }
+  return out
 }
 
 export function scoreDefense(d, rules = RULES) {
@@ -259,6 +290,7 @@ function statLine(l) {
   if (l.rec || l.recYds) parts.push(`${l.rec}-${l.recYds} rec${l.recTD ? `, ${l.recTD} TD` : ''}`)
   if (l.retTD) parts.push(`${l.retTD} return TD`)
   if (l.fumLost) parts.push(`${l.fumLost} fumble lost`)
+  if (l.twoPt || l.passTwoPt) parts.push(`${(l.twoPt ?? 0) + (l.passTwoPt ?? 0)} two-pt`)
   return parts.join(' · ')
 }
 
@@ -289,7 +321,15 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
   for (const game of games) {
     const summary = summaries[game.id]
     if (!summary) continue
-    for (const l of playerLines(summary).values()) {
+    const lines = playerLines(summary)
+    const credit = (name, code, field) => {
+      for (const l of lines.values()) if (l.team === code && loose(l.name) === loose(name)) l[field] += 1
+    }
+    for (const c of twoPointConversions(summary)) {
+      credit(c.scorer, c.team, 'twoPt')
+      if (c.passer) credit(c.passer, c.team, 'passTwoPt')
+    }
+    for (const l of lines.values()) {
       byNameTeam.set(`${loose(l.name)}|${l.team}`, l)
       const key = `${lastName(l.name)}|${l.team}`
       byLastTeam.set(key, byLastTeam.has(key) ? null : l) // null marks ambiguous
