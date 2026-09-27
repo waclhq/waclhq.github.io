@@ -163,6 +163,79 @@
     color: var(--color-arc-red);
   }
 
+  /* ---- live and final boxes ----
+     Above a player's points: a green LIVE box while his game is on, a grey
+     FINAL once it's done. A live player's whole card is boxed in green too;
+     fire, ice and the red zone paint over that wash where they apply. */
+  .lv-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    font-family: var(--font-body);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 9.5px;
+    line-height: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: none;
+    white-space: nowrap;
+  }
+  .lv-state.is-live {
+    color: var(--color-arc-green);
+    background: color-mix(in srgb, var(--color-arc-green) 14%, transparent);
+  }
+  .lv-state.is-live i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+  }
+  /* The head-to-head cells are narrow on a phone: a tighter tag leaves the name more room. */
+  .lv-h2h-pts .lv-state {
+    gap: 3px;
+    padding: 0 4px;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+  .lv-state.is-final {
+    color: var(--color-arc-ink-faint);
+    border-color: color-mix(in srgb, var(--color-arc-ink-faint) 55%, transparent);
+  }
+  .lv-h2h-pts,
+  .lp-pts {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+  }
+  .lv-h2h-cell.is-right .lv-h2h-pts {
+    align-items: flex-start;
+  }
+  .lv-h2h-cell {
+    padding: 5px 6px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+  }
+  .lv-h2h-cell.is-live {
+    border-color: color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+    background: color-mix(in srgb, var(--color-arc-green) 6%, transparent);
+  }
+  .lp-player.is-live {
+    margin: 3px 0;
+    padding: 6px 8px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+    background: color-mix(in srgb, var(--color-arc-green) 6%, transparent);
+  }
+  .lp-player .lp-pts {
+    align-self: center;
+  }
+
   /* ---- a player in the red zone burns ----
      The card sits on the Book's fire (FireFrame): an opaque face so the
      flames only lick up the outside, and the lit rim alone under reduced
@@ -186,6 +259,7 @@
   .on-fire > .lv-h2h-cell.is-redzone,
   .on-fire > .lp-player.is-redzone {
     position: relative;
+    border-color: transparent;
     border-radius: 10px;
     background: linear-gradient(180deg, var(--color-arc-raised), var(--color-arc-bg-deep));
   }

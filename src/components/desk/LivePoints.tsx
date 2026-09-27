@@ -6,6 +6,7 @@ import { useMe } from '../../lib/me'
 import { pointsLive, useLivePoints } from '../../lib/points'
 import { PlayerSheetProvider, usePlayerPick } from '../live/PlayerSheet'
 import FireFrame from '../FireFrame'
+import StateTag from '../live/StateTag'
 import { inRedZone, redZoneTeams } from '../../lib/live-view'
 import type { LivePoints as Board, LivePointsPlayer, LivePointsTeam } from '../../lib/types'
 
@@ -39,7 +40,7 @@ function ago(iso: string): string {
 
 function when(player: LivePointsPlayer): string {
   if (player.state === 'live') return player.clock || 'Live'
-  if (player.state === 'final') return 'Final'
+  if (player.state === 'final') return ''
   if (player.state === 'bye') return 'Bye'
   return player.kickoff ? kickoff(player.kickoff) : 'Later'
 }
@@ -68,11 +69,15 @@ function PlayerRow({ player, team, bench, hot = false }: { player: LivePointsPla
         <span className="lp-meta">
           {hot && <span className="lv-rz-chip">Red zone</span>}
           {player.nfl}
-          {player.opp ? ` ${player.opp}` : ''} · {when(player)}
+          {player.opp ? ` ${player.opp}` : ''}
+          {when(player) ? ` · ${when(player)}` : ''}
           {player.line ? <span className="lp-line"> · {player.line}</span> : null}
         </span>
       </span>
-      <span className="lp-pts tnum">{player.state === 'pre' || player.state === 'bye' ? '–' : pts(player.pts)}</span>
+      <span className="lp-pts tnum">
+        <StateTag player={player} />
+        {player.state === 'pre' || player.state === 'bye' ? '–' : pts(player.pts)}
+      </span>
     </button>
   )
   return hot ? <FireFrame>{row}</FireFrame> : row

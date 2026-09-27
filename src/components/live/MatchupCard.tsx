@@ -3,6 +3,7 @@ import PixelMugshot from '../PixelMugshot'
 import FireFrame from '../FireFrame'
 import Heartbeat from './Heartbeat'
 import ShareCardButton from './ShareCardButton'
+import StateTag from './StateTag'
 import { usePlayerPick } from './PlayerSheet'
 import { matchupCard } from '../../lib/live-cards'
 import { Plot, roundedScale } from '../charts'
@@ -108,10 +109,12 @@ function PlayerCell({ player, team, align, hot = false }: { player?: LivePointsP
       </span>
       <span className="lv-h2h-meta">
         {hot && <span className="lv-rz-chip">Red zone</span>}
-        {player.nfl} {player.opp ?? ''} · {gameClock(player)}
+        {player.nfl} {player.opp ?? ''}
+        {player.state === 'final' ? '' : ` · ${gameClock(player)}`}
       </span>
       {player.line && <span className="lv-h2h-line">{player.line}</span>}
       <span className="lv-h2h-pts tnum">
+        <StateTag player={player} />
         {shown ? <span className="lv-h2h-proj">proj {fmt(player.proj ?? 0)}</span> : fmt(player.pts)}
       </span>
     </button>
