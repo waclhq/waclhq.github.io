@@ -68,10 +68,23 @@ jobs:
           YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
           YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
           YAHOO_LEAGUE_KEY: ${{ secrets.YAHOO_LEAGUE_KEY }}
-        run: node scripts/yahoo-sync.mjs
+        id: fetch
+        # Until Yahoo enables the app it answers 401/403 "not authorized". On
+        # a schedule that is a wait, not a failure, so it skips with a notice
+        # instead of mailing a red run every few minutes; by hand it fails.
+        run: |
+          set -o pipefail
+          if node scripts/yahoo-sync.mjs 2>&1 | tee "$RUNNER_TEMP/yahoo.log"; then
+            echo 'ok=true' >> "$GITHUB_OUTPUT"
+          elif grep -Eq 'failed \((401|403)\)' "$RUNNER_TEMP/yahoo.log" && [ '${{ github.event_name }}' = 'schedule' ]; then
+            echo "::notice title=Yahoo not enabled yet::Yahoo refused the app (401/403). Skipping until it is enabled."
+            echo 'ok=false' >> "$GITHUB_OUTPUT"
+          else
+            exit 1
+          fi
 
       - name: Commit if the standings moved
-        if: steps.creds.outputs.ready == 'true'
+        if: steps.creds.outputs.ready == 'true' && steps.fetch.outputs.ok == 'true'
         run: |
           git config user.name  "yahoo-sync[bot]"
           git config user.email "yahoo-sync[bot]@users.noreply.github.com"
