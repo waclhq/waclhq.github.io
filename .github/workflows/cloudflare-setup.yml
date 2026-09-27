@@ -3,7 +3,8 @@ name: Cloudflare live setup
 # One-time (and safe to re-run): creates the KV namespace, deploys the
 # wacl-live Worker that serves the live-points file with a short cache,
 # seeds it with the current file, and prints the Worker's address.
-# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+# Needs the repository secret CLOUDFLARE_API_TOKEN. The account id is an
+# identifier, not a credential, so it is written here (a secret overrides it).
 
 on:
   workflow_dispatch:
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '491c370f52e51dad84b8bc9104fad3d3' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,7 +54,7 @@ jobs:
       - name: Deploy the Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '491c370f52e51dad84b8bc9104fad3d3' }}
         run: |
           cat > worker/wrangler.toml <<TOML
           name = "wacl-live"
