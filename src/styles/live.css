@@ -163,6 +163,53 @@
     color: var(--color-arc-red);
   }
 
+  /* ---- a player in the red zone burns ----
+     The card sits on the Book's fire (FireFrame): an opaque face so the
+     flames only lick up the outside, and the lit rim alone under reduced
+     motion. */
+  .lv-rz-chip {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    line-height: 16px;
+    text-transform: uppercase;
+    color: var(--color-arc-bg-deep);
+    background: linear-gradient(90deg, var(--color-arc-red), var(--color-arc-orange));
+    vertical-align: 1px;
+  }
+  .on-fire > .lv-h2h-cell.is-redzone,
+  .on-fire > .lp-player.is-redzone {
+    position: relative;
+    border-radius: 10px;
+    background: linear-gradient(180deg, var(--color-arc-raised), var(--color-arc-bg-deep));
+  }
+  .on-fire > .lv-h2h-cell.is-redzone {
+    padding: 6px 8px;
+  }
+  .on-fire > .lp-player.is-redzone {
+    margin: 6px 0;
+    padding: 8px 10px;
+    border-bottom: 0;
+  }
+  .lv-h2h-row .on-fire > .fire-rim,
+  .lp-roster .on-fire > .fire-rim {
+    border-radius: 11px;
+  }
+  .lv-sheet-eyebrow .lv-rz-chip {
+    margin: 0 0 0 8px;
+  }
+  .on-fire > .lv-h2h-cell.is-redzone .lv-h2h-pts,
+  .on-fire > .lp-player.is-redzone .lp-pts {
+    color: var(--color-arc-orange);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--color-arc-orange) 70%, transparent);
+  }
+
   /* ---- red zone alerts ---- */
   .lv-rzlist {
     display: grid;

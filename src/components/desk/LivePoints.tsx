@@ -5,6 +5,8 @@ import { managerName, useLeagueData } from '../../lib/data'
 import { useMe } from '../../lib/me'
 import { pointsLive, useLivePoints } from '../../lib/points'
 import { PlayerSheetProvider, usePlayerPick } from '../live/PlayerSheet'
+import FireFrame from '../FireFrame'
+import { inRedZone, redZoneTeams } from '../../lib/live-view'
 import type { LivePoints as Board, LivePointsPlayer, LivePointsTeam } from '../../lib/types'
 
 /**
@@ -53,10 +55,10 @@ function subtitle(board: Board): string {
   return `Nothing has kicked off yet${next ? `; first game ${kickoff(next)}` : ''}. Lineups as of ${board.lineupsAsOf ?? 'this week'}. ${method}`
 }
 
-function PlayerRow({ player, team, bench }: { player: LivePointsPlayer; team: string; bench?: boolean }) {
+function PlayerRow({ player, team, bench, hot = false }: { player: LivePointsPlayer; team: string; bench?: boolean; hot?: boolean }) {
   const pick = usePlayerPick()
-  return (
-    <button type="button" className={`lp-player lv-pick is-${player.state} ${bench ? 'is-bench' : ''}`} onClick={() => pick(player.name, team)}>
+  const row = (
+    <button type="button" className={`lp-player lv-pick is-${player.state} ${bench ? 'is-bench' : ''} ${hot ? 'is-redzone' : ''}`} onClick={() => pick(player.name, team)}>
       <span className="lp-slot label">{player.slot === 'W/R/T' ? 'FLEX' : player.slot}</span>
       <span className="lp-who">
         <span className="lp-name">
@@ -64,6 +66,7 @@ function PlayerRow({ player, team, bench }: { player: LivePointsPlayer; team: st
           {player.status && <span className="lp-status">{player.status}</span>}
         </span>
         <span className="lp-meta">
+          {hot && <span className="lv-rz-chip">Red zone</span>}
           {player.nfl}
           {player.opp ? ` ${player.opp}` : ''} · {when(player)}
           {player.line ? <span className="lp-line"> · {player.line}</span> : null}
@@ -72,6 +75,7 @@ function PlayerRow({ player, team, bench }: { player: LivePointsPlayer; team: st
       <span className="lp-pts tnum">{player.state === 'pre' || player.state === 'bye' ? '–' : pts(player.pts)}</span>
     </button>
   )
+  return hot ? <FireFrame>{row}</FireFrame> : row
 }
 
 function TeamCard({
@@ -79,11 +83,14 @@ function TeamCard({
   rank,
   mine,
   managers,
+  rz,
 }: {
   team: LivePointsTeam
   rank: number
   mine: boolean
   managers: ReturnType<typeof useLeagueData>['managers']
+  /** NFL teams in the red zone right now. */
+  rz: Set<string>
 }) {
   const bits = [
     team.live ? `${team.live} playing` : null,
@@ -112,13 +119,13 @@ function TeamCard({
         </summary>
         <div className="lp-roster">
           {team.starters.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} hot={inRedZone(player, rz)} />
           ))}
           <div className="lp-benchhead label">
             Bench <span className="tnum">{pts(team.benchTotal)}</span>
           </div>
           {team.bench.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} bench />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} bench hot={inRedZone(player, rz)} />
           ))}
         </div>
       </details>
@@ -134,6 +141,7 @@ export default function LivePoints() {
 
   const live = pointsLive(board)
   const feed = board.events.slice(0, 6)
+  const rz = redZoneTeams(board)
 
   return (
     <PlayerSheetProvider board={board}>
@@ -179,6 +187,7 @@ export default function LivePoints() {
             rank={index + 1}
             mine={me !== null && team.manager === me}
             managers={managers}
+            rz={rz}
           />
         ))}
       </ol>

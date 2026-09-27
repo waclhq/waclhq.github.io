@@ -63,7 +63,8 @@ the Shell offers a refresh when a newer build is live.
    `player-positions`, `draft-pool`, `live`) load after the first screen, so
    anything reading them must tolerate null. Nothing paints continuously
    behind the content — the ground is static, and the only long-running
-   canvases (the Book's fires) share one throttled clock in `lib/ticker.ts`.
+   canvases (the Book's fires, and the same `FireFrame` round a Live player
+   whose offense is in the red zone) share one throttled clock in `lib/ticker.ts`.
 
    Count what runs at rest. The audit that found the phone slow found 72
    infinite sparkle animations under every title and 22 swaying banners on

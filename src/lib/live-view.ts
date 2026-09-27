@@ -203,6 +203,16 @@ export function heat(player: LivePointsPlayer): 'fire' | 'ice' | null {
   return null
 }
 
+/** NFL teams with the ball inside the opponent's 20 right now. */
+export function redZoneTeams(board: LivePoints): Set<string> {
+  return new Set(board.games.filter((g) => g.state === 'in' && g.redZone && g.possession).map((g) => g.possession as string))
+}
+
+/** A player whose offense is in the red zone: a touchdown could land on him any second. */
+export function inRedZone(player: LivePointsPlayer, teams: Set<string>): boolean {
+  return player.state === 'live' && player.pos !== 'DEF' && teams.has(player.nfl)
+}
+
 /* ----------------------------------------------------- living portraits */
 
 /** How a manager's face should look: flush with a lead, grey when it's gone, jolted by a fresh play. */
