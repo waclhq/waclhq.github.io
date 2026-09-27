@@ -354,7 +354,7 @@ export interface LivePoints {
   plays?: LivePointsPlay[]
   milestones?: LivePointsMilestone[]
   chases?: LivePointsMilestone[]
-  history?: { teams: string[]; samples: { t: string; v: number[]; p: number[] }[] }
+  history?: { teams: string[]; matchups?: string[]; samples: { t: string; v: number[]; p: number[]; w?: number[] }[] }
 }
 
 /** year -> normalised player name -> [standard fantasy points, position]. */

@@ -673,13 +673,20 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
 
   // The day so far: a sample of every team's total and projection, appended
   // to the previous file's history while the week is the same.
+  // w: the first team's win probability in each matchup, in matchups order.
   const order = lineups.teams.map((t) => t.team)
-  const sample = { t: now.toISOString(), v: order.map((name) => byTeam.get(name)?.total ?? 0), p: order.map((name) => byTeam.get(name)?.proj ?? 0) }
-  let history = previous && previous.week === (scoreboard.week?.number ?? null) && Array.isArray(previous.history?.samples) && String(previous.history?.teams) === String(order)
-    ? previous.history.samples.slice()
-    : []
+  const pairing = matchupRows.map((m) => m.teams.map((side) => side.team).join(' v '))
+  const sample = {
+    t: now.toISOString(),
+    v: order.map((name) => byTeam.get(name)?.total ?? 0),
+    p: order.map((name) => byTeam.get(name)?.proj ?? 0),
+    w: matchupRows.map((m) => m.teams[0].winProb),
+  }
+  const sameShape = previous && previous.week === (scoreboard.week?.number ?? null) && Array.isArray(previous.history?.samples) &&
+    String(previous.history?.teams) === String(order) && String(previous.history?.matchups ?? '') === String(pairing)
+  let history = sameShape ? previous.history.samples.slice() : []
   const last = history[history.length - 1]
-  const moved = !last || String(last.v) !== String(sample.v) || String(last.p) !== String(sample.p)
+  const moved = !last || String(last.v) !== String(sample.v) || String(last.p) !== String(sample.p) || String(last.w ?? '') !== String(sample.w)
   const stale = !last || now.getTime() - new Date(last.t).getTime() > 10 * 60_000
   if (moved || stale) history.push(sample)
   if (history.length > 480) history = history.slice(-480)
@@ -699,7 +706,7 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       plays: plays.slice(0, 80).map(({ order, ...rest }) => rest),
       milestones,
       chases: chases.slice(0, 12),
-      history: { teams: order, samples: history },
+      history: { teams: order, matchups: pairing, samples: history },
     },
     noLine: [...new Set(unmatched)],
   }
