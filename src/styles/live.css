@@ -1251,12 +1251,18 @@
     padding: 10px 12px 14px;
   }
   .lv-radar-stage {
-    perspective: 1100px;
+    container-type: inline-size;
+    perspective: 1400px;
     touch-action: pan-y;
     cursor: grab;
     user-select: none;
-    max-width: 560px;
+    max-width: 600px;
     margin: 0 auto;
+  }
+  @media (max-width: 520px) {
+    .lv-radar {
+      padding-inline: 2px;
+    }
   }
   .lv-radar.is-compact .lv-radar-stage {
     cursor: default;
@@ -1265,7 +1271,11 @@
   .lv-radar-disc {
     transform-origin: 50% 50%;
     transition: transform 0.25s ease-out;
-    filter: drop-shadow(0 24px 24px color-mix(in srgb, var(--color-arc-bg-deep) 85%, transparent));
+    /* The tilt flattens the dial inside a square box; take back the empty strips. */
+    /* The near edge grows under perspective, so give back less at the bottom. */
+    margin-block: calc(var(--squash, 0) * -100cqw) calc(var(--squash, 0) * -40cqw);
+    filter: drop-shadow(0 18px 22px color-mix(in srgb, var(--color-arc-bg-deep) 80%, transparent))
+      drop-shadow(0 0 18px color-mix(in srgb, var(--color-arc-green) 18%, transparent));
   }
   .lv-radar-disc svg {
     display: block;
@@ -1279,27 +1289,29 @@
   }
   .lv-radar-hour {
     font-family: var(--font-mono);
-    font-size: 15px;
-    fill: var(--color-arc-ink-soft);
+    font-size: 24px;
+    font-weight: 600;
+    fill: var(--color-arc-ink);
   }
   .lv-radar-kick {
     font-family: var(--font-display);
     font-style: italic;
     font-weight: 700;
-    font-size: 16px;
-    letter-spacing: 0.12em;
+    font-size: 28px;
+    letter-spacing: 0.04em;
     fill: var(--color-arc-green);
   }
   .lv-radar-odds {
     font-family: var(--font-display);
     font-style: italic;
     font-weight: 700;
-    font-size: 58px;
+    font-size: 76px;
   }
   .lv-radar-hubsub {
     font-family: var(--font-body);
-    font-size: 14px;
-    fill: var(--color-arc-ink-faint);
+    font-size: 20px;
+    font-weight: 600;
+    fill: var(--color-arc-ink-soft);
   }
   .lv-radar-ping {
     transform-box: fill-box;
