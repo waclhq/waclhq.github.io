@@ -3,6 +3,7 @@ import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
 import { filterPlays, KIND_LABEL, signed, swingFor, touches, type PlayFilter } from '../../lib/live-view'
 import type { LivePointsPlay, ManagerId } from '../../lib/types'
+import { usePlayerPick } from './PlayerSheet'
 
 /**
  * The wire: every touchdown, 20-yard play, turnover and sack that moved
@@ -67,6 +68,7 @@ export default function PlaysWire({
   fresh: Set<string>
 }) {
   const { managers } = useLeagueData()
+  const pick = usePlayerPick()
   const [filter, setFilter] = useState<PlayFilter>('all')
   const [shown, setShown] = useState(12)
   const list = filterPlays(plays, filter, me)
@@ -119,14 +121,16 @@ export default function PlaysWire({
                 <p className="lv-play-text">{clean(play.text)}</p>
                 <div className="lv-play-hits">
                   {play.hits.map((hit) => (
-                    <span
+                    <button
+                      type="button"
                       key={`${hit.team}-${hit.player}`}
                       className={`lv-hit ${hit.pts >= 0 ? 'is-plus' : 'is-minus'} ${hit.starter ? '' : 'is-bench'}`}
                       style={{ '--c': managerColor(hit.manager) } as CSSProperties}
+                      onClick={() => pick(hit.player, hit.team)}
                     >
                       <b className="tnum">{signed(hit.pts)}</b> {hit.player} · {managerName(managers, hit.manager)}
                       {hit.starter ? '' : ' (bench)'}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>

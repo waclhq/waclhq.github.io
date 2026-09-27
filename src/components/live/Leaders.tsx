@@ -4,6 +4,7 @@ import { managerColor } from '../../lib/identity'
 import { boards, fmt, heat } from '../../lib/live-view'
 import { benchCard, ghostCard, starCard } from '../../lib/live-cards'
 import ShareCardButton from './ShareCardButton'
+import { usePlayerPick } from './PlayerSheet'
 import type { LivePoints, ManagerId } from '../../lib/types'
 
 /**
@@ -13,6 +14,7 @@ import type { LivePoints, ManagerId } from '../../lib/types'
  */
 export default function Leaders({ board, me }: { board: LivePoints; me: ManagerId | null }) {
   const { managers } = useLeagueData()
+  const pick = usePlayerPick()
   const { stars, bench, ghosts } = boards(board)
   const column = (
     title: string,
@@ -47,6 +49,7 @@ export default function Leaders({ board, me }: { board: LivePoints; me: ManagerI
               className={`${team.manager === me && me ? 'is-mine' : ''} ${heat(player) ? `is-${heat(player)}` : ''}`}
               style={{ '--c': managerColor(team.manager) } as CSSProperties}
             >
+              <button type="button" className="lv-pick lv-board-row" onClick={() => pick(player.name, team.team)}>
               <span className="lv-board-rank tnum">{i + 1}</span>
               <span className="lv-board-who">
                 <span className="lv-board-name">{player.name}</span>
@@ -55,6 +58,7 @@ export default function Leaders({ board, me }: { board: LivePoints; me: ManagerI
                 </span>
               </span>
               <span className="lv-board-pts tnum">{fmt(player.pts)}</span>
+              </button>
             </li>
           ))}
         </ol>

@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import PixelMugshot from '../PixelMugshot'
 import Heartbeat from './Heartbeat'
 import ShareCardButton from './ShareCardButton'
+import { usePlayerPick } from './PlayerSheet'
 import { matchupCard } from '../../lib/live-cards'
 import { Plot, roundedScale } from '../charts'
 import { managerName, useLeagueData } from '../../lib/data'
@@ -85,11 +86,17 @@ function Side({
   )
 }
 
-function PlayerCell({ player, align }: { player?: LivePointsPlayer; align: 'left' | 'right' }) {
+function PlayerCell({ player, team, align }: { player?: LivePointsPlayer; team: string; align: 'left' | 'right' }) {
+  const pick = usePlayerPick()
   if (!player) return <div className={`lv-h2h-cell is-${align}`} />
   const shown = player.state === 'pre' || player.state === 'bye'
   return (
-    <div className={`lv-h2h-cell is-${align} is-${player.state} ${heat(player) ? `is-${heat(player)}` : ''}`}>
+    <button
+      type="button"
+      className={`lv-h2h-cell lv-pick is-${align} is-${player.state} ${heat(player) ? `is-${heat(player)}` : ''}`}
+      onClick={() => pick(player.name, team)}
+      aria-label={`${player.name}, ${player.state === 'pre' || player.state === 'bye' ? 'not played yet' : `${player.pts.toFixed(1)} points`}. Show stats.`}
+    >
       <span className="lv-h2h-name">
         {player.name}
         {player.status && <em>{player.status}</em>}
@@ -101,7 +108,7 @@ function PlayerCell({ player, align }: { player?: LivePointsPlayer; align: 'left
       <span className="lv-h2h-pts tnum">
         {shown ? <span className="lv-h2h-proj">proj {fmt(player.proj ?? 0)}</span> : fmt(player.pts)}
       </span>
-    </div>
+    </button>
   )
 }
 
@@ -220,9 +227,9 @@ export default function MatchupCard({
         <div className="lv-h2h">
           {headToHead(ta, tb).map((row, i) => (
             <div key={`${row.slot}-${i}`} className="lv-h2h-row">
-              <PlayerCell player={row.left} align="left" />
+              <PlayerCell player={row.left} team={ta.team} align="left" />
               <span className="lv-h2h-slot label">{row.slot === 'W/R/T' ? 'FLEX' : row.slot}</span>
-              <PlayerCell player={row.right} align="right" />
+              <PlayerCell player={row.right} team={tb.team} align="right" />
             </div>
           ))}
           <div className="lv-h2h-bench">

@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
 import type { LivePointsMilestone, ManagerId } from '../../lib/types'
+import { usePlayerPick } from './PlayerSheet'
 
 /**
  * The league pays one-time bonuses at 300 passing, 100 rushing and 100
@@ -18,6 +19,7 @@ export default function BonusWatch({
   me: ManagerId | null
 }) {
   const { managers } = useLeagueData()
+  const pick = usePlayerPick()
   if (!chases.length && !milestones.length) {
     return <p className="lv-empty">Nobody is within sight of a yardage bonus yet. It pays 2 at 300 passing, 3 at 100 rushing and 2 at 100 receiving.</p>
   }
@@ -35,7 +37,9 @@ export default function BonusWatch({
                 style={{ '--c': managerColor(c.manager), '--got': Math.min(1, c.have / at) } as CSSProperties}
               >
                 <div className="lv-chase-top">
-                  <span className="lv-chase-name">{c.player}</span>
+                  <button type="button" className="lv-pick lv-chase-name" onClick={() => pick(c.player, c.team)}>
+                    {c.player}
+                  </button>
                   <span className="lv-chase-need tnum">
                     {need} to go · <b>+{c.pts}</b>
                   </span>
@@ -63,14 +67,16 @@ export default function BonusWatch({
           <div className="label">Banked</div>
           <div className="lv-banked-list">
             {milestones.map((m) => (
-              <span
+              <button
+                type="button"
                 key={`${m.player}-${m.stat}`}
                 className={`lv-tag ${m.starter ? '' : 'is-bench'}`}
                 style={{ '--c': managerColor(m.manager) } as CSSProperties}
+                onClick={() => pick(m.player, m.team)}
               >
                 <b className="tnum">+{m.pts}</b> {m.player} · {m.label} · {managerName(managers, m.manager)}
                 {m.starter ? '' : ' (bench)'}
-              </span>
+              </button>
             ))}
           </div>
         </div>

@@ -4,6 +4,7 @@ import { Panel } from '../ui'
 import { managerName, useLeagueData } from '../../lib/data'
 import { useMe } from '../../lib/me'
 import { pointsLive, useLivePoints } from '../../lib/points'
+import { PlayerSheetProvider, usePlayerPick } from '../live/PlayerSheet'
 import type { LivePoints as Board, LivePointsPlayer, LivePointsTeam } from '../../lib/types'
 
 /**
@@ -52,9 +53,10 @@ function subtitle(board: Board): string {
   return `Nothing has kicked off yet${next ? `; first game ${kickoff(next)}` : ''}. Lineups as of ${board.lineupsAsOf ?? 'this week'}. ${method}`
 }
 
-function PlayerRow({ player, bench }: { player: LivePointsPlayer; bench?: boolean }) {
+function PlayerRow({ player, team, bench }: { player: LivePointsPlayer; team: string; bench?: boolean }) {
+  const pick = usePlayerPick()
   return (
-    <div className={`lp-player is-${player.state} ${bench ? 'is-bench' : ''}`}>
+    <button type="button" className={`lp-player lv-pick is-${player.state} ${bench ? 'is-bench' : ''}`} onClick={() => pick(player.name, team)}>
       <span className="lp-slot label">{player.slot === 'W/R/T' ? 'FLEX' : player.slot}</span>
       <span className="lp-who">
         <span className="lp-name">
@@ -68,7 +70,7 @@ function PlayerRow({ player, bench }: { player: LivePointsPlayer; bench?: boolea
         </span>
       </span>
       <span className="lp-pts tnum">{player.state === 'pre' || player.state === 'bye' ? '–' : pts(player.pts)}</span>
-    </div>
+    </button>
   )
 }
 
@@ -110,13 +112,13 @@ function TeamCard({
         </summary>
         <div className="lp-roster">
           {team.starters.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} />
           ))}
           <div className="lp-benchhead label">
             Bench <span className="tnum">{pts(team.benchTotal)}</span>
           </div>
           {team.bench.map((player) => (
-            <PlayerRow key={`${player.slot}-${player.name}`} player={player} bench />
+            <PlayerRow key={`${player.slot}-${player.name}`} player={player} team={team.team} bench />
           ))}
         </div>
       </details>
@@ -134,6 +136,7 @@ export default function LivePoints() {
   const feed = board.events.slice(0, 6)
 
   return (
+    <PlayerSheetProvider board={board}>
     <Panel
       title={`Live points · week ${board.week ?? '—'}`}
       subtitle={subtitle(board)}
@@ -180,5 +183,6 @@ export default function LivePoints() {
         ))}
       </ol>
     </Panel>
+    </PlayerSheetProvider>
   )
 }

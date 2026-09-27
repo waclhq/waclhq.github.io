@@ -126,7 +126,9 @@ the Shell offers a refresh when a newer build is live.
   matchup face-offs with win odds, heartbeat monitors and living portraits,
   head-to-head with fire/ice players and a swing chart, the radar clock
   (win odds through the day as rings on a tilted dial, SVG, no library), the big-plays wire, bonus
-  watch, leader boards, score alerts, share cards and the story-style recap;
+  watch, leader boards, score alerts, share cards, the story-style recap, and
+  the player card (`PlayerSheet`: tap any player for his box score and how
+  his points add up);
   helpers are `lib/live-view.ts`, `lib/live-cards.ts` and the canvas card
   renderer `lib/live-share.ts`). Their
   pure helpers live beside them as `src/lib/<room>-*.ts`.

@@ -874,12 +874,16 @@
     gap: 6px;
   }
   .lv-board li {
+    position: relative;
+    padding-left: 6px;
+    border-left: 2px solid var(--c);
+  }
+  .lv-board-row {
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
-    padding-left: 6px;
-    border-left: 2px solid var(--c);
+    width: 100%;
   }
   .lv-board li.is-mine {
     background: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 8%, transparent);
@@ -1662,6 +1666,319 @@
   :root:not([data-motion='on']) .lv-face,
   :root:not([data-motion='on']) .lv-radar-disc,
   :root:not([data-motion='on']) .lv-radar-ring {
+    transition: none;
+  }
+}
+
+/* ======================= player card ======================= */
+@layer components {
+  /* Anything that opens a player's card: a quiet button that reads as the row it replaces. */
+  .lv-pick {
+    width: 100%;
+    text-align: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.15s ease;
+  }
+  .lv-pick:focus-visible {
+    outline: 2px solid var(--color-arc-green);
+    outline-offset: 1px;
+  }
+  .lv-chase-name.lv-pick {
+    width: auto;
+    text-align: left;
+  }
+  .lv-h2h-cell.lv-pick {
+    padding: 2px 4px;
+  }
+  .lp-player.lv-pick {
+    text-align: left;
+  }
+  button.lv-hit,
+  button.lv-tag {
+    cursor: pointer;
+  }
+
+  .lv-sheet-wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-arc-bg-deep) 72%, transparent);
+    animation: lv-fade 0.2s ease-out both;
+  }
+  @media (min-width: 640px) {
+    .lv-sheet-wrap {
+      align-items: center;
+    }
+  }
+  @keyframes lv-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  .lv-sheet {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    width: min(520px, 100vw);
+    max-height: min(88dvh, 780px);
+    overflow-y: auto;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--color-arc-line);
+    border-top: 3px solid var(--c);
+    background:
+      radial-gradient(90% 40% at 0% 0%, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%),
+      var(--color-arc-panel);
+    box-shadow: var(--shadow-hard);
+    animation: lv-sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @media (min-width: 640px) {
+    .lv-sheet {
+      border-radius: 18px;
+      padding-bottom: 18px;
+    }
+  }
+  @keyframes lv-sheet-up {
+    from {
+      transform: translateY(40px);
+      opacity: 0;
+    }
+  }
+  .lv-sheet-grab {
+    justify-self: center;
+    width: 42px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-arc-line);
+  }
+  .lv-sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .lv-sheet-eyebrow {
+    font-size: 10.5px;
+  }
+  .lv-sheet-status {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--color-arc-bg-deep);
+    background: var(--color-arc-orange);
+    font-weight: 700;
+  }
+  .lv-sheet-name {
+    margin-top: 4px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: clamp(30px, 9vw, 40px);
+    line-height: 0.95;
+    text-transform: uppercase;
+    color: var(--color-arc-ink);
+  }
+  .lv-sheet-owner {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--color-arc-ink-soft);
+  }
+  .lv-sheet-owner i {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+  .lv-sheet-close {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--color-arc-ink);
+    background: color-mix(in srgb, var(--color-arc-ink) 10%, transparent);
+  }
+  .lv-sheet-score {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .lv-sheet-pts {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 72px;
+    line-height: 0.85;
+    color: var(--c);
+  }
+  .lv-sheet-pts.is-fire {
+    color: var(--color-arc-orange);
+    text-shadow: 0 0 14px color-mix(in srgb, var(--color-arc-orange) 70%, transparent);
+  }
+  .lv-sheet-pts.is-ice {
+    color: var(--color-arc-cyan);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--color-arc-cyan) 60%, transparent);
+  }
+  .lv-sheet-proj {
+    display: grid;
+    gap: 2px;
+    padding-bottom: 4px;
+    font-size: 12.5px;
+    color: var(--color-arc-ink-faint);
+  }
+  .lv-sheet-proj b {
+    color: var(--color-arc-ink);
+  }
+  .lv-sheet-bench {
+    color: var(--color-arc-orange);
+  }
+  .lv-sheet-block {
+    display: grid;
+    gap: 6px;
+  }
+  .lv-sheet-cells {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+    gap: 6px;
+  }
+  .lv-sheet-cells > div {
+    display: grid;
+    gap: 2px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    text-align: center;
+    background: var(--color-arc-bg-deep);
+  }
+  .lv-sheet-cells span {
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    color: var(--color-arc-ink-faint);
+  }
+  .lv-sheet-cells b {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--color-arc-ink);
+  }
+  .lv-sheet-sum {
+    display: grid;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--color-arc-bg-deep);
+  }
+  .lv-sheet-sum li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 12px;
+    font-size: 13px;
+    color: var(--color-arc-ink-soft);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-arc-line) 60%, transparent);
+  }
+  .lv-sheet-sum li b {
+    color: var(--color-arc-green);
+  }
+  .lv-sheet-sum li b.is-minus {
+    color: var(--color-arc-red);
+  }
+  .lv-sheet-sum li.is-total {
+    border-bottom: 0;
+    font-weight: 700;
+    color: var(--color-arc-ink);
+  }
+  .lv-sheet-sum li.is-total b {
+    color: var(--color-arc-ink);
+    font-size: 15px;
+  }
+  .lv-sheet-bonus {
+    font-size: 13px;
+    color: var(--color-arc-ink-soft);
+  }
+  .lv-sheet-bonus b {
+    color: var(--color-arc-green);
+  }
+  .lv-sheet-chase {
+    display: grid;
+    gap: 5px;
+    font-size: 12.5px;
+    color: var(--color-arc-ink-soft);
+  }
+  .lv-sheet-chase i {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--color-arc-line);
+    overflow: hidden;
+  }
+  .lv-sheet-chase i b {
+    display: block;
+    height: 100%;
+    background: var(--c);
+    transform-origin: left;
+    transform: scaleX(var(--got, 0));
+  }
+  .lv-sheet-plays {
+    display: grid;
+    gap: 6px;
+  }
+  .lv-sheet-plays li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 12.5px;
+  }
+  .lv-sheet-kind {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+  .lv-sheet-kind.is-td {
+    color: var(--color-arc-green);
+  }
+  .lv-sheet-kind.is-boom {
+    color: var(--color-arc-yellow);
+  }
+  .lv-sheet-kind.is-turnover {
+    color: var(--color-arc-red);
+  }
+  .lv-sheet-kind.is-sack,
+  .lv-sheet-kind.is-safety {
+    color: var(--color-arc-purple);
+  }
+  .lv-sheet-playtext {
+    color: var(--color-arc-ink-soft);
+  }
+  .lv-sheet-plays b {
+    color: var(--color-arc-green);
+  }
+  .lv-sheet-plays b.is-minus {
+    color: var(--color-arc-red);
+  }
+  .lv-sheet-link {
+    font-size: 12.5px;
+    color: var(--color-arc-green);
+  }
+}
+
+@media (hover: hover) {
+  .lv-pick:hover {
+    background: color-mix(in srgb, var(--color-arc-ink) 6%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .lv-sheet-wrap,
+  :root:not([data-motion='on']) .lv-sheet {
+    animation: none;
+  }
+  :root:not([data-motion='on']) .lv-pick {
     transition: none;
   }
 }

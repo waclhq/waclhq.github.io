@@ -256,6 +256,10 @@ export interface LivePointsPlayer {
   left?: number
   prior?: number
   yds?: { passYds: number; rushYds: number; recYds: number }
+  /** The full box-score line, only the non-zero entries. */
+  stats?: Record<string, number>
+  /** How the points were built: [label, points], summing to pts. */
+  breakdown?: [string, number][]
 }
 
 export interface LivePointsTeam {

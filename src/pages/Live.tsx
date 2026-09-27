@@ -9,6 +9,7 @@ import ScoreAlert from '../components/live/ScoreAlert'
 import ToteBoard from '../components/live/ToteBoard'
 import RadarClock from '../components/live/RadarClock'
 import Recap from '../components/live/Recap'
+import { PlayerSheetProvider } from '../components/live/PlayerSheet'
 import { useClock } from '../components/desk/hooks'
 import { managerName, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
@@ -147,6 +148,7 @@ export default function Live() {
   const liveCount = board.games.filter((g) => g.state === 'in').length
 
   return (
+    <PlayerSheetProvider board={board}>
     <div className="lv-room">
       <ScoreAlert plays={board.plays ?? []} me={me} />
       <PageHeader
@@ -239,5 +241,6 @@ export default function Live() {
 
       <Leaders board={board} me={me} />
     </div>
+    </PlayerSheetProvider>
   )
 }
