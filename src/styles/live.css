@@ -1233,6 +1233,13 @@
     text-overflow: ellipsis;
     color: var(--color-arc-ink-faint);
   }
+  /* Banked before the log began: same colours, a step quieter. */
+  .lv-latest-row.is-earlier {
+    background: color-mix(in srgb, var(--c) 5%, transparent);
+  }
+  .lv-latest-row.is-earlier .lv-latest-pts {
+    opacity: 0.8;
+  }
   .lv-latest-ago {
     font-size: 10.5px;
     color: var(--color-arc-ink-faint);
