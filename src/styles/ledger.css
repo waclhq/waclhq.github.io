@@ -716,6 +716,210 @@
     font-style: italic;
     color: var(--color-arc-ink-soft);
   }
+
+  /* ---- Live points: the league scored live from ESPN box scores ---- */
+  .lp-livetag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-arc-green);
+  }
+  .lp-feed {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px 4px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  }
+  .lp-event {
+    display: grid;
+    gap: 4px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg-deep);
+    min-width: 0;
+  }
+  .lp-event.is-mine {
+    border-color: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 55%, var(--color-arc-line));
+  }
+  .lp-eventwhen {
+    font-size: 10.5px;
+    color: var(--color-arc-ink-faint);
+  }
+  .lp-eventtext {
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--color-arc-ink);
+  }
+  .lp-eventwho {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .lp-chip {
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    color: var(--color-arc-green);
+    border: 1px solid color-mix(in srgb, var(--color-arc-green) 45%, transparent);
+  }
+  .lp-chip.is-bench {
+    color: var(--color-arc-ink-faint);
+    border-color: var(--color-arc-line);
+  }
+  .lp-board {
+    display: grid;
+    gap: 6px;
+    padding: 12px 16px 16px;
+  }
+  .lp-team {
+    border-radius: 10px;
+    border: 1px solid var(--color-arc-line);
+    background: var(--color-arc-bg-deep);
+    min-width: 0;
+  }
+  .lp-team.is-mine {
+    border-color: color-mix(in srgb, var(--me-color, var(--color-arc-blue)) 55%, var(--color-arc-line));
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--me-color, var(--color-arc-blue)) 10%, var(--color-arc-bg-deep)),
+      var(--color-arc-bg-deep)
+    );
+  }
+  .lp-summary {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .lp-summary::-webkit-details-marker {
+    display: none;
+  }
+  .lp-rank {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--color-arc-ink-faint);
+    text-align: center;
+  }
+  .lp-team:nth-child(1) .lp-rank {
+    color: var(--color-arc-yellow);
+  }
+  .lp-teamname {
+    min-width: 0;
+  }
+  .lp-title {
+    display: block;
+    font-weight: 600;
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-you {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--color-arc-ink-soft);
+    vertical-align: middle;
+  }
+  .lp-sub {
+    display: block;
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-total {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--color-arc-ink);
+  }
+  .lp-roster {
+    display: grid;
+    padding: 2px 12px 10px;
+    border-top: 1px solid var(--color-arc-line);
+  }
+  .lp-player {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-arc-line) 55%, transparent);
+  }
+  .lp-player:last-child {
+    border-bottom: 0;
+  }
+  .lp-slot {
+    font-size: 10px;
+    color: var(--color-arc-ink-faint);
+  }
+  .lp-who {
+    min-width: 0;
+  }
+  .lp-name {
+    display: block;
+    font-size: 13px;
+    color: var(--color-arc-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-status {
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-arc-orange);
+  }
+  .lp-meta {
+    display: block;
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+  }
+  .lp-line {
+    color: var(--color-arc-ink-soft);
+  }
+  .lp-pts {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-arc-ink);
+  }
+  .lp-player.is-live .lp-pts {
+    color: var(--color-arc-green);
+  }
+  .lp-player.is-pre .lp-pts,
+  .lp-player.is-bye .lp-pts {
+    color: var(--color-arc-ink-faint);
+  }
+  .lp-player.is-bench .lp-name,
+  .lp-player.is-bench .lp-pts {
+    color: var(--color-arc-ink-soft);
+  }
+  /* A phone gets the three latest scores; the standings are what it came for. */
+  @media (max-width: 639px) {
+    .lp-event:nth-child(n + 4) {
+      display: none;
+    }
+  }
+  .lp-benchhead {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding: 6px 0 2px;
+    font-size: 10.5px;
+    color: var(--color-arc-ink-faint);
+  }
+
 }
 
 @layer utilities {

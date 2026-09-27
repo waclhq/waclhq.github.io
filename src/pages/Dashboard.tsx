@@ -8,6 +8,7 @@ import { managerColor } from '../lib/identity'
 import { animationsDisabled } from '../lib/motion'
 import { Bar, Chip, Panel, useRevealed } from '../components/ui'
 import KickoffClock from '../components/desk/KickoffClock'
+import LivePoints from '../components/desk/LivePoints'
 import Scoreboard from '../components/desk/Scoreboard'
 import WordOfTheDay from '../components/desk/WordOfTheDay'
 import { DeskHero } from '../components/desk/Odometer'
@@ -126,6 +127,11 @@ export default function Dashboard() {
 
       <div className="-mx-4 mb-8 sm:-mx-6 lg:-mx-9">
         <Ticker trades={allTrades} />
+      </div>
+
+      {/* Live points on game day: the whole league scored from ESPN box scores. Renders nothing until the job has published this week. */}
+      <div className="mb-8 empty:hidden">
+        <LivePoints />
       </div>
 
       <div className="mb-10 grid min-w-0 items-end gap-8 lg:grid-cols-[1.05fr_1fr]">

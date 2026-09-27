@@ -236,6 +236,67 @@ export interface LiveScoreboard {
   matchups: LiveMatchup[]
 }
 
+/** One rostered player's live line, as the live-points job scored it. */
+export interface LivePointsPlayer {
+  slot: string
+  name: string
+  pos: string
+  nfl: string
+  /** live: game on; final: game over; pre: not kicked off; bye: no game this week. */
+  state: 'live' | 'final' | 'pre' | 'bye'
+  pts: number
+  line: string
+  status?: string
+  opp?: string
+  kickoff?: string
+  clock?: string
+}
+
+export interface LivePointsTeam {
+  team: string
+  manager: ManagerId | null
+  total: number
+  benchTotal: number
+  live: number
+  toPlay: number
+  done: number
+  starters: LivePointsPlayer[]
+  bench: LivePointsPlayer[]
+}
+
+export interface LivePointsEvent {
+  id: string
+  kind: string
+  text: string
+  when: string
+  game: string
+  who: { team: string; manager: ManagerId | null; player: string; starter: boolean }[]
+}
+
+export interface LivePointsGame {
+  id: string
+  kickoff: string
+  state: 'pre' | 'in' | 'post'
+  detail: string
+  home: string
+  away: string
+  homeScore: number
+  awayScore: number
+}
+
+/** points.json on the `points` branch: the week scored from ESPN box scores. */
+export interface LivePoints {
+  source: string
+  scoring: string
+  season: number | null
+  week: number | null
+  updatedAt: string
+  lineupsAsOf: string | null
+  games: LivePointsGame[]
+  teams: LivePointsTeam[]
+  events: LivePointsEvent[]
+}
+
 /** year -> normalised player name -> [standard fantasy points, position]. */
 export type PlayerPoints = Record<string, Record<string, [number, string]>>
 
