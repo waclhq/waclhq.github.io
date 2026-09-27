@@ -13,10 +13,13 @@
  * --horizon  minutes this run can still wait; with no game live and none
  *            kicking off inside it, the summary says done
  * --fixture  read { scoreboard, summaries } from a file instead of ESPN
+ * --previous the last published points.json, to carry the day's history
+ * --debug-plays  print sample raw plays and the parsed big plays to stderr
  *
  * Prints one JSON line to stdout for the workflow: { done, nextPollSeconds,
  * live, final, pre, noLine } — noLine lists rostered players in a started game
- * with no box-score line: fine mid-game, a name mismatch if the game is over.. Lineups come from scripts/data/lineups.json.
+ * with no box-score line: fine mid-game, a name mismatch if the game is over.
+ * Lineups and matchups come from scripts/data/.
  * Writes nothing else; publishing is the workflow's job.
  */
 
@@ -123,15 +126,30 @@ function parseGames(scoreboard) {
     const home = side('home')
     const away = side('away')
     const status = competition.status ?? event.status ?? {}
+    const state = status.type?.state ?? 'pre' // pre | in | post
+    const period = Number(status.period ?? 0)
+    const [mm, ss] = String(status.displayClock ?? '15:00').split(':').map(Number)
+    const left = (mm || 0) * 60 + (ss || 0)
+    // Share of regulation played: 0 before kickoff, 1 once it is over.
+    const elapsed = state === 'post' ? 1 : state === 'pre' ? 0 : Math.min(1, Math.max(0, ((Math.min(period, 4) - 1) * 900 + (900 - left)) / 3600))
+    const situation = competition.situation ?? {}
+    const byId = (id) => [home, away].find((c) => String(c.team?.id ?? c.id) === String(id))
+    const possession = situation.possession ? team(byId(situation.possession)?.team?.abbreviation) : null
     return {
       id: String(event.id),
       kickoff: event.date,
-      state: status.type?.state ?? 'pre', // pre | in | post
+      state,
       detail: status.type?.shortDetail ?? '',
+      period,
+      elapsed: Math.round(elapsed * 1000) / 1000,
       home: team(home.team?.abbreviation),
       away: team(away.team?.abbreviation),
       homeScore: num(home.score),
       awayScore: num(away.score),
+      possession: state === 'in' ? possession : null,
+      redZone: state === 'in' && Boolean(situation.isRedZone),
+      down: state === 'in' ? situation.downDistanceText ?? situation.shortDownDistanceText ?? null : null,
+      lastPlay: state === 'in' ? situation.lastPlay?.text ?? null : null,
     }
   })
 }
@@ -310,9 +328,147 @@ function defenseStatLine(d) {
   return parts.join(' · ')
 }
 
+/* ------------------------------------------------------- projections */
+
+/*
+ * Each player's expected full-game points before kickoff. Last season's
+ * standard points per game from nflverse (public/data/player-points.json),
+ * nudged toward this league's scoring (half-PPR, 5-point passing TDs) and
+ * blended with a positional baseline, so a rookie or a quiet year still gets
+ * a sensible number. The matchup code then scales a team's sum to Yahoo's own
+ * projection, so these only need to be right relative to one another.
+ */
+const POSITION_BASE = { QB: 17, RB: 10.5, WR: 10, TE: 7, DEF: 7 }
+const POSITION_SPREAD = { QB: 7, RB: 7, WR: 7, TE: 5, DEF: 5 }
+const LEAGUE_NUDGE = { QB: 1.08, RB: 1.12, WR: 1.18, TE: 1.18, DEF: 1 }
+const OUT = /^(O|IR|IR-R|PUP-R|CEL|NA|SUSP)$/i
+
+const compact = (name) => loose(name).replace(/ /g, '')
+
+export function baseline(player, lastSeason) {
+  const base = POSITION_BASE[player.pos] ?? 8
+  if (player.pos === 'DEF') return base
+  const hit = lastSeason?.[compact(player.name)]
+  if (!hit) return base * 0.8
+  const ppg = (hit[0] / 16) * (LEAGUE_NUDGE[player.pos] ?? 1.1)
+  return Math.min(base * 2.2, Math.max(base * 0.5, 0.65 * ppg + 0.35 * base))
+}
+
+/* Standard normal CDF, for win probability from a projected margin. */
+function phi(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z))
+  const d = 0.3989423 * Math.exp((-z * z) / 2)
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
+  return z > 0 ? 1 - p : p
+}
+
+/* ---------------------------------------------------------- big plays */
+
+/*
+ * The plays worth shouting about, from each game's drive log: touchdowns,
+ * gains of 20 yards or more, turnovers and sacks, kept when they touch a
+ * rostered player or a rostered defense. ESPN's play text names players
+ * either in full ("Josh Allen pass to Khalil Shakir") or gamebook style
+ * ("J.Allen pass to K.Shakir"); both are matched, and only against players
+ * whose NFL team was in that game. Each touched player gets an estimated
+ * fantasy swing for that one play.
+ */
+function nameMatcher(player) {
+  const parts = String(player.name).replace(/\b(Jr|Sr|II|III|IV|V)\.?$/i, '').trim().split(/\s+/)
+  const first = parts[0] ?? ''
+  const last = parts.slice(1).join(' ')
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const full = new RegExp(`\\b${esc(first)}\\s+${esc(last)}\\b`, 'i')
+  const short = last ? new RegExp(`\\b${esc(first[0] ?? '')}[a-z']{0,2}\\.\\s?${esc(last)}\\b`, 'i') : null
+  return (text) => {
+    const a = text.search(full)
+    if (a >= 0) return a
+    return short ? text.search(short) : -1
+  }
+}
+
+function playKind(play) {
+  const type = String(play.type?.text ?? '')
+  const text = String(play.text ?? '')
+  const yards = Number(play.statYardage ?? 0)
+  if (/touchdown/i.test(type) || (play.scoringPlay && /touchdown/i.test(text))) return 'td'
+  if (/interception|fumble recovery \(opponent\)|fumble return/i.test(type) || /INTERCEPTED|FUMBLES.*RECOVERED by/i.test(text)) return 'turnover'
+  if (/sack/i.test(type)) return 'sack'
+  if (/safety/i.test(type)) return 'safety'
+  if (yards >= 20 && /pass|rush|run/i.test(type + ' ' + text) && !/no play|penalty/i.test(text)) return 'boom'
+  return null
+}
+
+export function bigPlays(summary, game, rostered, rules = RULES) {
+  const out = []
+  const drives = [...(summary.drives?.previous ?? []), ...(summary.drives?.current ? [summary.drives.current] : [])]
+  const inGame = rostered.filter((p) => p.nfl === game.home || p.nfl === game.away)
+  const matchers = new Map(inGame.map((p) => [p, nameMatcher(p)]))
+  const seen = new Set()
+  for (const drive of drives) {
+    const offense = team(drive.team?.abbreviation)
+    const defense = offense === game.home ? game.away : game.home
+    for (const play of drive.plays ?? []) {
+      const kind = playKind(play)
+      if (!kind) continue
+      const id = String(play.id ?? `${game.id}-${play.sequenceNumber ?? out.length}`)
+      if (seen.has(id)) continue
+      seen.add(id)
+      const text = String(play.text ?? '')
+      const type = String(play.type?.text ?? '')
+      const yards = Number(play.statYardage ?? 0)
+      const isPass = /pass/i.test(type) || /\bpass\b/i.test(text)
+      const defenseScored = kind === 'td' && /interception|fumble|return|blocked/i.test(type) && !/kickoff|punt/i.test(type)
+      // Offensive players named in the text, in the order they appear.
+      const named = inGame
+        .filter((p) => p.pos !== 'DEF' && p.nfl === offense)
+        .map((p) => ({ p, at: matchers.get(p)(text) }))
+        .filter((x) => x.at >= 0)
+        .sort((a, b) => a.at - b.at)
+      const hits = []
+      const hit = (p, pts) => hits.push({ team: p.team, manager: p.manager, player: p.name, starter: p.slot !== 'BN' && p.slot !== 'IR', pts: round(pts) })
+      if (kind === 'td' || kind === 'boom') {
+        if (defenseScored) {
+          for (const p of inGame) if (p.pos === 'DEF' && p.nfl === defense) hit(p, rules.def.touchdown + (/interception/i.test(type) ? rules.def.interception : rules.def.fumbleRecovery))
+        } else if (/kickoff|punt/i.test(type)) {
+          for (const p of inGame) if (p.pos === 'DEF' && p.nfl === offense) hit(p, rules.def.touchdown)
+          if (named[0]) hit(named[0].p, rules.returnTD)
+        } else if (isPass && named.length) {
+          const td = kind === 'td'
+          hit(named[0].p, yards * rules.passYards + (td ? rules.passTD : 0))
+          if (named[1]) hit(named[1].p, rules.reception + yards * rules.recYards + (td ? rules.recTD : 0))
+        } else if (named.length) {
+          hit(named[0].p, yards * rules.rushYards + (kind === 'td' ? rules.rushTD : 0))
+        }
+      } else if (kind === 'turnover') {
+        const pick = /interception|INTERCEPTED/i.test(type + ' ' + text)
+        if (named[0]) hit(named[0].p, pick ? rules.interception : rules.fumbleLost)
+        for (const p of inGame) if (p.pos === 'DEF' && p.nfl === defense) hit(p, pick ? rules.def.interception : rules.def.fumbleRecovery)
+      } else if (kind === 'sack' || kind === 'safety') {
+        for (const p of inGame) if (p.pos === 'DEF' && p.nfl === defense) hit(p, kind === 'sack' ? rules.def.sack : rules.def.safety)
+      }
+      if (!hits.length) continue
+      const clock = String(play.clock?.displayValue ?? '')
+      const [mm, ss] = clock.split(':').map(Number)
+      const period = Number(play.period?.number ?? 0)
+      out.push({
+        id,
+        kind,
+        text,
+        yards,
+        when: `Q${period || '?'} ${clock}`.trim(),
+        game: `${game.away} @ ${game.home}`,
+        order: new Date(game.kickoff).getTime() + (period * 1000 + (900 - ((mm || 0) * 60 + (ss || 0)))) * 1000,
+        hits,
+      })
+    }
+  }
+  return out
+}
+
 /* -------------------------------------------------------------- scoring */
 
-export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now = new Date() }) {
+export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now = new Date(), matchups = null, lastSeason = null, previous = null }) {
   const games = parseGames(scoreboard)
   const gameByTeam = new Map()
   for (const game of games) {
@@ -349,6 +505,10 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
     const game = gameByTeam.get(nfl)
     const state = !game ? 'bye' : game.state === 'in' ? 'live' : game.state === 'post' ? 'final' : 'pre'
     const base = { slot: p.slot, name: p.name, pos: p.pos, nfl, state, pts: 0, line: '' }
+    // Expected full-game points and the share of the game still to play.
+    const prior = p.status && OUT.test(p.status) && state !== 'final' && state !== 'live' ? 0 : baseline(p, lastSeason)
+    base.left = state === 'pre' ? 1 : state === 'live' ? round(1 - (game?.elapsed ?? 0)) : 0
+    base.prior = round(prior)
     if (p.status) base.status = p.status
     if (game) {
       base.opp = game.home === nfl ? `v ${game.away}` : `@ ${game.home}`
@@ -368,6 +528,7 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
     if (l) {
       base.pts = scorePlayer(l, rules)
       base.line = statLine(l)
+      base.yds = { passYds: l.passYds, rushYds: l.rushYds, recYds: l.recYds }
     } else if (state === 'final') {
       base.line = 'no stats'
     }
@@ -395,6 +556,60 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
     }
   })
   teams.sort((a, b) => b.total - a.total)
+
+  /*
+   * Projections: a starter still to play is worth his prior scaled by how
+   * much of his game is left. Each team's scale is set so that, at the moment
+   * Yahoo's matchups page was read, the team's projection equals Yahoo's own
+   * (yahooProj); after that it moves with the real points.
+   */
+  const byTeam = new Map(teams.map((t) => [t.team, t]))
+  const pairs = (matchups?.matchups ?? []).filter((pair) => pair.length === 2 && pair.every((side) => byTeam.has(side.team)))
+  const calibration = new Map()
+  for (const pair of pairs) {
+    for (const side of pair) {
+      const t = byTeam.get(side.team)
+      if (typeof side.yahooProj !== 'number') continue
+      // At snapshot time, starters whose games were not over still owed yahooProj - yahooPts.
+      const owed = side.yahooProj - (side.yahooPts ?? 0)
+      const unplayedAtSnapshot = t.starters.filter((p) => p.state !== 'final' || !matchups.asOf || new Date(matchups.asOf) < new Date(gameByTeam.get(p.nfl)?.kickoff ?? 0))
+      const priorSum = unplayedAtSnapshot.reduce((sum, p) => sum + p.prior, 0)
+      if (priorSum > 0 && owed > 0) calibration.set(side.team, owed / priorSum)
+    }
+  }
+  for (const t of teams) {
+    const scale = calibration.get(t.team) ?? 1
+    let variance = 0
+    for (const p of [...t.starters, ...t.bench]) {
+      p.proj = round(p.pts + p.prior * scale * p.left)
+    }
+    for (const p of t.starters) variance += (POSITION_SPREAD[p.pos] ?? 6) ** 2 * p.left
+    t.proj = round(t.starters.reduce((sum, p) => sum + p.proj, 0))
+    t.spread = Math.sqrt(variance)
+  }
+
+  const matchupRows = pairs.map((pair) => {
+    const [a, b] = pair.map((side) => byTeam.get(side.team))
+    const sd = Math.sqrt(a.spread ** 2 + b.spread ** 2)
+    const margin = a.proj - b.proj
+    const settled = a.live + a.toPlay + b.live + b.toPlay === 0
+    const winA = settled ? (a.total === b.total ? 0.5 : a.total > b.total ? 1 : 0) : phi(margin / Math.max(sd, 1))
+    return {
+      teams: pair.map((side, i) => ({
+        team: side.team,
+        manager: [a, b][i].manager,
+        record: side.record ?? null,
+        rank: side.rank ?? null,
+        total: [a, b][i].total,
+        proj: [a, b][i].proj,
+        winProb: round(i === 0 ? winA : 1 - winA),
+        live: [a, b][i].live,
+        toPlay: [a, b][i].toPlay,
+      })),
+      settled,
+    }
+  })
+  for (const t of teams) delete t.spread
 
   // Scoring plays that involve someone on a roster, newest first.
   const rostered = []
@@ -432,6 +647,43 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
   }
   events.sort((a, b) => b.order - a.order)
 
+  const plays = []
+  for (const game of games) {
+    const summary = summaries[game.id]
+    if (summary) plays.push(...bigPlays(summary, game, rostered, rules))
+  }
+  plays.sort((a, b) => b.order - a.order)
+
+  // Bonuses reached, and live players closing in on one.
+  const milestones = []
+  const chases = []
+  const label = { passYds: 'passing', rushYds: 'rushing', recYds: 'receiving' }
+  for (const t of teams) {
+    for (const p of [...t.starters, ...t.bench]) {
+      if (!p.yds) continue
+      for (const b of rules.bonuses ?? []) {
+        const have = p.yds[b.stat] ?? 0
+        const who = { team: t.team, manager: t.manager, player: p.name, starter: p.slot !== 'BN' && p.slot !== 'IR' }
+        if (have >= b.at) milestones.push({ ...who, stat: b.stat, label: `${b.at} ${label[b.stat]} yards`, have, pts: b.pts })
+        else if (p.state === 'live' && have >= b.at * 0.6) chases.push({ ...who, stat: b.stat, label: `${b.at} ${label[b.stat]} yards`, have, at: b.at, pts: b.pts, clock: p.clock ?? '' })
+      }
+    }
+  }
+  chases.sort((a, b) => b.have / b.at - a.have / a.at)
+
+  // The day so far: a sample of every team's total and projection, appended
+  // to the previous file's history while the week is the same.
+  const order = lineups.teams.map((t) => t.team)
+  const sample = { t: now.toISOString(), v: order.map((name) => byTeam.get(name)?.total ?? 0), p: order.map((name) => byTeam.get(name)?.proj ?? 0) }
+  let history = previous && previous.week === (scoreboard.week?.number ?? null) && Array.isArray(previous.history?.samples) && String(previous.history?.teams) === String(order)
+    ? previous.history.samples.slice()
+    : []
+  const last = history[history.length - 1]
+  const moved = !last || String(last.v) !== String(sample.v) || String(last.p) !== String(sample.p)
+  const stale = !last || now.getTime() - new Date(last.t).getTime() > 10 * 60_000
+  if (moved || stale) history.push(sample)
+  if (history.length > 480) history = history.slice(-480)
+
   return {
     board: {
       source: 'ESPN box scores',
@@ -440,11 +692,14 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       week: scoreboard.week?.number ?? null,
       updatedAt: now.toISOString(),
       lineupsAsOf: lineups.asOf ?? null,
-      games: games.map(({ id, kickoff, state, detail, home, away, homeScore, awayScore }) => ({
-        id, kickoff, state, detail, home, away, homeScore, awayScore,
-      })),
+      games,
       teams,
       events: events.slice(0, 30).map(({ order, ...rest }) => rest),
+      matchups: matchupRows,
+      plays: plays.slice(0, 80).map(({ order, ...rest }) => rest),
+      milestones,
+      chases: chases.slice(0, 12),
+      history: { teams: order, samples: history },
     },
     noLine: [...new Set(unmatched)],
   }
@@ -462,6 +717,16 @@ async function main() {
   const week = arg('week')
   const horizon = Number(arg('horizon') ?? 300)
   const lineups = JSON.parse(await readFile(join(ROOT, 'scripts', 'data', 'lineups.json'), 'utf8'))
+  const optional = async (path) => {
+    try {
+      return JSON.parse(await readFile(path, 'utf8'))
+    } catch {
+      return null
+    }
+  }
+  const matchups = await optional(join(ROOT, 'scripts', 'data', 'matchups.json'))
+  const lastSeason = (await optional(join(ROOT, 'public', 'data', 'player-points.json')))?.['2025'] ?? null
+  const previous = arg('previous') ? await optional(arg('previous')) : null
 
   let scoreboard
   const summaries = {}
@@ -483,7 +748,23 @@ async function main() {
     }
   }
 
-  const { board, noLine } = scoreWeek({ scoreboard, summaries, lineups })
+  const { board, noLine } = scoreWeek({
+    scoreboard,
+    summaries,
+    lineups,
+    matchups: matchups && (week ? Number(week) === matchups.week : matchups.week === scoreboard.week?.number) ? matchups : null,
+    lastSeason,
+    previous,
+  })
+  if (arg('debug-plays')) {
+    for (const game of Object.keys(summaries).slice(0, 2)) {
+      const drive = summaries[game].drives?.previous?.[1]
+      for (const play of (drive?.plays ?? []).slice(0, 4)) console.error('PLAY', JSON.stringify({ type: play.type?.text, text: play.text, yards: play.statYardage }))
+    }
+    console.error('BIGPLAYS', board.plays.length, JSON.stringify(board.plays.slice(0, 5).map((p) => [p.kind, p.text.slice(0, 90), p.hits.map((h) => `${h.player} ${h.pts}`)])))
+    console.error('MATCHUPS', JSON.stringify(board.matchups.map((m) => m.teams.map((t) => `${t.team} ${t.total}/${t.proj} ${Math.round(t.winProb * 100)}%`))))
+    console.error('MILESTONES', JSON.stringify(board.milestones.slice(0, 6).map((m) => `${m.player} ${m.label}`)))
+  }
   await writeFile(out, JSON.stringify(board))
 
   const now = Date.now()

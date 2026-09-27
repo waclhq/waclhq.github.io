@@ -1,0 +1,33 @@
+{
+  "source": "Yahoo league 134099 matchups page",
+  "season": 2026,
+  "week": 3,
+  "asOf": "2026-09-27T13:20:00Z",
+  "note": "yahooProj is Yahoo's live projection at asOf and yahooPts its score then; together they calibrate the live job's projections to Yahoo's. record and rank are before this week.",
+  "matchups": [
+    [
+      { "team": "Malikety Split", "record": "0-2", "rank": 11, "yahooPts": 37.3, "yahooProj": 111.95 },
+      { "team": "no ragrets", "record": "2-0", "rank": 4, "yahooPts": 0, "yahooProj": 96.29 }
+    ],
+    [
+      { "team": "SuperBowlJesus", "record": "1-1", "rank": 7, "yahooPts": 22.48, "yahooProj": 100.68 },
+      { "team": "Bridge N Tunnel", "record": "2-0", "rank": 1, "yahooPts": 0, "yahooProj": 106.01 }
+    ],
+    [
+      { "team": "Orchids of Asia", "record": "0-2", "rank": 9, "yahooPts": 0, "yahooProj": 98.12 },
+      { "team": "Quien Es Tu Papa", "record": "0-2", "rank": 12, "yahooPts": 0, "yahooProj": 97.82 }
+    ],
+    [
+      { "team": "El Morro", "record": "1-1", "rank": 8, "yahooPts": 20.5, "yahooProj": 104.08 },
+      { "team": "Whobody Wants It?", "record": "1-1", "rank": 6, "yahooPts": 0, "yahooProj": 98.33 }
+    ],
+    [
+      { "team": "I Must Break You", "record": "1-1", "rank": 5, "yahooPts": 0, "yahooProj": 111.9 },
+      { "team": "Private Sector", "record": "0-2", "rank": 10, "yahooPts": 0, "yahooProj": 98.69 }
+    ],
+    [
+      { "team": "O'Lave Hurts", "record": "2-0", "rank": 2, "yahooPts": 25.9, "yahooProj": 117.76 },
+      { "team": "Juggernaut", "record": "2-0", "rank": 3, "yahooPts": 21.7, "yahooProj": 95.81 }
+    ]
+  ]
+}

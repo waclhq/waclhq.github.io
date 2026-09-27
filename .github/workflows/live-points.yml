@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       week:
-        description: 'Score a finished regular-season week once (a test); blank for live'
+        description: 'Score a finished regular-season week once without publishing (a test); blank for live'
         required: false
         default: ''
 
@@ -74,10 +74,19 @@ jobs:
             git fetch -q origin main && git checkout -q FETCH_HEAD -- scripts/ || echo "::warning::Could not refresh scripts; using the checked-out copy."
             left=$(( (cap - ($(date +%s) - started)) / 60 ))
             args=(--out "$RUNNER_TEMP/points.json" --horizon "$left")
-            [ -n "$WEEK" ] && args+=(--week "$WEEK")
+            # The last published file carries the day's history forward.
+            if git fetch -q origin points 2>/dev/null && git show FETCH_HEAD:points.json > "$RUNNER_TEMP/prev.json" 2>/dev/null; then
+              args+=(--previous "$RUNNER_TEMP/prev.json")
+            fi
+            [ -n "$WEEK" ] && args+=(--week "$WEEK" --debug-plays 1)
             if meta=$(node scripts/live-points.mjs "${args[@]}"); then
               echo "$meta"
-              publish "$RUNNER_TEMP/points.json"
+              if [ -n "$WEEK" ]; then
+                echo "Test run for week $WEEK: scored, not published."
+                jq -c '{matchups: (.matchups|length), plays: (.plays|length), milestones: (.milestones|length), bytes: (tostring|length)}' "$RUNNER_TEMP/points.json"
+              else
+                publish "$RUNNER_TEMP/points.json"
+              fi
               done=$(jq -r '.done' <<<"$meta")
               wait=$(jq -r '.nextPollSeconds' <<<"$meta")
             else
