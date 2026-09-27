@@ -156,3 +156,117 @@ export function headToHead(a: LivePointsTeam, b: LivePointsTeam) {
   }
   return rows
 }
+
+/* ------------------------------------------------ win odds through the day */
+
+/** Pairing key, as the job writes it into history.matchups. */
+export const pairingKey = (m: LivePointsMatchup) => m.teams.map((side) => side.team).join(' v ')
+
+/**
+ * The first team's win probability through the day for one matchup, from
+ * the history samples, ending on the live number. At least two points, so a
+ * fresh morning still draws a (flat) line.
+ */
+export function winSeries(board: LivePoints, m: LivePointsMatchup): { t: string; w: number }[] {
+  const history = board.history
+  const index = history?.matchups?.indexOf(pairingKey(m)) ?? -1
+  const out: { t: string; w: number }[] = []
+  if (history && index >= 0) {
+    for (const sample of history.samples) {
+      const w = sample.w?.[index]
+      if (typeof w === 'number') out.push({ t: sample.t, w })
+    }
+  }
+  const now = { t: board.updatedAt, w: m.teams[0].winProb }
+  if (!out.length || out[out.length - 1].w !== now.w) out.push(now)
+  if (out.length === 1) out.unshift({ t: out[0].t, w: out[0].w })
+  return out
+}
+
+/** How far a matchup's odds travelled: the range, and the trailer's low point if the leader came back. */
+export function swingOf(board: LivePoints, m: LivePointsMatchup) {
+  const series = winSeries(board, m)
+  const ws = series.map((s) => s.w)
+  const range = Math.max(...ws) - Math.min(...ws)
+  const winnerIsA = m.teams[0].winProb >= 0.5
+  const low = winnerIsA ? Math.min(...ws) : 1 - Math.max(...ws)
+  return { range, winner: winnerIsA ? m.teams[0] : m.teams[1], low }
+}
+
+/* -------------------------------------------------------- fire and ice */
+
+export const FIRE_AT = 20
+
+export function heat(player: LivePointsPlayer): 'fire' | 'ice' | null {
+  if ((player.state === 'live' || player.state === 'final') && player.pts >= FIRE_AT) return 'fire'
+  if (player.state === 'final' && player.pts <= 2 && player.pos !== 'DEF') return 'ice'
+  return null
+}
+
+/* ----------------------------------------------------- living portraits */
+
+/** How a manager's face should look: flush with a lead, grey when it's gone, jolted by a fresh play. */
+export function mood(
+  side: { manager: ManagerId | null; winProb: number },
+  freshPlays: LivePointsPlay[],
+): string {
+  const classes: string[] = []
+  if (side.winProb >= 0.8) classes.push('is-hot')
+  if (side.winProb <= 0.15) classes.push('is-cold')
+  if (side.manager) {
+    const mine = freshPlays.flatMap((play) => play.hits.filter((hit) => hit.manager === side.manager && hit.starter))
+    if (mine.some((hit) => hit.pts <= -2)) classes.push('is-hit')
+    else if (mine.some((hit) => hit.pts >= 6)) classes.push('is-cheer')
+  }
+  return classes.join(' ')
+}
+
+/* -------------------------------------------------------------- recap */
+
+export interface RecapFacts {
+  week: number | null
+  done: boolean
+  results: { winner: LivePointsMatchup['teams'][number]; loser: LivePointsMatchup['teams'][number]; margin: number; matchup: LivePointsMatchup }[]
+  blowout?: RecapFacts['results'][number]
+  nailbiter?: RecapFacts['results'][number]
+  comeback?: { result: RecapFacts['results'][number]; low: number }
+  star?: { player: LivePointsPlayer; team: LivePointsTeam }
+  bench?: { player: LivePointsPlayer; team: LivePointsTeam }
+  benchTeam?: LivePointsTeam
+  ghost?: { player: LivePointsPlayer; team: LivePointsTeam }
+  topTeam?: LivePointsTeam
+  totalPoints: number
+  touchdowns: number
+}
+
+/** The week's story in facts: results, the blowout and the nail-biter, the comeback, the star, the bench, the ghost. */
+export function recapFacts(board: LivePoints): RecapFacts {
+  const results = (board.matchups ?? []).map((matchup) => {
+    const [a, b] = matchup.teams
+    const aWins = a.total >= b.total
+    return { winner: aWins ? a : b, loser: aWins ? b : a, margin: Math.abs(a.total - b.total), matchup }
+  })
+  const byMargin = [...results].sort((x, y) => y.margin - x.margin)
+  let comeback: RecapFacts['comeback']
+  for (const result of results) {
+    const { low } = swingOf(board, result.matchup)
+    if (low < 0.35 && (!comeback || low < comeback.low)) comeback = { result, low }
+  }
+  const { stars, ghosts } = boards(board)
+  const benchRows = allPlayers(board).filter((row) => !row.starter).sort((a, b) => b.player.pts - a.player.pts)
+  return {
+    week: board.week,
+    done: board.games.every((game) => game.state === 'post'),
+    results,
+    blowout: byMargin[0],
+    nailbiter: byMargin[byMargin.length - 1],
+    comeback,
+    star: stars[0] ? { player: stars[0].player, team: stars[0].team } : undefined,
+    bench: benchRows[0] && benchRows[0].player.pts > 0 ? { player: benchRows[0].player, team: benchRows[0].team } : undefined,
+    benchTeam: [...board.teams].sort((a, b) => b.benchTotal - a.benchTotal)[0],
+    ghost: ghosts[0] ? { player: ghosts[0].player, team: ghosts[0].team } : undefined,
+    topTeam: [...board.teams].sort((a, b) => b.total - a.total)[0],
+    totalPoints: Math.round(board.teams.reduce((sum, t) => sum + t.total, 0) * 10) / 10,
+    touchdowns: (board.plays ?? []).filter((play) => play.kind === 'td').length,
+  }
+}

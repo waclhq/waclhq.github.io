@@ -1,4 +1,4 @@
-import { useMemo, useRef, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { PageHeader, Panel } from '../components/ui'
 import GameStrip, { RedZoneAlerts } from '../components/live/GameStrip'
 import MatchupCard from '../components/live/MatchupCard'
@@ -6,6 +6,9 @@ import PlaysWire from '../components/live/PlaysWire'
 import BonusWatch from '../components/live/BonusWatch'
 import Leaders from '../components/live/Leaders'
 import ScoreAlert from '../components/live/ScoreAlert'
+import ToteBoard from '../components/live/ToteBoard'
+import Mountains from '../components/live/Mountains'
+import Recap from '../components/live/Recap'
 import { useClock } from '../components/desk/hooks'
 import { managerName, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
@@ -109,6 +112,9 @@ function TheField({ board }: { board: LivePoints }) {
 export default function Live() {
   const board = useLivePoints()
   const me = useMe()
+  const { managers } = useLeagueData()
+  const nameOf = (id: string | null) => (id ? managerName(managers, id) : '—')
+  const [recap, setRecap] = useState(false)
 
   // Plays that were not on the page at the previous refresh flash once.
   const previous = useRef<Set<string> | null>(null)
@@ -132,6 +138,9 @@ export default function Live() {
     )
   }
 
+  const freshPlays = (board.plays ?? []).filter((play) => fresh.has(play.id))
+  const allFinal = board.games.length > 0 && board.games.every((g) => g.state === 'post')
+  const anyStarted = board.games.some((g) => g.state !== 'pre')
   const teams = teamByName(board)
   const matchups = orderedMatchups(board, me)
   const live = pointsLive(board)
@@ -148,11 +157,28 @@ export default function Live() {
 
       <StatusBar board={board} />
 
+      {anyStarted && (board.matchups?.length ?? 0) > 0 && (
+        <button type="button" className={`lv-recap-cta ${allFinal ? 'is-ready' : ''}`} onClick={() => setRecap(true)}>
+          <span className="lv-recap-cta-kicker">{allFinal ? 'Tonight’s recap is ready' : 'The week so far'}</span>
+          <span className="lv-recap-cta-title">Play the recap</span>
+          <span aria-hidden className="lv-recap-cta-arrow">▶</span>
+        </button>
+      )}
+      {recap && <Recap board={board} me={me} onClose={() => setRecap(false)} />}
+
       <div className="-mx-4 mb-6 sm:mx-0">
         <GameStrip board={board} />
       </div>
 
       <RedZoneAlerts board={board} />
+
+      {(board.matchups?.length ?? 0) > 0 && (
+        <div className="mb-6">
+          <Panel title="The tote board" subtitle="Every matchup on the flaps. Managers left and right, scores in the middle." flush>
+            <ToteBoard board={board} me={me} />
+          </Panel>
+        </div>
+      )}
 
       {matchups.length > 0 && (
         <section className="mb-8" aria-label="Matchups">
@@ -169,10 +195,24 @@ export default function Live() {
                 teams={teams}
                 me={me}
                 index={index}
+                freshPlays={freshPlays}
+                nameOf={nameOf}
               />
             ))}
           </div>
         </section>
+      )}
+
+      {(board.matchups?.length ?? 0) > 0 && (
+        <div className="mb-8">
+          <Panel
+            title="Win-odds mountains"
+            subtitle="The whole day's odds as a mountain range: one ridge per matchup, your matchup in front."
+            flush
+          >
+            <Mountains board={board} me={me} />
+          </Panel>
+        </div>
       )}
 
       <div className="lv-split">

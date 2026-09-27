@@ -1,5 +1,8 @@
 import { useState, type CSSProperties } from 'react'
 import PixelMugshot from '../PixelMugshot'
+import Heartbeat from './Heartbeat'
+import ShareCardButton from './ShareCardButton'
+import { matchupCard } from '../../lib/live-cards'
 import { Plot, roundedScale } from '../charts'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
@@ -7,13 +10,15 @@ import {
   fmt,
   gameClock,
   headToHead,
+  heat,
   matchupLine,
   momentum,
+  mood,
   sideStatus,
   signed,
   swingSeries,
 } from '../../lib/live-view'
-import type { LiveMatchupSide, LivePoints, LivePointsMatchup, LivePointsPlayer, LivePointsTeam, ManagerId } from '../../lib/types'
+import type { LiveMatchupSide, LivePoints, LivePointsMatchup, LivePointsPlay, LivePointsPlayer, LivePointsTeam, ManagerId } from '../../lib/types'
 
 /**
  * One matchup as a face-off: portraits, leaning scores, Yahoo-calibrated
@@ -40,18 +45,20 @@ function Side({
   board,
   mine,
   align,
+  freshPlays,
 }: {
   side: LiveMatchupSide
   team: LivePointsTeam | undefined
   board: LivePoints
   mine: boolean
   align: 'left' | 'right'
+  freshPlays: LivePointsPlay[]
 }) {
   const { managers } = useLeagueData()
   const move = momentum(board, side.team)
   return (
     <div className={`lv-side is-${align} ${mine ? 'is-mine' : ''}`} style={{ '--c': managerColor(side.manager) } as CSSProperties}>
-      <div className="lv-face">
+      <div className={`lv-face ${mood(side, freshPlays)}`}>
         {side.manager ? <PixelMugshot seed={side.manager} scale={2} /> : <span className="lv-face-blank" />}
       </div>
       <div className="lv-side-text">
@@ -82,7 +89,7 @@ function PlayerCell({ player, align }: { player?: LivePointsPlayer; align: 'left
   if (!player) return <div className={`lv-h2h-cell is-${align}`} />
   const shown = player.state === 'pre' || player.state === 'bye'
   return (
-    <div className={`lv-h2h-cell is-${align} is-${player.state}`}>
+    <div className={`lv-h2h-cell is-${align} is-${player.state} ${heat(player) ? `is-${heat(player)}` : ''}`}>
       <span className="lv-h2h-name">
         {player.name}
         {player.status && <em>{player.status}</em>}
@@ -144,12 +151,17 @@ export default function MatchupCard({
   teams,
   me,
   index,
+  freshPlays = [],
+  nameOf,
 }: {
   matchup: LivePointsMatchup
   board: LivePoints
   teams: Map<string, LivePointsTeam>
   me: ManagerId | null
   index: number
+  /** Plays that arrived at the latest refresh, to jolt the portraits. */
+  freshPlays?: LivePointsPlay[]
+  nameOf: (id: ManagerId | null) => string
 }) {
   const [a, b] = matchup.teams
   const mine = [a, b].some((side) => side.manager && side.manager === me)
@@ -179,11 +191,11 @@ export default function MatchupCard({
         <span className="label tnum">{a.rank && b.rank ? `#${a.rank} v #${b.rank}` : ''}</span>
       </div>
       <div className="lv-faceoff">
-        <Side side={a} team={ta} board={board} mine={a.manager === me && me !== null} align="left" />
+        <Side side={a} team={ta} board={board} mine={a.manager === me && me !== null} align="left" freshPlays={freshPlays} />
         <span className="lv-vs arcade" aria-hidden>
           vs
         </span>
-        <Side side={b} team={tb} board={board} mine={b.manager === me && me !== null} align="right" />
+        <Side side={b} team={tb} board={board} mine={b.manager === me && me !== null} align="right" freshPlays={freshPlays} />
       </div>
       <div className="lv-tug" role="img" aria-label={`Win probability: ${a.team} ${pa}%, ${b.team} ${100 - pa}%`}>
         <span className="lv-tug-a tnum">{pa}%</span>
@@ -192,11 +204,18 @@ export default function MatchupCard({
         </div>
         <span className="lv-tug-b tnum">{100 - pa}%</span>
       </div>
+      <Heartbeat board={board} matchup={matchup} live={live} />
       <p className="lv-line">{matchupLine(matchup)}</p>
-      <button type="button" className="lv-open" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? 'Hide head-to-head' : 'Head-to-head'}
-        <span aria-hidden>{open ? '▴' : '▾'}</span>
-      </button>
+      <div className="lv-match-actions">
+        <button type="button" className="lv-open" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide head-to-head' : 'Head-to-head'}
+          <span aria-hidden>{open ? '▴' : '▾'}</span>
+        </button>
+        <ShareCardButton
+          make={() => matchupCard(matchup, board.week, nameOf)}
+          text={`${a.team} ${a.total.toFixed(1)} v ${b.team} ${b.total.toFixed(1)}. ${matchupLine(matchup)}`}
+        />
+      </div>
       {open && ta && tb && (
         <div className="lv-h2h">
           {headToHead(ta, tb).map((row, i) => (

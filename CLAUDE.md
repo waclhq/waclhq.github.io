@@ -122,9 +122,13 @@ the Shell offers a refresh when a newer build is live.
   leaderboard bits), `boards/` (the shared podium `Board`, Elo constellation,
   odds board, roast teleprompter, shrine), `ops/` (stadium dues section),
   `receipts/` (the Book: tiles, slip, stub, composer, editor, share), `live/`
-  (the Live room: NFL game strip and red-zone alerts, matchup face-offs with
-  win odds, head-to-head and swing chart, the big-plays wire, bonus watch,
-  leader boards, score alerts; its helpers are `lib/live-view.ts`). Their
+  (the Live room: NFL game strip and red-zone alerts, split-flap tote board,
+  matchup face-offs with win odds, heartbeat monitors and living portraits,
+  head-to-head with fire/ice players and a swing chart, the win-odds
+  mountains (oblique-projection SVG, no library), the big-plays wire, bonus
+  watch, leader boards, score alerts, share cards and the story-style recap;
+  helpers are `lib/live-view.ts`, `lib/live-cards.ts` and the canvas card
+  renderer `lib/live-share.ts`). Their
   pure helpers live beside them as `src/lib/<room>-*.ts`.
 - `scripts/` — Python ETL/extractors, `manager_icons.mjs` (exports every
   manager badge to `assets/manager-icons/`, read-only on league data), and the

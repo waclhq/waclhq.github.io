@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react'
 import { managerName, useLeagueData } from '../../lib/data'
 import { managerColor } from '../../lib/identity'
-import { boards, fmt } from '../../lib/live-view'
+import { boards, fmt, heat } from '../../lib/live-view'
+import { benchCard, ghostCard, starCard } from '../../lib/live-cards'
+import ShareCardButton from './ShareCardButton'
 import type { LivePoints, ManagerId } from '../../lib/types'
 
 /**
@@ -20,7 +22,20 @@ export default function Leaders({ board, me }: { board: LivePoints; me: ManagerI
     tone: 'star' | 'bench' | 'ghost',
   ) => (
     <section className={`lv-board is-${tone}`}>
-      <h3 className="lv-board-title">{title}</h3>
+      <div className="lv-board-head">
+        <h3 className="lv-board-title">{title}</h3>
+        {rows[0] && (
+          <ShareCardButton
+            label="Share"
+            make={() => {
+              const nameOf = (id: ManagerId | null) => (id ? managerName(managers, id) : '—')
+              const top = { player: rows[0].player, team: rows[0].team }
+              return tone === 'star' ? starCard(top, board.week, nameOf) : tone === 'bench' ? benchCard(top, board.week, nameOf) : ghostCard(top, board.week, nameOf)
+            }}
+            text={`${title}: ${rows[0].player.name}, ${fmt(rows[0].player.pts)}.`}
+          />
+        )}
+      </div>
       <p className="lv-board-sub">{sub}</p>
       {rows.length === 0 ? (
         <p className="lv-empty">{empty}</p>
@@ -29,7 +44,7 @@ export default function Leaders({ board, me }: { board: LivePoints; me: ManagerI
           {rows.map(({ player, team }, i) => (
             <li
               key={`${team.team}-${player.name}`}
-              className={team.manager === me && me ? 'is-mine' : ''}
+              className={`${team.manager === me && me ? 'is-mine' : ''} ${heat(player) ? `is-${heat(player)}` : ''}`}
               style={{ '--c': managerColor(team.manager) } as CSSProperties}
             >
               <span className="lv-board-rank tnum">{i + 1}</span>
