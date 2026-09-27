@@ -44,6 +44,12 @@ export default function Mountains({
 
   if (!rows.length) return null
 
+  // Before the odds have moved there is no range to draw, only sea level.
+  const moved = rows.some(({ series }) => {
+    const ws = series.map((s) => s.w)
+    return Math.max(...ws) - Math.min(...ws) >= 0.01
+  })
+
   const gap = compact ? 34 : 40
   const top = lift * 0.62 + 34
   const height = top + gap * (rows.length - 1) + lift * 0.62 + 36
@@ -161,6 +167,12 @@ export default function Mountains({
           now {clock(last)}
         </text>
       </svg>
+      {!moved && (
+        <p className="lv-mtn-flat">
+          Calm water: nobody's odds have moved yet today. The range builds itself from the first snap of the next game,
+          one ridge per matchup.
+        </p>
+      )}
       {!compact && (
         <p className="lv-mtn-hint">
           Sea level is a coin flip. Peaks: the team on the left is favoured. Trenches: the team on the right. Drag to turn the

@@ -1287,6 +1287,14 @@
     font-size: 12px;
     fill: var(--color-arc-ink-faint);
   }
+  .lv-mtn-flat {
+    margin: 0 10px 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px dashed color-mix(in srgb, var(--color-arc-cyan) 45%, transparent);
+    font-size: 12.5px;
+    color: var(--color-arc-ink-soft);
+  }
   .lv-mtn-hint {
     padding: 0 10px;
     font-size: 11.5px;
