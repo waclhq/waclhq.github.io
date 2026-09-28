@@ -365,6 +365,62 @@
   .chart-reveal {
     animation: chart-reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
+
+  /* Chart lines draw themselves on when first seen: each solid line traces
+     from its first point behind a short bright head in its own glow, then
+     the area under it and any dashed guides fade up. pathLength=1 on the
+     paths makes every dash length a share of the line. One-shot. */
+  .chart-draw .chart-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .chart-draw.is-seen .chart-line {
+    animation: chart-line 1.15s cubic-bezier(0.45, 0.05, 0.25, 1) var(--d, 0s) both;
+  }
+  @keyframes chart-line {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .chart-draw .chart-head {
+    stroke: var(--color-arc-ink);
+    stroke-dasharray: 0.018 2;
+    stroke-dashoffset: 0.018;
+    opacity: 0;
+    filter: drop-shadow(0 0 4px var(--c)) drop-shadow(0 0 8px var(--c));
+  }
+  .chart-draw.is-seen .chart-head {
+    animation: chart-head 1.15s cubic-bezier(0.45, 0.05, 0.25, 1) var(--d, 0s) both;
+  }
+  @keyframes chart-head {
+    0% {
+      stroke-dashoffset: 0.018;
+      opacity: 0;
+    }
+    8% {
+      opacity: 1;
+    }
+    88% {
+      opacity: 1;
+    }
+    100% {
+      stroke-dashoffset: -0.982;
+      opacity: 0;
+    }
+  }
+  .chart-draw .chart-area,
+  .chart-draw .chart-dashed {
+    opacity: 0;
+  }
+  .chart-draw.is-seen .chart-area,
+  .chart-draw.is-seen .chart-dashed {
+    animation: chart-fade 0.7s ease-out calc(var(--d, 0s) + 0.5s) both;
+  }
+  @keyframes chart-fade {
+    to {
+      opacity: 1;
+    }
+  }
   .dot-wave[data-still] span {
     animation-play-state: paused;
   }
@@ -708,6 +764,71 @@
     display: inline-block;
     white-space: nowrap;
     animation: type-in 0.6s steps(30, end) both;
+  }
+
+  /* The title card: arriving on a page, a green bar grows across its title,
+     then pulls away to the right and uncovers it, like a broadcast graphic.
+     The text's clip only fills backwards, so once it lands the glow and the
+     italic overhang are never clipped. */
+  .title-card {
+    position: relative;
+    display: inline-block;
+  }
+  .title-card-text {
+    display: inline-block;
+    animation: title-uncover 0.62s cubic-bezier(0.7, 0, 0.25, 1) 0.1s backwards;
+  }
+  .title-card::before,
+  .title-card::after {
+    content: '';
+    position: absolute;
+    inset: 0.08em -0.1em 0.04em -0.06em;
+    background: var(--color-arc-green);
+    transform: scaleX(0);
+    pointer-events: none;
+  }
+  .title-card::before {
+    transform-origin: left;
+    animation: title-bar-in 0.62s cubic-bezier(0.7, 0, 0.25, 1) 0.1s both;
+  }
+  .title-card::after {
+    transform-origin: right;
+    animation: title-bar-out 0.62s cubic-bezier(0.7, 0, 0.25, 1) 0.1s both;
+  }
+  @keyframes title-bar-in {
+    0% {
+      transform: scaleX(0);
+    }
+    50% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    50.01%,
+    100% {
+      transform: scaleX(1);
+      opacity: 0;
+    }
+  }
+  @keyframes title-bar-out {
+    0%,
+    50% {
+      transform: scaleX(0);
+    }
+    50.01% {
+      transform: scaleX(1);
+    }
+    100% {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes title-uncover {
+    0%,
+    50% {
+      clip-path: inset(0 100% 0 0);
+    }
+    100% {
+      clip-path: inset(-0.3em -0.3em -0.3em 0);
+    }
   }
 
   @keyframes pulse-dot {
@@ -1761,7 +1882,11 @@
     :root:not([data-motion='on']) .punt-rot,
     :root:not([data-motion='on']) .redzone,
     :root:not([data-motion='on']) .cursor::after,
-    :root:not([data-motion='on']) .chart-reveal {
+    :root:not([data-motion='on']) .chart-reveal,
+    :root:not([data-motion='on']) .chart-draw *,
+    :root:not([data-motion='on']) .title-card-text,
+    :root:not([data-motion='on']) .title-card::before,
+    :root:not([data-motion='on']) .title-card::after {
       animation: none !important;
     }
     :root:not([data-motion='on']) .wipe-stripes,

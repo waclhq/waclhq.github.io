@@ -432,6 +432,34 @@
   .out.final tbody tr.sit-first td {
     border-top: 1px dashed var(--color-arc-line);
   }
+  /* The opening move's caption, and the champion's glint once the table settles. */
+  .stand-phase {
+    padding: 10px 16px 0;
+    font-size: 10.5px;
+    color: var(--color-arc-ink-faint);
+    transition: color 0.3s ease;
+  }
+  .stand-phase.is-final {
+    color: var(--color-arc-yellow);
+  }
+  .out.final tbody.is-crowned tr.lead > td:nth-child(2) {
+    position: relative;
+    overflow: hidden;
+  }
+  .out.final tbody.is-crowned tr.lead > td:nth-child(2)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 25%, color-mix(in srgb, var(--color-arc-yellow) 45%, transparent) 50%, transparent 75%);
+    transform: translateX(-110%);
+    pointer-events: none;
+    animation: stand-glint 0.9s ease-out both;
+  }
+  @keyframes stand-glint {
+    to {
+      transform: translateX(110%);
+    }
+  }
   .pennant {
     display: inline-block;
     flex-shrink: 0;
@@ -594,7 +622,8 @@
    listed here; the same information stays on screen, still. */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='on']) .scrub-in,
-  :root:not([data-motion='on']) .row-ping {
+  :root:not([data-motion='on']) .row-ping,
+  :root:not([data-motion='on']) .out.final tbody.is-crowned tr.lead > td:nth-child(2)::after {
     animation: none !important;
   }
   :root:not([data-motion='on']) .scrub-tint,

@@ -834,6 +834,39 @@
   /* ---- the wall of champions ------------------------------------------- */
   /* The year is the door into the almanac. The digits keep their place in the
      numeric column; the hit area quietly fills the row around them. */
+  /* The wall hangs itself: each plaque drops in from above and settles with
+     a small swing, newest first, and repeat titles stamp on after. */
+  .champ-wall:not(.is-hung) .champ-plaque {
+    opacity: 0;
+  }
+  .champ-wall.is-hung .champ-plaque {
+    transform-origin: 50% 0;
+    animation: champ-hang 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) calc(var(--i, 0) * 70ms) both;
+  }
+  @keyframes champ-hang {
+    from {
+      opacity: 0;
+      transform: translateY(-14px) rotateX(55deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .champ-wall.is-hung .champ-nth {
+    display: inline-block;
+    animation: champ-stamp 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--i, 0) * 70ms + 0.45s) both;
+  }
+  @keyframes champ-stamp {
+    from {
+      opacity: 0;
+      transform: scale(2) rotate(-8deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
   .champ-year {
     display: inline-flex;
     align-items: center;
@@ -931,8 +964,11 @@
   :root:not([data-motion='on']) .race-verdict-line,
   :root:not([data-motion='on']) .race-count,
   :root:not([data-motion='on']) .race-row,
-  :root:not([data-motion='on']) .race-out tbody tr.is-champ td::after {
+  :root:not([data-motion='on']) .race-out tbody tr.is-champ td::after,
+  :root:not([data-motion='on']) .champ-wall .champ-plaque,
+  :root:not([data-motion='on']) .champ-wall .champ-nth {
     animation: none !important;
+    opacity: 1 !important;
   }
   :root:not([data-motion='on']) .banner,
   :root:not([data-motion='on']) .banner-slot::before,

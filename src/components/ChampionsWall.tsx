@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import ManagerTag from './ManagerTag'
+import { useRevealed } from './ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { managerColor } from '../lib/identity'
 import { titleLedger } from '../lib/rafters-history'
@@ -15,6 +16,9 @@ import { titleLedger } from '../lib/rafters-history'
  */
 export default function ChampionsWall({ limit }: { limit?: number }) {
   const { seasons, managers } = useLeagueData()
+  // Plaques hang themselves the first time the wall is on screen.
+  const wall = useRef<HTMLDivElement>(null)
+  const hung = useRevealed(wall)
   const [all, setAll] = useState(false)
   // Beside the trade flow on a wide screen the panel has room for a decade;
   // on a phone six rows keep the page scrolling as one surface.
@@ -31,7 +35,7 @@ export default function ChampionsWall({ limit }: { limit?: number }) {
   const shown = all ? rows : rows.slice(0, shownByDefault)
 
   return (
-    <div className="champ-wall">
+    <div className={`champ-wall ${hung ? 'is-hung' : ''}`} ref={wall}>
       <table className="out">
         <thead>
           <tr>
@@ -47,14 +51,17 @@ export default function ChampionsWall({ limit }: { limit?: number }) {
             return (
               <tr
                 key={row.year}
-                className={index === 0 ? 'lead' : undefined}
+                className={`champ-plaque ${index === 0 ? 'lead' : ''}`}
                 style={
-                  index === 0
-                    ? {
-                        backgroundImage: `linear-gradient(90deg, color-mix(in srgb, ${color} 10%, transparent), transparent 60%)`,
-                        boxShadow: `inset 2px 0 0 ${color}`,
-                      }
-                    : undefined
+                  {
+                    '--i': Math.min(index, 12),
+                    ...(index === 0
+                      ? {
+                          backgroundImage: `linear-gradient(90deg, color-mix(in srgb, ${color} 10%, transparent), transparent 60%)`,
+                          boxShadow: `inset 2px 0 0 ${color}`,
+                        }
+                      : {}),
+                  } as CSSProperties
                 }
               >
                 <td className="n">
@@ -75,7 +82,7 @@ export default function ChampionsWall({ limit }: { limit?: number }) {
                 <td className="n">
                   {row.nth > 1 ? (
                     <span
-                      className="tag"
+                      className="tag champ-nth"
                       style={{ background: 'var(--color-arc-yellow)', color: 'var(--color-arc-bg)' }}
                       title={`Title number ${row.nth} for this manager`}
                     >

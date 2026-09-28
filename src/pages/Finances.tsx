@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import DuesBoard from '../components/DuesBoard'
 import ManagerTag from '../components/ManagerTag'
-import { Chip, Empty, Panel, PageHeader, SegmentedControl, Stat } from '../components/ui'
+import { Chip, CountUp, Empty, Panel, PageHeader, SegmentedControl, Stat, useRevealed } from '../components/ui'
 import { managerName, useLeague, useLeagueData } from '../lib/data'
 import { newId, useCash, useLedger } from '../lib/derive'
 import { money, shortDate } from '../lib/format'
@@ -73,13 +73,17 @@ function AuctionBook() {
     [ledger],
   )
   const active = managers.filter((manager) => manager.active)
+  // First sight: the career nets count up, then the league total ticks
+  // "0 ✓" across every season, proving the book balances.
+  const book = useRef<HTMLDivElement>(null)
+  const counted = useRevealed(book)
 
   return (
     <Panel
       title="Auction dollars traded"
       subtitle="Sellers receive draft dollars in the listed season; buyers pay them. Every column nets to zero."
     >
-      <div>
+      <div ref={book} className={`nets ${counted ? 'is-counted' : ''}`}>
         <table className="out">
           <thead>
             <tr>
@@ -93,7 +97,7 @@ function AuctionBook() {
             </tr>
           </thead>
           <tbody>
-            {active.map((manager) => {
+            {active.map((manager, row) => {
               const career = years.reduce(
                 (total, year) => total + (ledger[String(year)]?.[manager.id]?.net ?? 0),
                 0,
@@ -131,25 +135,33 @@ function AuctionBook() {
                           : 'text-arc-ink-faint'
                     }`}
                   >
-                    {money(career, { sign: true })}
+                    {career === 0 ? (
+                      money(0, { sign: true })
+                    ) : (
+                      <CountUp value={career} delay={Math.min(row, 12) * 50} format={(v) => money(Math.round(v), { sign: true })} />
+                    )}
                   </td>
                 </tr>
               )
             })}
             <tr>
               <td className="ops-sticky-col text-arc-ink-faint">League total</td>
-              {years.map((year) => {
+              {years.map((year, i) => {
                 const total = Object.values(ledger[String(year)] ?? {}).reduce(
                   (sum, entry) => sum + entry.net,
                   0,
                 )
+                const zero = Math.abs(total) < 0.01
                 return (
-                  <td key={year} className="n text-arc-ink-faint">
-                    {Math.abs(total) < 0.01 ? '0' : money(total)}
+                  <td key={year} className={`n text-arc-ink-faint ${zero ? 'nets-zero' : ''}`} style={{ ['--i' as string]: i }}>
+                    {zero ? '0' : money(total)}
+                    {zero && <span className="nets-tick" aria-hidden> ✓</span>}
                   </td>
                 )
               })}
-              <td className="n text-arc-ink-faint">0</td>
+              <td className="n text-arc-ink-faint nets-zero" style={{ ['--i' as string]: years.length }}>
+                0<span className="nets-tick" aria-hidden> ✓</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -248,12 +260,16 @@ function CashBook({ season }: { season: number }) {
         <Stat
           label="Owed to the league"
           value={cashMoney(Math.abs(owedToLeague))}
+          countTo={Math.abs(owedToLeague)}
+          format={(v) => cashMoney(Math.round(v))}
           tone={owedToLeague < 0 ? 'down' : 'default'}
           hint={owedToLeague < 0 ? 'Still to collect' : 'All collected'}
         />
         <Stat
           label="Owed by the league"
           value={cashMoney(owedByLeague)}
+          countTo={owedByLeague}
+          format={(v) => cashMoney(Math.round(v))}
           tone={owedByLeague > 0 ? 'up' : 'default'}
           hint={owedByLeague > 0 ? 'Still to pay out' : 'Nothing owed'}
         />
@@ -312,7 +328,7 @@ function CashBook({ season }: { season: number }) {
             </tr>
           </thead>
           <tbody>
-            {positions.map((row) => (
+            {positions.map((row, i) => (
               <tr key={row.manager}>
                 <td>
                   <ManagerTag id={row.manager} size={20} />
@@ -331,7 +347,16 @@ function CashBook({ season }: { season: number }) {
                         : 'text-arc-ink-faint'
                   }`}
                 >
-                  {row.outstanding === 0 ? '·' : cashMoney(row.outstanding, { sign: true })}
+                  {row.outstanding === 0 ? (
+                    '·'
+                  ) : (
+                    // The balances tick up from $0 like a cash counter, a row at a time.
+                    <CountUp
+                      value={row.outstanding}
+                      delay={Math.min(i, 12) * 55}
+                      format={(v) => cashMoney(Number.isInteger(row.outstanding) ? Math.round(v) : Math.round(v * 100) / 100, { sign: true })}
+                    />
+                  )}
                 </td>
               </tr>
             ))}

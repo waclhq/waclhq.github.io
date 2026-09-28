@@ -59,6 +59,34 @@
     box-shadow: inset -1px 0 0 var(--color-arc-line);
     padding-right: 16px;
   }
+  /* The book balances: once the career nets have counted up, a green tick
+     lands on each season's league total, left to right. */
+  .nets .nets-tick {
+    display: inline-block;
+    color: var(--color-arc-green);
+    opacity: 0;
+  }
+  .nets.is-counted .nets-zero {
+    animation: nets-zero 0.5s ease-out calc(0.9s + var(--i, 0) * 70ms) both;
+  }
+  .nets.is-counted .nets-tick {
+    animation: nets-tick 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) calc(0.9s + var(--i, 0) * 70ms) both;
+  }
+  @keyframes nets-zero {
+    from {
+      color: var(--color-arc-green);
+    }
+  }
+  @keyframes nets-tick {
+    from {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
   .out thead .ops-sticky-col {
     background: var(--color-arc-bg-deep);
   }
@@ -482,8 +510,13 @@
   :root:not([data-motion='on']) .ops-bar.is-on,
   :root:not([data-motion='on']) .out tr.ops-row-new td,
   :root:not([data-motion='on']) .ops-stand.is-on .ops-slot[data-paid] .ops-seat,
-  :root:not([data-motion='on']) .ops-slot[data-paid] .ops-seat.ops-ignite .ops-seat-glow {
+  :root:not([data-motion='on']) .ops-slot[data-paid] .ops-seat.ops-ignite .ops-seat-glow,
+  :root:not([data-motion='on']) .nets .nets-zero,
+  :root:not([data-motion='on']) .nets .nets-tick {
     animation: none !important;
+  }
+  :root:not([data-motion='on']) .nets .nets-tick {
+    opacity: 1;
   }
   :root:not([data-motion='on']) .ops-bar {
     transform: translateY(-50%) scaleX(1);

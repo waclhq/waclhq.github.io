@@ -1,14 +1,15 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ManagerTag from '../components/ManagerTag'
 import SeasonScrubber from '../components/tables/SeasonScrubber'
 import { Pennant, leadWash, rankTone } from '../components/tables/bits'
 import { useFlipRows } from '../components/tables/flip'
-import { Panel, PageHeader } from '../components/ui'
+import { Panel, PageHeader, useRevealed } from '../components/ui'
 import { managerName, useLeagueData } from '../lib/data'
 import { num, pct, record } from '../lib/format'
 import { managerColor } from '../lib/identity'
 import { useMe } from '../lib/me'
 import { useUrlParam } from '../lib/tables-url'
+import { animationsDisabled } from '../lib/motion'
 import type { ManagerId, TeamSeason } from '../lib/types'
 
 interface Row {
@@ -36,14 +37,42 @@ export default function Standings() {
     return [...ids].sort((a, b) => managerName(managers, a).localeCompare(managerName(managers, b)))
   }, [seasons, managers])
 
+  // The opening move: the table first shows the regular-season order (by
+  // record, then points), holds a beat, and then the bracket reshuffles it
+  // into the final finish while the rows glide. Once, on first sight.
+  const stage = useRef<HTMLDivElement>(null)
+  const seen = useRevealed(stage)
+  const [settled, setSettled] = useState(() => animationsDisabled())
+  const [crowned, setCrowned] = useState(false)
+  useEffect(() => {
+    if (!seen || settled) return
+    const timer = window.setTimeout(() => setSettled(true), 900)
+    return () => window.clearTimeout(timer)
+  }, [seen, settled])
+  useEffect(() => {
+    if (!settled || animationsDisabled()) return
+    const on = window.setTimeout(() => setCrowned(true), 750)
+    const off = window.setTimeout(() => setCrowned(false), 2400)
+    return () => {
+      window.clearTimeout(on)
+      window.clearTimeout(off)
+    }
+  }, [settled])
+  // Picking another season skips straight to the finish.
+  const firstYear = useRef(year)
+  useEffect(() => {
+    if (year !== firstYear.current) setSettled(true)
+  }, [year])
+
   const rows = useMemo<Row[]>(() => {
+    const regular = (a: TeamSeason, b: TeamSeason) => b.wins - a.wins || (b.pointsFor ?? 0) - (a.pointsFor ?? 0)
     const played = [...season.teams]
-      .sort((a, b) => a.rank - b.rank)
+      .sort(settled ? (a, b) => a.rank - b.rank : regular)
       .map((team) => ({ manager: team.manager, team }))
     const seated = new Set(played.map((row) => row.manager))
     const out = everyone.filter((id) => !seated.has(id)).map((manager) => ({ manager, team: null }))
     return [...played, ...out]
-  }, [season, everyone])
+  }, [season, everyone, settled])
 
   const body = useRef<HTMLTableSectionElement>(null)
   useFlipRows(body)
@@ -66,6 +95,9 @@ export default function Standings() {
         <SeasonScrubber seasons={seasons} managers={managers} year={year} onChange={setYear} me={me} />
 
         <Panel title={`${year} final table`} subtitle={subtitle} delay={80}>
+          <div ref={stage} className={`stand-phase label ${settled ? 'is-final' : ''}`} aria-hidden>
+            {settled ? 'Final · after the playoffs' : 'Regular season order…'}
+          </div>
           <table className="out final">
             <thead>
               <tr>
@@ -84,7 +116,7 @@ export default function Standings() {
                 <th className="n hidden xl:table-cell">PA</th>
               </tr>
             </thead>
-            <tbody ref={body}>
+            <tbody ref={body} className={crowned ? 'is-crowned' : undefined}>
               {rows.map(({ manager, team }, i) => {
                 const champion = team?.rank === 1
                 const firstOut = !team && i > 0 && rows[i - 1].team !== null

@@ -221,6 +221,30 @@ function useCountUp(target: number, run: boolean): number {
   return value
 }
 
+/**
+ * A figure that counts up from zero the first time it's on screen, after an
+ * optional beat, so a column of money reads like a cash counter settling.
+ * Held still, it simply shows the number.
+ */
+export function CountUp({ value, format, delay = 0 }: { value: number; format: (value: number) => string; delay?: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const seen = useRevealed(ref)
+  const [still] = useState(() => animationsDisabled())
+  const [go, setGo] = useState(false)
+  useEffect(() => {
+    if (!seen || still) return
+    const timer = window.setTimeout(() => setGo(true), delay)
+    return () => window.clearTimeout(timer)
+  }, [seen, still, delay])
+  const counted = useCountUp(value, go)
+  const shown = still ? value : go ? counted : seen ? 0 : value
+  return (
+    <span ref={ref} className="tnum">
+      {format(shown)}
+    </span>
+  )
+}
+
 export function Stat({
   label,
   value,
@@ -370,7 +394,9 @@ export function PageHeader({
             className="display cursor neon-soft mt-3 text-arc-ink"
             style={{ viewTransitionName: 'page-title' }}
           >
-            {title}
+            <span className="title-card">
+              <span className="title-card-text">{title}</span>
+            </span>
           </h1>
           <DotWave />
           {lede && <p className="mt-3 text-[14px] leading-relaxed text-arc-ink-soft">{lede}</p>}

@@ -4,11 +4,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
 } from 'react'
 import { animationsDisabled } from '../lib/motion'
+import { useRevealed } from './ui'
 
 /*
  * The site's charts, drawn by hand in SVG.
@@ -181,6 +183,8 @@ export function Plot({
   const width = useWidth(host)
   const [active, setActive] = useState<number | null>(null)
   const [still] = useState(() => animationsDisabled())
+  // Lines draw themselves the first time the chart is on screen, not when it mounts below the fold.
+  const seen = useRevealed(host)
   const gradientId = useMemo(() => `area-${Math.random().toString(36).slice(2, 8)}`, [])
 
   const plotW = Math.max(0, width - PAD.left - padRight)
@@ -289,15 +293,20 @@ export function Plot({
             )
           })}
 
-          {/* series */}
-          <g className={still ? undefined : 'chart-reveal'}>
+          {/* series: solid lines draw on behind a glowing tracer head, then
+              areas and dashed guides fade up under them */}
+          <g className={still ? undefined : `chart-draw ${seen ? 'is-seen' : ''}`}>
             {paths.map((p, i) => {
               const s = series[i]
+              const solid = !s.dash
+              const style = { '--d': `${Math.min(i, 6) * 0.12}s`, '--c': s.color } as CSSProperties
               return (
-                <g key={p.key} opacity={s.opacity ?? 1}>
-                  {p.area && <path d={p.area} fill={`url(#${gradientId})`} />}
+                <g key={p.key} opacity={s.opacity ?? 1} style={style}>
+                  {p.area && <path className="chart-area" d={p.area} fill={`url(#${gradientId})`} />}
                   <path
+                    className={solid ? 'chart-line' : 'chart-dashed'}
                     d={p.line}
+                    pathLength={solid ? 1 : undefined}
                     fill="none"
                     stroke={s.color}
                     strokeWidth={s.width ?? 2}
@@ -305,6 +314,9 @@ export function Plot({
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
+                  {solid && !still && (s.opacity ?? 1) >= 0.5 && (
+                    <path className="chart-head" d={p.line} pathLength={1} fill="none" strokeWidth={(s.width ?? 2) + 2.5} strokeLinecap="round" />
+                  )}
                 </g>
               )
             })}

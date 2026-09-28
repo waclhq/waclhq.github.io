@@ -164,6 +164,15 @@ top-5 fold, one-shot spotlight) rather than bespoke tables. Panels wrap
 their content in a horizontal-scroll hint; a board whose effects bleed past
 its edges (the Book's fire) passes `flush`.
 
+Motion is broadcast-style and one-shot: every page title arrives behind a
+green wipe (`.title-card` in `PageHeader`), chart lines draw on behind a
+tracer head when first seen (`Plot`), and some rooms have a signature
+opening — Standings opens in regular-season order and the bracket reshuffles
+it, the champions wall hangs its plaques and stamps repeat titles, the
+auction book counts up and ticks "0 ✓" on every season's total, and Live's
+tote board runs its primetime open. `CountUp` (ui.tsx) is the shared
+count-from-zero-when-seen figure. Nothing new runs at rest.
+
 ## Voice
 
 Dry, confident, specific. Panel subtitles explain the metric in a sentence.
