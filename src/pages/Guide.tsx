@@ -218,7 +218,8 @@ export default function Guide() {
               down on its own after two days.{' '}
               <B>Bets can carry odds.</B> Whoever posts one picks a price: Even, or something like{' '}
               <B>+150</B> (the underdog puts up $20 to win $30) or <B>−200</B> (the favourite puts
-              up $40 to win $20). When the two managers play each other that week, a <B>Live
+              up $40 to win $20). Typing it the way people say it works too: <B>4:1</B> means win $4 for
+              every $1 put up, and <B>1:2</B> means put up $2 to win $1. When the two managers play each other that week, a <B>Live
               line</B> button offers a fair price from the live scores. Whoever loses pays their
               own side, and The Tab works it out.
             </Step>

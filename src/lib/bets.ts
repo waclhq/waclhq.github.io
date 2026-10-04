@@ -207,14 +207,22 @@ export function oddsOf(bet: Bet, manager?: ManagerId | null): string {
 }
 
 /**
- * Read a price as typed: "+150", "150", "-200", "−200", "even", "evs",
- * "pk". Returns American odds (±100 for evens), or null for anything that
- * isn't a price — a magnitude under 100 is not one.
+ * Read a price as typed: American ("+150", "150", "-200", "−200"), the
+ * way people say it ("4:1", "4/1", "4-1", "4 to 1", "1:2"), or "even",
+ * "evs", "pk". Returns American odds (±100 for evens), or null for anything
+ * that isn't a price — an American magnitude under 100 is not one.
  */
 export function parseOdds(text: string): number | null {
   const t = text.trim().toLowerCase().replace(/[\u2212\u2013\u2014]/g, '-')
   if (!t) return null
   if (/^(e|ev|evs|even|evens|pk|pick|pickem)$/.test(t)) return 100
+  // Fractional: win `a` for every `b` put up. 4:1 is +400, 1:2 is −200.
+  const f = /^(\d+(?:\.\d+)?)\s*(?::|\/|-|to)\s*(\d+(?:\.\d+)?)$/.exec(t)
+  if (f) {
+    const [a, b] = [Number(f[1]), Number(f[2])]
+    if (!(a > 0) || !(b > 0) || a / b > 100 || b / a > 100) return null
+    return americanOdds(b, a)
+  }
   const m = /^([+-]?)(\d{3,5})$/.exec(t)
   if (!m) return null
   const n = Number(m[2])

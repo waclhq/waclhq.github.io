@@ -215,7 +215,7 @@ export default function Composer({
                 <input
                   className="field tnum mt-1.5"
                   inputMode="text"
-                  placeholder="Even · +150 · −200"
+                  placeholder="Even · +150 · −200 · 4:1"
                   value={oddsInput}
                   aria-invalid={odds === null}
                   onChange={(e) => setOddsInput(e.target.value)}
@@ -255,7 +255,7 @@ export default function Composer({
               <p className="bk-odds-say" aria-live="polite">
                 {odds === null ? (
                   <span className="text-[var(--color-arc-red)]">
-                    Not a price. Try Even, +150 (you're the underdog) or −200 (you're the favourite).
+                    Not a price. Try Even, +150 or 4:1 (you're the underdog), or −200 or 1:2 (you're the favourite).
                   </span>
                 ) : toWin === null ? (
                   'Set an amount to see who puts up what.'
