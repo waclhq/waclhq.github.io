@@ -16,7 +16,7 @@ export const MANAGER_COLOR: Record<ManagerId, string> = {
   baugh: '#3fe0f5',
   velamoor: '#ff6fb3',
   mukheja: '#ff33f5',
-  snyder: '#6b7dff',
+  snyder: '#4db8ff',
   incognito: '#2ad68a',
   konciak: '#c98d5f',
   lalwani: '#ffd84d',
