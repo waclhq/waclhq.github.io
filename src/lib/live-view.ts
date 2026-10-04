@@ -308,3 +308,65 @@ export function recapFacts(board: LivePoints): RecapFacts {
     touchdowns: (board.plays ?? []).filter((play) => play.kind === 'td').length,
   }
 }
+
+/* --------------------------------------------------------- live standings */
+
+export interface LiveStandingRow {
+  team: string
+  manager: ManagerId | null
+  /** Rank before this week, from the matchups snapshot. */
+  before: number | null
+  rank: number
+  wins: number
+  losses: number
+  ties: number
+  /** This week as it stands: winning, losing, level, or not started. */
+  now: 'W' | 'L' | 'T' | null
+  pf: number | null
+  pa: number | null
+  score: number
+  opp: string
+  oppScore: number
+  winProb: number
+  final: boolean
+}
+
+/**
+ * The standings if every matchup ended right now: last week's table plus
+ * this week's result as it stands (the leader takes the win), this week's
+ * points added to points for and against. Ranked by wins, then points for,
+ * the way Yahoo breaks ties. A matchup where neither side has played yet
+ * doesn't count until someone scores.
+ */
+export function liveStandings(board: LivePoints): LiveStandingRow[] {
+  const rows: LiveStandingRow[] = []
+  for (const m of board.matchups ?? []) {
+    m.teams.forEach((side, i) => {
+      const opp = m.teams[1 - i]
+      const [w = 0, l = 0, t = 0] = (side.record ?? '0-0').split('-').map(Number)
+      const started = side.total !== 0 || opp.total !== 0 || m.settled
+      const now: LiveStandingRow['now'] = !started ? null : side.total > opp.total ? 'W' : side.total < opp.total ? 'L' : 'T'
+      rows.push({
+        team: side.team,
+        manager: side.manager,
+        before: side.rank,
+        rank: 0,
+        wins: w + (now === 'W' ? 1 : 0),
+        losses: l + (now === 'L' ? 1 : 0),
+        ties: t + (now === 'T' ? 1 : 0),
+        now,
+        pf: typeof side.pf === 'number' ? Math.round((side.pf + side.total) * 100) / 100 : null,
+        pa: typeof side.pa === 'number' ? Math.round((side.pa + opp.total) * 100) / 100 : null,
+        score: side.total,
+        opp: opp.team,
+        oppScore: opp.total,
+        winProb: side.winProb,
+        final: m.settled,
+      })
+    })
+  }
+  const pct = (r: LiveStandingRow) => (r.wins + r.ties / 2) / Math.max(1, r.wins + r.losses + r.ties)
+  rows.sort((a, b) => pct(b) - pct(a) || b.wins - a.wins || (b.pf ?? 0) - (a.pf ?? 0))
+  rows.forEach((r, i) => (r.rank = i + 1))
+  return rows
+}

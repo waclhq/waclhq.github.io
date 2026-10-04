@@ -128,7 +128,7 @@ the Shell offers a refresh when a newer build is live.
   confetti, cracked glass, lead-change flip; effects in `live/tote-fx.ts`),
   matchup face-offs with win odds, latest scores in team colours and living portraits,
   head-to-head with fire/ice players and a swing chart, the radar clock
-  (win odds through the day as rings on a tilted dial, SVG, no library), the big-plays wire, bonus
+  (win odds from the weekend's first kickoff to Monday night as rings on a tilted dial, SVG, no library), live standings (the table as if every game ended now), the big-plays wire, bonus
   watch, leader boards, score alerts, share cards, the story-style recap, and
   the player card (`PlayerSheet`: tap any player for his box score and how
   his points add up);

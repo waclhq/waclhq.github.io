@@ -1969,6 +1969,115 @@
     }
   }
 
+  /* ---- standings, live ---- */
+  .lv-stand tbody tr {
+    transition: background-color 0.3s ease;
+  }
+  .lv-stand tbody tr.is-mine {
+    background: color-mix(in srgb, var(--me-color, var(--color-arc-green)) 9%, transparent);
+  }
+  /* The playoff cut sits under the last team in. */
+  .lv-stand tbody tr.is-cut td {
+    border-bottom: 1px dashed color-mix(in srgb, var(--color-arc-yellow) 70%, transparent);
+  }
+  .lv-stand-rank {
+    display: inline-block;
+    min-width: 1.4em;
+    font-weight: 700;
+    color: var(--color-arc-ink);
+  }
+  @media (max-width: 639.98px) {
+    .lv-stand thead th,
+    .lv-stand tbody td {
+      padding-inline: 8px;
+    }
+    /* On a phone the week's result tucks under the record. */
+    .lv-stand-now {
+      display: flex;
+      width: fit-content;
+      margin: 3px 0 0 auto;
+    }
+  }
+  .lv-stand-move {
+    display: inline-block;
+    min-width: 2.2em;
+    margin-left: 4px;
+    font-size: 10.5px;
+    color: var(--color-arc-ink-faint);
+  }
+  .lv-stand-move.is-up {
+    color: var(--color-arc-green);
+  }
+  .lv-stand-move.is-down {
+    color: var(--color-arc-red);
+  }
+  .lv-stand-team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .lv-stand-team > span {
+    flex: 1;
+    min-width: 0;
+  }
+  .lv-stand-team > i {
+    flex: none;
+    width: 4px;
+    height: 22px;
+    border-radius: 2px;
+    background: var(--c);
+  }
+  .lv-stand-name {
+    display: block;
+    font-weight: 600;
+    color: var(--color-arc-ink);
+  }
+  /* w-0 + min-width 100%: the line fills the column it gets without ever widening it. */
+  .lv-stand-sub {
+    display: block;
+    width: 0;
+    min-width: 100%;
+    font-size: 11px;
+    color: var(--color-arc-ink-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lv-stand-rec {
+    font-weight: 600;
+  }
+  /* This week's result as it stands, with the odds it holds. */
+  .lv-stand-now {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    margin-left: 6px;
+    white-space: nowrap;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px dashed currentColor;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .lv-stand-now small {
+    font-size: 9px;
+    font-weight: 500;
+    opacity: 0.85;
+  }
+  .lv-stand-now.is-final {
+    border-style: solid;
+  }
+  .lv-stand-now.is-w {
+    color: var(--color-arc-green);
+  }
+  .lv-stand-now.is-l {
+    color: var(--color-arc-red);
+  }
+  .lv-stand-now.is-t {
+    color: var(--color-arc-ink-soft);
+  }
+
   /* ---- the radar clock ---- */
   .lv-radar {
     padding: 10px 12px 14px;

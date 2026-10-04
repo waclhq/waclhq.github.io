@@ -654,6 +654,10 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
         manager: [a, b][i].manager,
         record: side.record ?? null,
         rank: side.rank ?? null,
+        // The standings before this week, for the live table.
+        pf: side.pf ?? null,
+        pa: side.pa ?? null,
+        streak: side.streak ?? null,
         total: [a, b][i].total,
         proj: [a, b][i].proj,
         winProb: round(i === 0 ? winA : 1 - winA),

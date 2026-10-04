@@ -280,6 +280,10 @@ export interface LiveMatchupSide {
   manager: ManagerId | null
   record: string | null
   rank: number | null
+  /** Points for and against, and the streak, before this week (absent on older files). */
+  pf?: number | null
+  pa?: number | null
+  streak?: string | null
   total: number
   proj: number
   winProb: number

@@ -7,9 +7,10 @@ import { pairingKey, winSeries } from '../../lib/live-view'
 import type { LivePoints, LivePointsMatchup, ManagerId } from '../../lib/types'
 
 /**
- * The radar clock: game day as a dial. Kickoff is at twelve o'clock and the
- * day runs clockwise to the last game's final whistle; a glowing hand points
- * at now. Every matchup is a ring, drawn bright for the day so far and carried
+ * The radar clock: the week's games as a dial. The weekend's first kickoff
+ * is at twelve o'clock and the dial runs clockwise to the final whistle on
+ * Monday night, the dead hours between game days squeezed into a dotted
+ * slice of the rim; a glowing hand points at now. Every matchup is a ring, drawn bright for the day so far and carried
  * round the rest of the dial, dimmer, at today's odds if nothing changes. A
  * ring swells outward in the first team's colour while they're favoured and
  * dips inward in the second team's colour when the odds flip, so a blowout is
@@ -62,15 +63,55 @@ const at = (r: number, a: number) => {
   return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
 }
 
-/** The day's window: first kickoff near the update to the last kickoff plus a game's length. */
-function dayWindow(board: LivePoints): [number, number] {
-  const updated = new Date(board.updatedAt).getTime()
+const HOUR = 3600_000
+/** How long a game window runs from kickoff. */
+const GAME = 3.5 * HOUR
+/** The share of the dial each dead stretch between game days gets. */
+const GAP_SHARE = 0.045
+
+/**
+ * The week's game windows: every kickoff from the weekend's first (a
+ * Sunday-morning international game counts; Thursday's doesn't) through the
+ * last one, Monday night, each running a game's length, overlaps merged.
+ * The dial spends its turn on these and squeezes the dead hours between
+ * them (Sunday night to Monday night) into a thin slice each.
+ */
+function weekSpans(board: LivePoints): [number, number][] {
   const kicks = board.games.map((g) => new Date(g.kickoff).getTime()).sort((a, b) => a - b)
-  const today = kicks.filter((k) => k >= updated - 14 * 3600_000)
-  const start = today[0] ?? kicks[kicks.length - 1] ?? updated
-  const inDay = kicks.filter((k) => k >= start && k <= start + 16 * 3600_000)
-  const end = (inDay[inDay.length - 1] ?? start) + 3.5 * 3600_000
-  return [start, Math.max(end, start + 3 * 3600_000)]
+  if (!kicks.length) {
+    const now = new Date(board.updatedAt).getTime()
+    return [[now, now + 3 * HOUR]]
+  }
+  const last = kicks[kicks.length - 1]
+  const weekend = kicks.filter((k) => k >= last - 3 * 24 * HOUR)
+  const spans: [number, number][] = []
+  for (const k of weekend) {
+    const prev = spans[spans.length - 1]
+    // A short lull (the half hour before Sunday night) stays on the clock; only real gaps squeeze.
+    if (prev && k <= prev[1] + 2 * HOUR) prev[1] = Math.max(prev[1], k + GAME)
+    else spans.push([k, k + GAME])
+  }
+  return spans
+}
+
+/** Time to a share of the turn: game windows proportionally, each gap a fixed thin slice. */
+function weekScale(spans: [number, number][]) {
+  const gaps = spans.length - 1
+  const active = spans.reduce((sum, [a, b]) => sum + (b - a), 0)
+  const activeShare = 1 - gaps * GAP_SHARE
+  return (ms: number) => {
+    let done = 0
+    for (let i = 0; i < spans.length; i++) {
+      const [a, b] = spans[i]
+      const base = (done / active) * activeShare + i * GAP_SHARE
+      if (ms <= a) return i === 0 ? 0 : base
+      if (ms <= b) return base + ((ms - a) / active) * activeShare
+      done += b - a
+      const next = spans[i + 1]
+      if (next && ms < next[0]) return (done / active) * activeShare + i * GAP_SHARE + ((ms - b) / (next[0] - b)) * GAP_SHARE
+    }
+    return 1
+  }
 }
 
 export default function RadarClock({ board, me, compact = false }: { board: LivePoints; me: ManagerId | null; compact?: boolean }) {
@@ -144,9 +185,11 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
 
   if (!rings.length) return null
 
-  const [start, end] = dayWindow(board)
-  const span = end - start
-  const angleAt = (ms: number) => -Math.PI / 2 + Math.min(1, Math.max(0, (ms - start) / span)) * TAU
+  const spans = weekSpans(board)
+  const start = spans[0][0]
+  const end = spans[spans.length - 1][1]
+  const share = weekScale(spans)
+  const angleAt = (ms: number) => -Math.PI / 2 + Math.min(1, Math.max(0, share(ms))) * TAU
   const nowMs = Math.min(end, Math.max(start, clock.getTime()))
   const dataMs = Math.min(nowMs, new Date(board.updatedAt).getTime())
   const handA = angleAt(nowMs)
@@ -162,14 +205,25 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
   // Text turns back against the dial so it always reads upright.
   const upright = (x: number, y: number) => `rotate(${-(autoTurn + spin)} ${x} ${y})`
 
-  // Hour ticks in local time around the rim.
-  const ticks: { a: number; label: string }[] = []
-  const first = new Date(start)
-  first.setMinutes(0, 0, 0)
-  for (let t = first.getTime() + 3600_000; t < end; t += 3600_000) {
-    const d = new Date(t)
-    ticks.push({ a: angleAt(t), label: d.toLocaleTimeString('en-US', { hour: 'numeric' }).replace(/\s?[AP]M/, '') })
-  }
+  // Hour ticks in local time inside each game window, labels thinned so they
+  // never crowd, and the day's name where each later game day begins.
+  const ticks: { a: number; label: string; day?: boolean }[] = []
+  let lastLabel = -Infinity
+  spans.forEach(([a, b], i) => {
+    if (i > 0) {
+      const at = angleAt(a)
+      ticks.push({ a: at, label: new Date(a).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(), day: true })
+      lastLabel = at
+    }
+    const first = new Date(a)
+    first.setMinutes(0, 0, 0)
+    for (let t = first.getTime() + HOUR; t < b; t += HOUR) {
+      const at = angleAt(t)
+      const roomy = at - lastLabel > 0.32
+      if (roomy) lastLabel = at
+      ticks.push({ a: at, label: roomy ? new Date(t).toLocaleTimeString('en-US', { hour: 'numeric' }).replace(/\s?[AP]M/, '') : '' })
+    }
+  })
 
   const onDown = (event: PointerEvent<HTMLDivElement>) => {
     if (compact) return
@@ -275,13 +329,37 @@ export default function RadarClock({ board, me, compact = false }: { board: Live
               const l = polar(OUTER + 44, t.a)
               return (
                 <g key={t.a}>
-                  <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--color-arc-ink-soft)" strokeWidth="3" strokeLinecap="round" />
-                  {!compact && (
-                    <text x={l.x} y={l.y + 7} textAnchor="middle" className="lv-radar-hour" transform={upright(l.x, l.y)}>
+                  <line
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke={t.day ? 'var(--color-arc-green)' : 'var(--color-arc-ink-soft)'}
+                    strokeWidth={t.day ? 5 : 3}
+                    strokeLinecap="round"
+                  />
+                  {!compact && t.label && (
+                    <text x={l.x} y={l.y + 7} textAnchor="middle" className={t.day ? 'lv-radar-kick' : 'lv-radar-hour'} transform={upright(l.x, l.y)}>
                       {t.label}
                     </text>
                   )}
                 </g>
+              )
+            })}
+            {/* The dead hours between game days, squeezed into a dotted slice of the rim. */}
+            {spans.slice(1).map(([next], i) => {
+              const a0 = angleAt(spans[i][1])
+              const a1 = angleAt(next)
+              return (
+                <path
+                  key={`gap-${next}`}
+                  d={`M${at(OUTER + 14, a0)}${arcTo(OUTER + 14, a0, a1)}`}
+                  fill="none"
+                  stroke="var(--color-arc-ink-faint)"
+                  strokeWidth="3"
+                  strokeDasharray="1 7"
+                  strokeLinecap="round"
+                />
               )
             })}
             {/* Kickoff: a green tick and "KO" where the first hour would sit. */}

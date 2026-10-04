@@ -7,6 +7,7 @@ import BonusWatch from '../components/live/BonusWatch'
 import Leaders from '../components/live/Leaders'
 import ScoreAlert from '../components/live/ScoreAlert'
 import ToteBoard from '../components/live/ToteBoard'
+import LiveStandings from '../components/live/LiveStandings'
 import RadarClock from '../components/live/RadarClock'
 import Recap from '../components/live/Recap'
 import { PlayerSheetProvider } from '../components/live/PlayerSheet'
@@ -203,6 +204,17 @@ export default function Live() {
             ))}
           </div>
         </section>
+      )}
+
+      {(board.matchups?.length ?? 0) > 0 && (
+        <div className="mb-8">
+          <Panel
+            title="Standings, live"
+            subtitle="The table if every game ended now: last week's standings with this week's leaders taking the win, ranked by record then points for. The % is each team's chance to win this week. Rows move as the lead changes; the dashed line is the playoff cut."
+          >
+            <LiveStandings board={board} me={me} />
+          </Panel>
+        </div>
       )}
 
       {(board.matchups?.length ?? 0) > 0 && (
