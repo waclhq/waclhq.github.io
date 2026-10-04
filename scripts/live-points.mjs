@@ -97,9 +97,14 @@ export function loose(name) {
 }
 const lastName = (name) => loose(name).split(' ').slice(-1)[0] ?? ''
 
+/*
+ * The leading number of a box-score cell: "12/20" is 12, "3-21" (sacks for
+ * yards) is 3, and "-8" — a loss — is -8. The sign is part of the number,
+ * not a separator, or negative yards would score as zero.
+ */
 const num = (value) => {
-  const n = Number(String(value ?? '').split('/')[0].split('-')[0])
-  return Number.isFinite(n) ? n : 0
+  const m = /^\s*(-?\d+(?:\.\d+)?)/.exec(String(value ?? ''))
+  return m ? Number(m[1]) : 0
 }
 const round = (n) => Math.round(n * 100) / 100
 
@@ -359,8 +364,10 @@ export function breakdownDefense(d, rules = RULES) {
 function statLine(l) {
   const parts = []
   if (l.passYds || l.passTD || l.int) parts.push(`${l.passYds} pass yds${l.passTD ? `, ${l.passTD} TD` : ''}${l.int ? `, ${l.int} INT` : ''}`)
-  if (l.car || l.rushYds) parts.push(`${l.car}-${l.rushYds} rush${l.rushTD ? `, ${l.rushTD} TD` : ''}`)
-  if (l.rec || l.recYds) parts.push(`${l.rec}-${l.recYds} rec${l.recTD ? `, ${l.recTD} TD` : ''}`)
+  // "3-21 rush", but "2 for -8 rush" — a dash before a minus reads as a typo.
+  const pair = (n, yds) => (yds < 0 ? `${n} for ${yds}` : `${n}-${yds}`)
+  if (l.car || l.rushYds) parts.push(`${pair(l.car, l.rushYds)} rush${l.rushTD ? `, ${l.rushTD} TD` : ''}`)
+  if (l.rec || l.recYds) parts.push(`${pair(l.rec, l.recYds)} rec${l.recTD ? `, ${l.recTD} TD` : ''}`)
   if (l.retTD) parts.push(`${l.retTD} return TD`)
   if (l.fumLost) parts.push(`${l.fumLost} fumble lost`)
   if (l.twoPt || l.passTwoPt) parts.push(`${(l.twoPt ?? 0) + (l.passTwoPt ?? 0)} two-pt`)
