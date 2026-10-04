@@ -200,6 +200,19 @@ export function oddsText(odds: number): string {
   return odds > 0 ? `+${odds}` : `\u2212${-odds}`
 }
 
+/**
+ * The same price the way people say it: +400 is "4:1", −200 is "1:2",
+ * −110 is "10:11". Null when the ratio has no tidy form (+215 is 43:20).
+ */
+export function fractionText(odds: number): string | null {
+  if (Math.abs(odds) <= 100) return '1:1'
+  const gcd = (x: number, y: number): number => (y ? gcd(y, x % y) : x)
+  const n = Math.abs(odds)
+  const g = gcd(n, 100)
+  const [win, risk] = odds > 0 ? [n / g, 100 / g] : [100 / g, n / g]
+  return Math.max(win, risk) <= 20 ? `${win}:${risk}` : null
+}
+
 /** The price from one side — the proposer's unless a manager is named. */
 export function oddsOf(bet: Bet, manager?: ManagerId | null): string {
   const who = manager && sideOf(bet, manager) ? manager : bet.proposer

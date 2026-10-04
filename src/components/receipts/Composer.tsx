@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel } from '../ui'
-import { fairOdds, newBetId, oddsText, parseOdds, winAt, type Bet, type StakeKind } from '../../lib/bets'
+import { fairOdds, fractionText, newBetId, oddsText, parseOdds, winAt, type Bet, type StakeKind } from '../../lib/bets'
 import { animationsDisabled } from '../../lib/motion'
 import { useLivePoints } from '../../lib/points'
 import type { ManagerId } from '../../lib/types'
 import { landOn } from './land'
 
-/** The prices most bets between friends land on. */
-const QUICK_ODDS = [100, 150, 200, -150, -200]
+/** The prices most bets between friends land on, as people say them. */
+const QUICK_ODDS = ['Even', '2:1', '3:1', '4:1', '5:1', '1:2', '+150', '\u2212150']
 
 const TEMPLATES = [
   'I beat you head-to-head in week __',
@@ -223,16 +223,17 @@ export default function Composer({
               </label>
               <span className="mt-2 flex flex-wrap gap-1.5">
                 {QUICK_ODDS.map((price) => {
-                  const on = odds === price || (price === 100 && odds !== null && !priced)
+                  const even = price === 'Even'
+                  const on = even ? odds !== null && !priced : odds === parseOdds(price)
                   return (
                     <button
                       key={price}
                       type="button"
                       className="tnum bk-odds-chip"
                       aria-pressed={on}
-                      onClick={() => setOddsInput(price === 100 ? '' : oddsText(price))}
+                      onClick={() => setOddsInput(even ? '' : price)}
                     >
-                      {price === 100 ? 'Even' : oddsText(price)}
+                      {price}
                     </button>
                   )
                 })}
@@ -263,7 +264,8 @@ export default function Composer({
                   <>
                     You put up <b>${stake}</b> to win <b>${toWin}</b>. {opponent ? `${nameOf(opponent)} puts` : 'They put'}{' '}
                     up <b>${toWin}</b> to win <b>${stake}</b>
-                    {odds > 0 ? ' — you are the underdog.' : ' — you are the favourite.'}
+                    {odds > 0 ? ' — you are the underdog' : ' — you are the favourite'}
+                    {' '}({[fractionText(odds), oddsText(odds)].filter(Boolean).join(' · ')}).
                   </>
                 ) : (
                   <>
