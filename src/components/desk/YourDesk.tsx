@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import PixelMugshot from '../PixelMugshot'
-import { applyResults, type Bet } from '../../lib/bets'
+import { applyResults, riskFor, type Bet } from '../../lib/bets'
 import { readBets } from '../../lib/betsRepo'
 import { minSeasonsToRank } from '../../lib/boards-facts'
 import { useLeagueData } from '../../lib/data'
@@ -108,11 +108,11 @@ export default function YourDesk({ season }: { season: number }) {
   const riding =
     mine
       ?.filter((bet) => bet.status === 'live' && bet.stakeKind === 'cash')
-      .reduce((total, bet) => total + bet.stake, 0) ?? 0
+      .reduce((total, bet) => total + riskFor(bet, me), 0) ?? 0
   const onTable =
     mine
       ?.filter((bet) => bet.status === 'proposed' && bet.stakeKind === 'cash')
-      .reduce((total, bet) => total + bet.stake, 0) ?? 0
+      .reduce((total, bet) => total + riskFor(bet, me), 0) ?? 0
   const waitingOnMe = mine?.filter((bet) => bet.status === 'proposed' && bet.opponent === me).length ?? 0
   // Only the true parts, in the Book's own words: cash on accepted bets is
   // riding, cash on a bet nobody has taken yet is on the table.

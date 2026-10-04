@@ -1,5 +1,5 @@
 import PixelMugshot from '../PixelMugshot'
-import { stakeLabel, type Bet, type HeadToHead } from '../../lib/bets'
+import { isEven, oddsOf, riskOf, stakeLabel, type Bet, type HeadToHead } from '../../lib/bets'
 import { managerColor } from '../../lib/identity'
 import type { ManagerId } from '../../lib/types'
 import type { NameOf } from './provenance'
@@ -97,8 +97,12 @@ export default function BetTile({
       </span>
       <span className="tile-bar">
         {bet.stakeKind === 'cash' ? (
-          <span className="tnum min-w-0 flex-1 truncate text-[15px] leading-tight font-semibold text-arc-green">
-            {stakeLabel(bet)}
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="tnum min-w-0 truncate text-[15px] leading-tight font-semibold text-arc-green">
+              {/* Tiles are narrow: a priced bet reads "$50 → $25" here, in full on the slip. */}
+              {isEven(bet) ? stakeLabel(bet) : `$${riskOf(bet, 'proposer')} \u2192 $${riskOf(bet, 'opponent')}`}
+            </span>
+            {!isEven(bet) && <span className="bk-odds shrink-0">{oddsOf(bet)}</span>}
           </span>
         ) : (
           // A dare reads as DARE on the ribbon; the sentence itself lives on

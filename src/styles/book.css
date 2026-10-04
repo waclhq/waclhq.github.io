@@ -316,3 +316,67 @@
     animation: none !important;
   }
 }
+
+/* ---------------------------------------------------------------- *
+ * Odds — the price chips on the composer and the tag on a priced bet
+ * ---------------------------------------------------------------- */
+.bk-odds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-arc-line);
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--color-arc-ink-soft);
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.bk-odds-chip[aria-pressed='true'] {
+  border-color: var(--color-arc-green);
+  background: var(--color-arc-green);
+  color: var(--color-arc-bg-deep);
+}
+.bk-odds-chip.is-line {
+  border-color: color-mix(in srgb, var(--color-arc-green) 45%, var(--color-arc-line));
+  color: var(--color-arc-green);
+}
+.bk-odds-chip.is-line[aria-pressed='true'] {
+  color: var(--color-arc-bg-deep);
+}
+.bk-odds-chip.is-line[aria-pressed='true'] .live-dot {
+  background: var(--color-arc-bg-deep);
+}
+@media (hover: hover) {
+  .bk-odds-chip:hover:not([aria-pressed='true']) {
+    border-color: var(--color-arc-green);
+    color: var(--color-arc-green);
+  }
+}
+.bk-odds-say {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-arc-ink-soft);
+}
+.bk-odds-say b {
+  color: var(--color-arc-green);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The price on a tile, slip, stub or profile row, in the board's amber for
+ * odds. Even-money bets carry no tag. */
+.bk-odds {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-arc-yellow) 55%, transparent);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--color-arc-yellow);
+  white-space: nowrap;
+}

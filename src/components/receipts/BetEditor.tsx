@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { betEditOf, type Bet, type BetEdit, type StakeKind } from '../../lib/bets'
+import { americanOdds, betEditOf, oddsText, type Bet, type BetEdit, type StakeKind } from '../../lib/bets'
 import { useDialog } from '../../lib/dialog'
 import type { ManagerId } from '../../lib/types'
 
@@ -36,6 +36,7 @@ export default function BetEditor({
   const initial = useMemo(() => betEditOf(bet), [bet])
   const [edit, setEdit] = useState<BetEdit>(initial)
   const [stakeText, setStakeText] = useState(String(initial.stake))
+  const [toWinText, setToWinText] = useState(initial.toWin === null ? '' : String(initial.toWin))
   const [winner, setWinner] = useState<ManagerId | null>(bet.winner)
   const [confirming, setConfirming] = useState(false)
   const frame = useRef<HTMLDivElement>(null)
@@ -44,7 +45,10 @@ export default function BetEditor({
   const set = (patch: Partial<BetEdit>) => setEdit((current) => ({ ...current, ...patch }))
   const cash = edit.stakeKind === 'cash'
   const dirty = JSON.stringify(edit) !== JSON.stringify(initial) || winner !== bet.winner
-  const ready = Boolean(edit.terms.trim()) && (cash ? edit.stake > 0 : Boolean(edit.forfeit.trim()))
+  const ready =
+    Boolean(edit.terms.trim()) &&
+    (cash ? edit.stake > 0 && (edit.toWin === null || edit.toWin > 0) : Boolean(edit.forfeit.trim()))
+  const [proposerSide, opponentSide] = sides
 
   return (
     <div
@@ -97,7 +101,7 @@ export default function BetEditor({
           </label>
           {cash ? (
             <label>
-              <span className="label">Amount each</span>
+              <span className="label">{proposerSide ? `${proposerSide.name} puts up` : 'Amount each'}</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -121,6 +125,34 @@ export default function BetEditor({
                 disabled={!unlocked}
                 onChange={(event) => set({ forfeit: event.target.value })}
               />
+            </label>
+          )}
+
+          {cash && (
+            <label>
+              <span className="label">{opponentSide ? `${opponentSide.name} puts up` : 'Other side puts up'}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                className="field tnum mt-1.5"
+                placeholder="Same — even money"
+                value={toWinText}
+                disabled={!unlocked}
+                onChange={(event) => {
+                  setToWinText(event.target.value)
+                  const text = event.target.value.trim()
+                  const next = Math.round(Number(text))
+                  set({ toWin: text === '' ? null : Number.isFinite(next) ? next : 0 })
+                }}
+              />
+              <span className="mt-1.5 block text-[11.5px] text-arc-ink-faint">
+                {edit.toWin === null || edit.toWin === edit.stake
+                  ? 'Even money.'
+                  : edit.toWin > 0 && edit.stake > 0
+                    ? `${proposerSide?.name ?? 'Proposer'} at ${oddsText(americanOdds(edit.stake, edit.toWin))}.`
+                    : 'Needs an amount.'}
+              </span>
             </label>
           )}
 

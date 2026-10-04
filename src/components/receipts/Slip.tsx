@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import PixelMugshot from '../PixelMugshot'
 import BurnAway from '../BurnAway'
-import { stakeLabel, type Bet } from '../../lib/bets'
+import { isEven, oddsOf, stakeLabel, type Bet } from '../../lib/bets'
 import { managerColor } from '../../lib/identity'
 import type { ManagerId } from '../../lib/types'
 import { provenance, ticketSerial, type NameOf } from './provenance'
@@ -119,10 +119,10 @@ export default function Slip({
       <div className="flex items-stretch border-t border-arc-line">
         <div className="flex min-w-[104px] flex-col justify-center border-r border-arc-line px-3 py-2">
           <span className="text-[11px] tracking-[0.14em] text-arc-ink-faint uppercase">
-            {bet.stakeKind === 'cash' ? 'Each' : 'Forfeit'}
+            {bet.stakeKind !== 'cash' ? 'Forfeit' : isEven(bet) ? 'Each' : `At ${oddsOf(bet)}`}
           </span>
           <span
-            className={`tnum text-[20px] leading-tight ${
+            className={`tnum ${isEven(bet) ? 'text-[20px]' : 'text-[16px]'} leading-tight ${
               bet.stakeKind === 'cash' ? 'text-arc-green' : 'arcade text-[var(--color-arc-orange)]'
             }`}
           >

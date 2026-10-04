@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { betRecords, sideOf, stakeLabel, type Bet } from '../../lib/bets'
+import { betRecords, isEven, oddsOf, sideOf, stakeLabel, type Bet } from '../../lib/bets'
 import { money } from '../../lib/format'
 import type { Manager, ManagerId } from '../../lib/types'
 import { Empty, Panel } from '../ui'
@@ -67,7 +67,10 @@ export function BookPanel({
                 <p className="pf-book-terms">{bet.terms}</p>
                 <div className="pf-book-line">
                   {bet.stakeKind === 'cash' ? (
-                    <span className="tnum text-[14px] font-semibold text-arc-green">{stakeLabel(bet)}</span>
+                    <span className="tnum text-[14px] font-semibold text-arc-green">
+                      {stakeLabel(bet, id)}
+                      {!isEven(bet) && <span className="bk-odds ml-1.5 align-[1px]">{oddsOf(bet, id)}</span>}
+                    </span>
                   ) : (
                     <span className="flex min-w-0 items-baseline gap-1.5">
                       <span className="arcade text-[11px] text-[var(--color-arc-orange)]">Dare</span>

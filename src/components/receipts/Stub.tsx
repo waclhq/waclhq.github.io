@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { loserOf, type Bet } from '../../lib/bets'
+import { isEven, loserOf, oddsOf, owedOn, type Bet } from '../../lib/bets'
 import { managerColor } from '../../lib/identity'
 import { shortDate } from '../../lib/format'
 import type { ManagerId } from '../../lib/types'
@@ -56,7 +56,7 @@ export default function Stub({
         >
           <span className="stub-stake w-[64px] sm:w-[86px]">
             <span className="text-[11px] tracking-[0.12em] text-arc-ink-faint uppercase">
-              {bet.stakeKind === 'cash' ? 'Stake' : 'Forfeit'}
+              {bet.stakeKind !== 'cash' ? 'Forfeit' : isEven(bet) ? 'Stake' : 'Won'}
             </span>
             <span
               className={`tnum leading-tight font-bold ${
@@ -65,7 +65,7 @@ export default function Stub({
                   : 'text-[15px] text-[var(--color-arc-orange)]'
               }`}
             >
-              {bet.stakeKind === 'cash' ? `$${bet.stake}` : 'DARE'}
+              {bet.stakeKind === 'cash' ? `$${owedOn(bet)}` : 'DARE'}
             </span>
           </span>
           <span className="stub-story">
@@ -76,6 +76,7 @@ export default function Stub({
               <b style={{ color: winnerColor }}>{nameOf(winner)}</b>
               {' beat '}
               {nameOf(beaten)}
+              {isEven(bet) ? '' : ` at ${oddsOf(bet, winner)}`}
               {bet.settledAt ? ` · ${shortDate(bet.settledAt)}` : ''}
               {bet.stakeKind === 'forfeit' && bet.forfeit ? ` · ${bet.forfeit}` : ''}
               {mine && (

@@ -26,7 +26,9 @@ import {
   headToHead,
   loserOf,
   openDebts,
+  isEven,
   stakeLabel,
+  topRisk,
   venmoUrl,
   type Bet,
   type BetEdit,
@@ -202,8 +204,9 @@ export default function Bets() {
   }, [bets, me])
   const handleOf = (id: ManagerId) => managers.find((m) => m.id === id)?.venmo
 
-  const riding = live.reduce((sum, b) => sum + (b.stakeKind === 'cash' ? b.stake : 0), 0)
-  const biggest = [...bets].filter((b) => b.stakeKind === 'cash').sort((a, b) => b.stake - a.stake)[0]
+  // Per bet, the most that can change hands: the stake at evens, the bigger side at odds.
+  const riding = live.reduce((sum, b) => sum + topRisk(b), 0)
+  const biggest = [...bets].filter((b) => b.stakeKind === 'cash').sort((a, b) => topRisk(b) - topRisk(a))[0]
   const hottest = [...records].sort((a, b) => b.streak - a.streak || b.net - a.net)[0]
   // One win is a win. Two straight is a hand.
   const onARun = hottest && hottest.streak >= 2 ? hottest : null
@@ -624,7 +627,7 @@ export default function Bets() {
               <Stat label="On the table" value={proposed.length} hint="Awaiting a taker" />
               <Stat
                 label="Biggest pot"
-                value={biggest ? money(biggest.stake) : '—'}
+                value={biggest ? money(topRisk(biggest)) : '—'}
                 hint={biggest ? `${nameOf(biggest.proposer)} v ${nameOf(biggest.opponent)}` : undefined}
               />
               <Stat
@@ -767,7 +770,9 @@ export default function Bets() {
                           {busy === bet.id
                             ? 'Saving…'
                             : !me || me === bet.opponent
-                              ? "I'm in"
+                              ? isEven(bet)
+                                ? "I'm in"
+                                : `I'm in · ${stakeLabel(bet, bet.opponent)}`
                               : `Accept for ${nameOf(bet.opponent)}`}
                         </button>
                         <ConfirmButton

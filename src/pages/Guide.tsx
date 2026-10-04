@@ -215,7 +215,12 @@ export default function Guide() {
               Managers propose and accept bets themselves on The Book. A bet somebody has taken
               shows up under <B>Live action</B>; one taken in the last couple of days is{' '}
               <B>wreathed in flame</B>, so this week's action is impossible to miss. The fire dies
-              down on its own after two days.
+              down on its own after two days.{' '}
+              <B>Bets can carry odds.</B> Whoever posts one picks a price: Even, or something like{' '}
+              <B>+150</B> (the underdog puts up $20 to win $30) or <B>−200</B> (the favourite puts
+              up $40 to win $20). When the two managers play each other that week, a <B>Live
+              line</B> button offers a fair price from the live scores. Whoever loses pays their
+              own side, and The Tab works it out.
             </Step>
             <Step n={3}>
               Bets show as small matchup cards — the two faces, the stake, a LIVE light.{' '}
@@ -238,7 +243,8 @@ export default function Guide() {
             <Step n={6}>
               Called the wrong name, or the terms have a typo? Press the <B>✎</B> at the right end
               of the bet — on its open card under Live action, or on its ticket stub under Settled.
-              You can rewrite the bet, change the stake, pick a different winner, or press{' '}
+              You can rewrite the bet, change what either side puts up (leave the second amount
+              blank for even money), pick a different winner, or press{' '}
               <B>Nobody yet</B> to put it back on the live board as unsettled.
             </Step>
             <Step n={7}>

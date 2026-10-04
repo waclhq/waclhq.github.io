@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel } from '../ui'
-import { newBetId, type Bet, type StakeKind } from '../../lib/bets'
+import { fairOdds, newBetId, oddsText, parseOdds, winAt, type Bet, type StakeKind } from '../../lib/bets'
 import { animationsDisabled } from '../../lib/motion'
+import { useLivePoints } from '../../lib/points'
 import type { ManagerId } from '../../lib/types'
 import { landOn } from './land'
+
+/** The prices most bets between friends land on. */
+const QUICK_ODDS = [100, 150, 200, -150, -200]
 
 const TEMPLATES = [
   'I beat you head-to-head in week __',
@@ -53,6 +57,8 @@ export default function Composer({
   const [stakeKind, setStakeKind] = useState<StakeKind>('cash')
   // Kept as typed so a half-entered amount is never coerced to a sticky zero.
   const [stakeText, setStakeText] = useState('20')
+  // Your price, as typed. Blank is even money.
+  const [oddsInput, setOddsInput] = useState('')
   const [forfeit, setForfeit] = useState('')
   const [resolves, setResolves] = useState('')
   const host = useRef<HTMLDivElement>(null)
@@ -62,12 +68,29 @@ export default function Composer({
   }, [])
 
   const stake = Math.round(Number(stakeText))
+  const odds = oddsInput.trim() ? parseOdds(oddsInput) : 100
+  const priced = odds !== null && Math.abs(odds) > 100
+  const toWin = odds !== null && Number.isFinite(stake) && stake > 0 ? winAt(stake, odds) : null
+  const nameOf = (id: string) => managers.find((m) => m.id === id)?.name ?? 'They'
+
+  // The live line: when the two of you play each other this week, the
+  // matchup's own win odds give a fair price for the head-to-head.
+  const board = useLivePoints()
+  const line = (() => {
+    if (!board || !proposer || !opponent) return null
+    const m = board.matchups?.find(
+      (x) => !x.settled && x.teams.some((t) => t.manager === proposer) && x.teams.some((t) => t.manager === opponent),
+    )
+    const side = m?.teams.find((t) => t.manager === proposer)
+    return side ? { odds: fairOdds(side.winProb), pct: Math.round(side.winProb * 100), week: board.week } : null
+  })()
+
   const ready =
     proposer &&
     opponent &&
     proposer !== opponent &&
     terms.trim() &&
-    (stakeKind === 'cash' ? Number.isFinite(stake) && stake > 0 : forfeit.trim())
+    (stakeKind === 'cash' ? Number.isFinite(stake) && stake > 0 && toWin !== null : forfeit.trim())
 
   return (
     <div ref={host} className="scroll-mt-[124px] lg:scroll-mt-[72px]">
@@ -141,7 +164,7 @@ export default function Composer({
           </label>
           {stakeKind === 'cash' ? (
             <label>
-              <span className="label">Amount each</span>
+              <span className="label">{priced ? 'You put up' : 'Amount each'}</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -185,6 +208,72 @@ export default function Composer({
             </label>
           )}
 
+          {stakeKind === 'cash' && (
+            <div className="sm:col-span-2">
+              <label>
+                <span className="label">Your odds</span>
+                <input
+                  className="field tnum mt-1.5"
+                  inputMode="text"
+                  placeholder="Even · +150 · −200"
+                  value={oddsInput}
+                  aria-invalid={odds === null}
+                  onChange={(e) => setOddsInput(e.target.value)}
+                />
+              </label>
+              <span className="mt-2 flex flex-wrap gap-1.5">
+                {QUICK_ODDS.map((price) => {
+                  const on = odds === price || (price === 100 && odds !== null && !priced)
+                  return (
+                    <button
+                      key={price}
+                      type="button"
+                      className="tnum bk-odds-chip"
+                      aria-pressed={on}
+                      onClick={() => setOddsInput(price === 100 ? '' : oddsText(price))}
+                    >
+                      {price === 100 ? 'Even' : oddsText(price)}
+                    </button>
+                  )
+                })}
+                {line && (
+                  <button
+                    type="button"
+                    className="tnum bk-odds-chip is-line"
+                    aria-pressed={odds === line.odds}
+                    title={`${nameOf(proposer)} is ${line.pct}% to win this week's matchup, on the live board`}
+                    onClick={() => {
+                      setOddsInput(line.odds === 100 ? '' : oddsText(line.odds))
+                      if (!terms.trim() && line.week) setTerms(`I beat you head-to-head in week ${line.week}`)
+                    }}
+                  >
+                    <span className="live-dot" aria-hidden />
+                    Live line {oddsText(line.odds)}
+                  </button>
+                )}
+              </span>
+              <p className="bk-odds-say" aria-live="polite">
+                {odds === null ? (
+                  <span className="text-[var(--color-arc-red)]">
+                    Not a price. Try Even, +150 (you're the underdog) or −200 (you're the favourite).
+                  </span>
+                ) : toWin === null ? (
+                  'Set an amount to see who puts up what.'
+                ) : priced ? (
+                  <>
+                    You put up <b>${stake}</b> to win <b>${toWin}</b>. {opponent ? `${nameOf(opponent)} puts` : 'They put'}{' '}
+                    up <b>${toWin}</b> to win <b>${stake}</b>
+                    {odds > 0 ? ' — you are the underdog.' : ' — you are the favourite.'}
+                  </>
+                ) : (
+                  <>
+                    Even money: <b>${stake}</b> each, winner takes it.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
           <label className="sm:col-span-2">
             <span className="label">Resolves</span>
             <input
@@ -221,6 +310,7 @@ export default function Composer({
                 terms: terms.trim(),
                 stakeKind,
                 stake: stakeKind === 'cash' ? stake : 0,
+                ...(stakeKind === 'cash' && priced && toWin !== null && toWin !== stake ? { toWin } : {}),
                 forfeit: stakeKind === 'forfeit' ? forfeit.trim() : '',
                 resolves: resolves.trim(),
                 status: 'proposed',

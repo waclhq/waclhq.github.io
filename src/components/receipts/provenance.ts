@@ -1,4 +1,4 @@
-import { stakeLabel, type Bet } from '../../lib/bets'
+import { isEven, oddsOf, stakeLabel, type Bet } from '../../lib/bets'
 import type { ManagerId } from '../../lib/types'
 
 /**
@@ -59,7 +59,12 @@ export function betLink(id: string): string {
 /** What goes in the share sheet next to the link. */
 export function shareText(bet: Bet, nameOf: NameOf): string {
   const who = `${nameOf(bet.proposer)} v ${nameOf(bet.opponent)}`
-  const stake = bet.stakeKind === 'cash' ? `${stakeLabel(bet)} each` : `loser must ${stakeLabel(bet)}`
+  const stake =
+    bet.stakeKind !== 'cash'
+      ? `loser must ${stakeLabel(bet)}`
+      : isEven(bet)
+        ? `${stakeLabel(bet)} each`
+        : `${nameOf(bet.proposer)} puts up ${stakeLabel(bet)} (${oddsOf(bet)})`
   const state =
     bet.status === 'settled' && bet.winner
       ? `${nameOf(bet.winner)} won.`

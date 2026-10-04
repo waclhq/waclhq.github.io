@@ -16,8 +16,14 @@ export interface Bet {
   opponent: ManagerId
   terms: string
   stakeKind: StakeKind
-  /** Dollars at stake per side; 0 when the stake is a forfeit. */
+  /** Dollars the proposer puts up; 0 when the stake is a forfeit. */
   stake: number
+  /**
+   * Dollars the opponent puts up, which is what the proposer collects on a
+   * win. Absent on an even-money bet (and on every bet from before odds), so
+   * both sides risk `stake`. The odds are just the ratio of the two.
+   */
+  toWin?: number
   /** What the loser owes when it isn't money. */
   forfeit: string
   /** Free text — "Week 3", "End of season", a date. */
@@ -86,6 +92,8 @@ export interface BetEdit {
   terms: string
   stakeKind: StakeKind
   stake: number
+  /** The opponent's side; null for even money. */
+  toWin: number | null
   forfeit: string
   resolves: string
   /** Cash bets only — whether the loser has handed the money over. */
@@ -97,6 +105,7 @@ export function betEditOf(bet: Bet): BetEdit {
     terms: bet.terms,
     stakeKind: bet.stakeKind,
     stake: bet.stake,
+    toWin: isEven(bet) ? null : riskOf(bet, 'opponent'),
     forfeit: bet.forfeit,
     resolves: bet.resolves,
     paid: Boolean(bet.paidAt),
@@ -110,11 +119,14 @@ export function betEditOf(bet: Bet): BetEdit {
  */
 export function editedBet(bet: Bet, edit: BetEdit, now: string): Bet {
   const cash = edit.stakeKind === 'cash'
+  const stake = cash ? Math.max(0, Math.round(edit.stake)) : 0
+  const toWin = cash && edit.toWin !== null ? Math.round(edit.toWin) : null
   return {
     ...bet,
     terms: edit.terms.trim(),
     stakeKind: edit.stakeKind,
-    stake: cash ? Math.max(0, Math.round(edit.stake)) : 0,
+    stake,
+    toWin: toWin !== null && toWin > 0 && toWin !== stake ? toWin : undefined,
     forfeit: cash ? '' : edit.forfeit.trim(),
     resolves: edit.resolves.trim(),
     paidAt: edit.paid ? (bet.paidAt ?? now) : undefined,
@@ -132,9 +144,114 @@ export function loserOf(bet: Bet): ManagerId | null {
   return bet.winner === bet.proposer ? bet.opponent : bet.proposer
 }
 
-/** A one-line summary of what's on the line, for slips and tickers. */
-export function stakeLabel(bet: Bet): string {
-  return bet.stakeKind === 'cash' ? `$${bet.stake}` : bet.forfeit || 'Forfeit'
+/* ------------------------------------------------------------------ *
+ * Odds. A bet is two amounts: what the proposer puts up (`stake`) and
+ * what the opponent puts up (`toWin`). Even money is the two being equal.
+ * Prices read the sportsbook way, from one side: +150 risks 100 to win
+ * 150, −200 risks 200 to win 100.
+ * ------------------------------------------------------------------ */
+
+/** What one side of a cash bet puts up. A forfeit carries no dollars. */
+export function riskOf(bet: Bet, side: 'proposer' | 'opponent'): number {
+  if (bet.stakeKind !== 'cash') return 0
+  if (side === 'proposer') return bet.stake
+  const w = bet.toWin
+  // Anything that isn't a positive number reads as even money.
+  return typeof w === 'number' && Number.isFinite(w) && w > 0 ? w : bet.stake
+}
+
+/** What a manager puts up on this bet; 0 when they aren't on it. */
+export function riskFor(bet: Bet, manager: ManagerId | null): number {
+  const side = manager ? sideOf(bet, manager) : null
+  return side ? riskOf(bet, side) : 0
+}
+
+/** What a manager collects if they win: the other side's money. */
+export function prizeFor(bet: Bet, manager: ManagerId | null): number {
+  const side = manager ? sideOf(bet, manager) : null
+  return side ? riskOf(bet, side === 'proposer' ? 'opponent' : 'proposer') : 0
+}
+
+/** True for a dare, or a cash bet where both sides put up the same. */
+export function isEven(bet: Bet): boolean {
+  return bet.stakeKind !== 'cash' || riskOf(bet, 'opponent') === bet.stake
+}
+
+/** What changes hands once it's called: the loser's side. */
+export function owedOn(bet: Bet): number {
+  const loser = loserOf(bet)
+  return loser ? riskFor(bet, loser) : 0
+}
+
+/** The most that can change hands — the bigger side. Even money: the stake. */
+export function topRisk(bet: Bet): number {
+  return Math.max(riskOf(bet, 'proposer'), riskOf(bet, 'opponent'))
+}
+
+/** American odds for risking `risk` to win `win`: +150, −200, or ±100 at evens. */
+export function americanOdds(risk: number, win: number): number {
+  if (!(risk > 0) || !(win > 0)) return 100
+  return win >= risk ? Math.round((100 * win) / risk) : -Math.round((100 * risk) / win)
+}
+
+/** "+150", "−200", or "EVEN". */
+export function oddsText(odds: number): string {
+  if (Math.abs(odds) <= 100) return 'EVEN'
+  return odds > 0 ? `+${odds}` : `\u2212${-odds}`
+}
+
+/** The price from one side — the proposer's unless a manager is named. */
+export function oddsOf(bet: Bet, manager?: ManagerId | null): string {
+  const who = manager && sideOf(bet, manager) ? manager : bet.proposer
+  return oddsText(americanOdds(riskFor(bet, who), prizeFor(bet, who)))
+}
+
+/**
+ * Read a price as typed: "+150", "150", "-200", "−200", "even", "evs",
+ * "pk". Returns American odds (±100 for evens), or null for anything that
+ * isn't a price — a magnitude under 100 is not one.
+ */
+export function parseOdds(text: string): number | null {
+  const t = text.trim().toLowerCase().replace(/[\u2212\u2013\u2014]/g, '-')
+  if (!t) return null
+  if (/^(e|ev|evs|even|evens|pk|pick|pickem)$/.test(t)) return 100
+  const m = /^([+-]?)(\d{3,5})$/.exec(t)
+  if (!m) return null
+  const n = Number(m[2])
+  if (n < 100) return null
+  return m[1] === '-' ? -n : n
+}
+
+/** What `risk` wins at a price, to the dollar (never less than one). */
+export function winAt(risk: number, odds: number): number {
+  const win = odds >= 100 ? (risk * odds) / 100 : (risk * 100) / -odds
+  return Math.max(1, Math.round(win))
+}
+
+/**
+ * Fair odds from a win probability, with no house cut — two friends don't
+ * need a bookie's margin. Kept inside 2%–98% so a blowout doesn't print a
+ * five-digit price.
+ */
+export function fairOdds(probability: number): number {
+  const p = Math.min(0.98, Math.max(0.02, probability))
+  if (Math.abs(p - 0.5) < 0.005) return 100
+  const raw = p > 0.5 ? (-100 * p) / (1 - p) : (100 * (1 - p)) / p
+  // Round to the nearest five, the way a board prints them.
+  const five = Math.round(raw / 5) * 5
+  return Math.abs(five) < 100 ? 100 : five
+}
+
+/**
+ * A one-line summary of what's on the line, for slips and tickers. Even
+ * money is one number; a priced bet reads from the proposer's side unless a
+ * manager is named: "$20 to win $30".
+ */
+export function stakeLabel(bet: Bet, manager?: ManagerId | null): string {
+  if (bet.stakeKind !== 'cash') return bet.forfeit || 'Forfeit'
+  if (isEven(bet)) return `$${bet.stake}`
+  const who = manager && sideOf(bet, manager) ? manager : bet.proposer
+  return `$${riskFor(bet, who)} to win $${prizeFor(bet, who)}`
 }
 
 export interface BetRecord {
@@ -184,21 +301,23 @@ export function betRecords(bets: Bet[]): BetRecord[] {
     if (bet.status === 'live') {
       for (const row of [a, b]) {
         row.live += 1
-        if (bet.stakeKind === 'cash') row.exposure += bet.stake
+        row.exposure += riskFor(bet, row.manager)
       }
       continue
     }
     if (bet.status !== 'settled' || !bet.winner) continue
 
     const loser = loserOf(bet)
+    // The loser's side is what changes hands, whichever way the price ran.
+    const owed = owedOn(bet)
     for (const row of [a, b]) {
       row.settled += 1
       if (row.manager === bet.winner) {
         row.won += 1
-        if (bet.stakeKind === 'cash') row.net += bet.stake
+        row.net += owed
       } else if (row.manager === loser) {
         row.lost += 1
-        if (bet.stakeKind === 'cash') row.net -= bet.stake
+        row.net -= owed
       }
     }
   }
@@ -271,15 +390,14 @@ export function openDebts(bets: Bet[]): Debt[] {
 
   for (const bet of bets) {
     if (bet.status !== 'settled' || !bet.winner || bet.paidAt) continue
-    if (bet.stakeKind !== 'cash' || bet.stake <= 0) continue
-    const loser = loserOf(bet)
-    if (!loser) continue
+    const owed = owedOn(bet)
+    if (bet.stakeKind !== 'cash' || owed <= 0) continue
 
     const [a, b] = [bet.proposer, bet.opponent].sort()
     const key = `${a}|${b}`
     const row = pairs.get(key) ?? { a, b, balance: 0, betIds: [] }
     // Positive balance means b owes a.
-    row.balance += bet.winner === a ? bet.stake : -bet.stake
+    row.balance += bet.winner === a ? owed : -owed
     row.betIds.push(bet.id)
     pairs.set(key, row)
   }
