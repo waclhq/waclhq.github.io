@@ -19,7 +19,7 @@ a graphite ground with a dot matrix and two fixed corner glows, painted by
 There is no animated backdrop; it was removed deliberately, so don't add a
 canvas, shader, or drifting gradient behind the panels. Route changes use
 view transitions with the chrome held still. Builds are stamped (`vite.config.ts` emits `version.json`) and
-the Shell offers a refresh when a newer build is live.
+the Shell offers a refresh when a newer build is live. Data commits only reach visitors through that deploy, so `deploy-watchdog.yml` checks twice an hour that main is live and unsticks a deploy GitHub has left waiting (it once sat four days and settled bets kept "reopening").
 
 ## Rules that are easy to break
 
