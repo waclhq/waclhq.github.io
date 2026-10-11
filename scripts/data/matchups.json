@@ -1,140 +1,104 @@
 {
-  "source": "Yahoo league 134099 matchups page",
+  "source": "Yahoo league 134099 matchups page (screenshot from the commissioner)",
   "season": 2026,
-  "week": 4,
-  "asOf": "2026-10-04T15:12:00Z",
+  "week": 5,
+  "asOf": "2026-10-11T15:30:00Z",
   "note": "yahooProj is Yahoo's live projection at asOf and yahooPts its score then; together they calibrate the live job's projections to Yahoo's. record, rank, pf, pa and streak are the standings before this week.",
   "matchups": [
     [
       {
-        "team": "Malikety Split",
-        "record": "1-2",
-        "rank": 9,
+        "team": "Tetamine",
+        "record": "2-2",
+        "rank": 6,
         "yahooPts": 0.0,
-        "yahooProj": 111.77,
-        "pf": 275.68,
-        "pa": 363.76,
-        "streak": "W-1"
+        "yahooProj": 110.5
       },
       {
-        "team": "Whobody Wants It?",
-        "record": "1-2",
-        "rank": 8,
-        "yahooPts": 10.2,
-        "yahooProj": 99.42,
-        "pf": 328.08,
-        "pa": 344.68,
-        "streak": "L-2"
+        "team": "Bridge N Tunnel",
+        "record": "2-2",
+        "rank": 5,
+        "yahooPts": 15.64,
+        "yahooProj": 107.77
       }
     ],
     [
       {
         "team": "SuperBowlJesus",
-        "record": "2-1",
-        "rank": 5,
-        "yahooPts": 3.1,
-        "yahooProj": 99.86,
-        "pf": 297.74,
-        "pa": 314.42,
-        "streak": "W-2"
+        "record": "3-1",
+        "rank": 2,
+        "yahooPts": 4.9,
+        "yahooProj": 84.31
       },
       {
-        "team": "Orchids of Asia",
-        "record": "0-3",
-        "rank": 11,
-        "yahooPts": 21.1,
-        "yahooProj": 105.66,
-        "pf": 313.04,
-        "pa": 391.3,
-        "streak": "L-3"
+        "team": "Quien Es Tu Papa",
+        "record": "2-2",
+        "rank": 9,
+        "yahooPts": 32.7,
+        "yahooProj": 103.05
       }
     ],
     [
       {
-        "team": "Bridge N Tunnel",
-        "record": "2-1",
-        "rank": 2,
+        "team": "Orchids of Asia",
+        "record": "0-4",
+        "rank": 11,
         "yahooPts": 0.0,
-        "yahooProj": 107.92,
-        "pf": 381.5,
-        "pa": 297.9,
-        "streak": "L-1"
+        "yahooProj": 96.08
       },
       {
         "team": "El Morro",
-        "record": "2-1",
-        "rank": 7,
-        "yahooPts": 6.0,
-        "yahooProj": 101.97,
-        "pf": 267.16,
-        "pa": 270.82,
-        "streak": "W-1"
+        "record": "3-1",
+        "rank": 3,
+        "yahooPts": 0.0,
+        "yahooProj": 115.74
       }
     ],
     [
       {
         "team": "no ragrets",
-        "record": "2-1",
-        "rank": 6,
-        "yahooPts": 0.0,
-        "yahooProj": 87.24,
-        "pf": 281.64,
-        "pa": 234.36,
-        "streak": "L-1"
+        "record": "3-1",
+        "rank": 4,
+        "yahooPts": 13.2,
+        "yahooProj": 83.65
       },
       {
-        "team": "Private Sector",
-        "record": "0-3",
-        "rank": 12,
-        "yahooPts": 0.0,
-        "yahooProj": 88.59,
-        "pf": 273.78,
-        "pa": 377.98,
-        "streak": "L-3"
+        "team": "Juggernaut",
+        "record": "4-0",
+        "rank": 1,
+        "yahooPts": 7.8,
+        "yahooProj": 99.37
       }
     ],
     [
       {
         "team": "I Must Break You",
-        "record": "2-1",
-        "rank": 3,
-        "yahooPts": 25.0,
-        "yahooProj": 116.17,
-        "pf": 364.64,
-        "pa": 249.5,
-        "streak": "W-2"
+        "record": "2-2",
+        "rank": 7,
+        "yahooPts": 0.0,
+        "yahooProj": 117.76
       },
       {
-        "team": "Juggernaut",
-        "record": "3-0",
-        "rank": 1,
-        "yahooPts": 0.0,
-        "yahooProj": 100.27,
-        "pf": 325.9,
-        "pa": 298.9,
-        "streak": "W-3"
+        "team": "O'Lave Hurts",
+        "record": "2-2",
+        "rank": 8,
+        "yahooPts": 10.08,
+        "yahooProj": 97.36
       }
     ],
     [
       {
-        "team": "O'Lave Hurts",
-        "record": "2-1",
-        "rank": 4,
-        "yahooPts": 9.9,
-        "yahooProj": 107.6,
-        "pf": 323.3,
-        "pa": 263.6,
-        "streak": "L-1"
+        "team": "Private Sector",
+        "record": "0-4",
+        "rank": 12,
+        "yahooPts": 46.2,
+        "yahooProj": 125.99
       },
       {
-        "team": "Quien Es Tu Papa",
-        "record": "1-2",
+        "team": "Whobody Wants It?",
+        "record": "1-3",
         "rank": 10,
-        "yahooPts": 21.7,
-        "yahooProj": 102.01,
-        "pf": 274.6,
-        "pa": 299.84,
-        "streak": "W-1"
+        "yahooPts": 14.9,
+        "yahooProj": 100.24
       }
     ]
   ]
