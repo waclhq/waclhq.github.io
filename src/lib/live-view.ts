@@ -366,7 +366,9 @@ export function liveStandings(board: LivePoints): LiveStandingRow[] {
     })
   }
   const pct = (r: LiveStandingRow) => (r.wins + r.ties / 2) / Math.max(1, r.wins + r.losses + r.ties)
-  rows.sort((a, b) => pct(b) - pct(a) || b.wins - a.wins || (b.pf ?? 0) - (a.pf ?? 0))
+  // Points for breaks ties; when the week's file has none, last week's rank
+  // (Yahoo's own order, points tiebreak included) stands in.
+  rows.sort((a, b) => pct(b) - pct(a) || b.wins - a.wins || (b.pf ?? 0) - (a.pf ?? 0) || (a.before ?? 99) - (b.before ?? 99))
   rows.forEach((r, i) => (r.rank = i + 1))
   return rows
 }
