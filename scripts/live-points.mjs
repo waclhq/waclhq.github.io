@@ -107,6 +107,8 @@ const num = (value) => {
   return m ? Number(m[1]) : 0
 }
 const round = (n) => Math.round(n * 100) / 100
+/* Kickoff to final whistle on the wall clock, near enough: about three hours. */
+const GAME_WALL_MS = 3 * 3600_000
 
 /* ---------------------------------------------------------------- ESPN */
 
@@ -631,10 +633,19 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
     for (const side of pair) {
       const t = byTeam.get(side.team)
       if (typeof side.yahooProj !== 'number') continue
-      // At snapshot time, starters whose games were not over still owed yahooProj - yahooPts.
+      // At snapshot time the starters still owed yahooProj - yahooPts. Each one
+      // owed his prior times the share of his game left *then*: all of it before
+      // kickoff, none once it was over, and for a game under way, what the wall
+      // clock says remained. Counting a mid-game player's whole prior (as this
+      // once did) dilutes the scale and sinks the team's projection.
       const owed = side.yahooProj - (side.yahooPts ?? 0)
-      const unplayedAtSnapshot = t.starters.filter((p) => p.state !== 'final' || !matchups.asOf || new Date(matchups.asOf) < new Date(gameByTeam.get(p.nfl)?.kickoff ?? 0))
-      const priorSum = unplayedAtSnapshot.reduce((sum, p) => sum + p.prior, 0)
+      const snap = matchups.asOf ? new Date(matchups.asOf).getTime() : NaN
+      const leftAtSnapshot = (p) => {
+        const kickoff = Date.parse(gameByTeam.get(p.nfl)?.kickoff ?? '')
+        if (Number.isNaN(snap) || Number.isNaN(kickoff)) return p.state === 'final' ? 0 : 1
+        return Math.min(1, Math.max(0, 1 - (snap - kickoff) / GAME_WALL_MS))
+      }
+      const priorSum = t.starters.reduce((sum, p) => sum + p.prior * leftAtSnapshot(p), 0)
       if (priorSum > 0 && owed > 0) calibration.set(side.team, owed / priorSum)
     }
   }
