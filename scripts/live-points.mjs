@@ -641,6 +641,8 @@ export function scoreWeek({ scoreboard, summaries, lineups, rules = RULES, now =
       const owed = side.yahooProj - (side.yahooPts ?? 0)
       const snap = matchups.asOf ? new Date(matchups.asOf).getTime() : NaN
       const leftAtSnapshot = (p) => {
+        // A starter on bye (or with no game) owed nothing, whatever his prior.
+        if (p.state === 'bye' || !gameByTeam.get(p.nfl)) return 0
         const kickoff = Date.parse(gameByTeam.get(p.nfl)?.kickoff ?? '')
         if (Number.isNaN(snap) || Number.isNaN(kickoff)) return p.state === 'final' ? 0 : 1
         return Math.min(1, Math.max(0, 1 - (snap - kickoff) / GAME_WALL_MS))
