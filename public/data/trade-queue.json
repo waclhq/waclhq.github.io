@@ -166,6 +166,30 @@
       "source": "app",
       "proposedAt": "2026-09-07T03:00:47.165Z",
       "decidedAt": "2026-09-07T03:01:02.479Z"
+    },
+    {
+      "id": "t-mvnrahoy-ftjru",
+      "batch": "2026 Week 7",
+      "season": 2026,
+      "preseason": false,
+      "seller": "bernstein",
+      "buyer": "incognito",
+      "players": "Derrick Henry <> Jordyn Tyson",
+      "terms": "$30 in 2027; $15 in 2028",
+      "totalDollars": 45,
+      "obligations": [
+        {
+          "year": 2027,
+          "amount": 30
+        },
+        {
+          "year": 2028,
+          "amount": 15
+        }
+      ],
+      "status": "pending",
+      "source": "app",
+      "proposedAt": "2026-10-25T11:40:23.698Z"
     }
   ]
 }
