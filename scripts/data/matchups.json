@@ -1,116 +1,116 @@
 {
   "source": "Yahoo league 134099 matchups, pasted by the commissioner",
   "season": 2026,
-  "week": 6,
-  "asOf": "2026-10-18T16:35:00Z",
+  "week": 7,
+  "asOf": "2026-10-25T16:30:00Z",
   "note": "yahooProj is Yahoo's live projection at asOf and yahooPts its score then; together they calibrate the live job's projections to Yahoo's. record, rank, pf, pa and streak are the standings before this week. Week 5's file has no pf or pa: week 4's final scores weren't kept, and the site hides PF rather than guess.",
   "matchups": [
     [
       {
         "team": "Tetamine",
-        "record": "2-3",
-        "rank": 8,
-        "yahooPts": 9.4,
-        "yahooProj": 95.25,
-        "streak": "L-1"
+        "record": "3-3",
+        "rank": 6,
+        "yahooPts": 0.0,
+        "yahooProj": 103.2,
+        "streak": "W-1"
       },
       {
-        "team": "Orchids of Asia",
-        "record": "0-5",
-        "rank": 12,
-        "yahooPts": 0.0,
-        "yahooProj": 103.5,
-        "streak": "L-5"
+        "team": "SuperBowlJesus",
+        "record": "3-3",
+        "rank": 7,
+        "yahooPts": 4.3,
+        "yahooProj": 92.11,
+        "streak": "L-2"
       }
     ],
     [
       {
-        "team": "SuperBowlJesus",
-        "record": "3-2",
-        "rank": 5,
-        "yahooPts": 22.7,
-        "yahooProj": 114.62,
-        "streak": "L-1"
+        "team": "Orchids of Asia",
+        "record": "0-6",
+        "rank": 12,
+        "yahooPts": 31.7,
+        "yahooProj": 78.26,
+        "streak": "L-6"
       },
       {
-        "team": "El Morro",
-        "record": "4-1",
-        "rank": 2,
-        "yahooPts": 33.34,
-        "yahooProj": 118.85,
-        "streak": "W-3"
+        "team": "Private Sector",
+        "record": "1-5",
+        "rank": 10,
+        "yahooPts": 4.2,
+        "yahooProj": 91.22,
+        "streak": "L-1"
       }
     ],
     [
       {
         "team": "Bridge N Tunnel",
-        "record": "3-2",
-        "rank": 4,
-        "yahooPts": 23.8,
-        "yahooProj": 105.14,
-        "streak": "W-1"
+        "record": "4-2",
+        "rank": 3,
+        "yahooPts": 17.0,
+        "yahooProj": 111.17,
+        "streak": "W-2"
       },
       {
-        "team": "Private Sector",
-        "record": "1-4",
-        "rank": 10,
-        "yahooPts": 29.38,
-        "yahooProj": 87.22,
-        "streak": "W-1"
+        "team": "Juggernaut",
+        "record": "6-0",
+        "rank": 1,
+        "yahooPts": 14.28,
+        "yahooProj": 109.37,
+        "streak": "W-6"
       }
     ],
     [
       {
         "team": "no ragrets",
-        "record": "3-2",
-        "rank": 7,
-        "yahooPts": 4.0,
-        "yahooProj": 90.97,
-        "streak": "L-1"
+        "record": "3-3",
+        "rank": 9,
+        "yahooPts": 15.2,
+        "yahooProj": 94.57,
+        "streak": "L-2"
       },
       {
-        "team": "O'Lave Hurts",
-        "record": "2-3",
-        "rank": 9,
-        "yahooPts": 0.0,
-        "yahooProj": 107.8,
-        "streak": "L-3"
+        "team": "I Must Break You",
+        "record": "3-3",
+        "rank": 5,
+        "yahooPts": 18.2,
+        "yahooProj": 111.7,
+        "streak": "L-1"
       }
     ],
     [
       {
-        "team": "I Must Break You",
-        "record": "3-2",
-        "rank": 3,
-        "yahooPts": 21.4,
-        "yahooProj": 110.01,
-        "streak": "W-1"
+        "team": "El Morro",
+        "record": "5-1",
+        "rank": 2,
+        "yahooPts": 25.4,
+        "yahooProj": 133.79,
+        "streak": "W-4"
       },
       {
         "team": "Quien Es Tu Papa",
-        "record": "3-2",
-        "rank": 6,
-        "yahooPts": 13.1,
-        "yahooProj": 89.43,
-        "streak": "W-3"
+        "record": "4-2",
+        "rank": 4,
+        "yahooPts": 23.7,
+        "yahooProj": 108.39,
+        "streak": "W-4"
       }
     ],
     [
       {
-        "team": "Juggernaut",
-        "record": "5-0",
-        "rank": 1,
-        "yahooPts": 6.4,
-        "yahooProj": 93.3,
-        "streak": "W-5"
+        "team": "O'Lave Hurts",
+        "record": "3-3",
+        "rank": 8,
+        "yahooPts": 18.3,
+        "yahooProj": 53.88,
+        "streak": "W-1"
       },
       {
         "team": "Whobody Wants It?",
-        "record": "1-4",
+        "record": "1-5",
         "rank": 11,
-        "yahooPts": 21.5,
-        "yahooProj": 84.34,
-        "streak": "L-4"
+        "yahooPts": 26.12,
+        "yahooProj": 86.13,
+        "streak": "L-5"
       }
     ]
   ]
