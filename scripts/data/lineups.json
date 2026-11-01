@@ -1,7 +1,7 @@
 {
-  "source": "Yahoo rosters and matchups pasted by the commissioner (25 Oct), league 134099",
-  "asOf": "2026-10-25",
-  "week": 7,
+  "source": "Yahoo rosters and matchups pasted by the commissioner (1 Nov), league 134099",
+  "asOf": "2026-11-01",
+  "week": 8,
   "note": "Starters are every slot except BN and IR. Replaced by the Yahoo sync once the API is enabled.",
   "teams": [
     {
@@ -10,8 +10,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Bryce Young",
-          "nfl": "CAR",
+          "name": "Joe Burrow",
+          "nfl": "CIN",
           "pos": "QB"
         },
         {
@@ -22,8 +22,8 @@
         },
         {
           "slot": "RB",
-          "name": "Kenny Gainwell",
-          "nfl": "TB",
+          "name": "Jeremiyah Love",
+          "nfl": "ARI",
           "pos": "RB"
         },
         {
@@ -40,28 +40,40 @@
         },
         {
           "slot": "W/R/T",
-          "name": "Malik Nabers",
-          "nfl": "NYG",
+          "name": "Jordan Addison",
+          "nfl": "MIN",
           "pos": "WR"
         },
         {
           "slot": "W/R/T",
+          "name": "Tre Tucker",
+          "nfl": "LV",
+          "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "Kenny Gainwell",
+          "nfl": "TB",
+          "pos": "RB",
+          "status": "Q"
+        },
+        {
+          "slot": "BN",
           "name": "Nico Collins",
           "nfl": "HOU",
           "pos": "WR"
         },
         {
-          "slot": "DEF",
-          "name": "Chiefs",
-          "nfl": "KC",
-          "pos": "DEF"
+          "slot": "BN",
+          "name": "Malik Nabers",
+          "nfl": "NYG",
+          "pos": "WR"
         },
         {
           "slot": "BN",
-          "name": "Jeremiyah Love",
-          "nfl": "ARI",
-          "pos": "RB",
-          "status": "O"
+          "name": "Bryce Young",
+          "nfl": "CAR",
+          "pos": "QB"
         },
         {
           "slot": "BN",
@@ -78,24 +90,6 @@
         },
         {
           "slot": "BN",
-          "name": "Joe Burrow",
-          "nfl": "CIN",
-          "pos": "QB"
-        },
-        {
-          "slot": "BN",
-          "name": "Tre Tucker",
-          "nfl": "LV",
-          "pos": "WR"
-        },
-        {
-          "slot": "BN",
-          "name": "Jordan Addison",
-          "nfl": "MIN",
-          "pos": "WR"
-        },
-        {
-          "slot": "BN",
           "name": "Dohnte Meyers",
           "nfl": "CIN",
           "pos": "WR"
@@ -108,9 +102,15 @@
           "status": "IR"
         },
         {
-          "slot": "BN",
+          "slot": "DEF",
           "name": "Bengals",
           "nfl": "CIN",
+          "pos": "DEF"
+        },
+        {
+          "slot": "BN",
+          "name": "Chiefs",
+          "nfl": "KC",
           "pos": "DEF"
         }
       ]
@@ -121,20 +121,20 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Jordan Love",
-          "nfl": "GB",
+          "name": "Drake Maye",
+          "nfl": "NE",
           "pos": "QB"
         },
         {
           "slot": "RB",
-          "name": "Christian McCaffrey",
-          "nfl": "SF",
+          "name": "Bhayshul Tuten",
+          "nfl": "JAX",
           "pos": "RB"
         },
         {
           "slot": "RB",
-          "name": "Kendre Miller",
-          "nfl": "NO",
+          "name": "Tyler Allgeier",
+          "nfl": "ARI",
           "pos": "RB"
         },
         {
@@ -145,8 +145,8 @@
         },
         {
           "slot": "TE",
-          "name": "Cade Otton",
-          "nfl": "TB",
+          "name": "Tyler Warren",
+          "nfl": "IND",
           "pos": "TE"
         },
         {
@@ -157,43 +157,6 @@
         },
         {
           "slot": "W/R/T",
-          "name": "Tyler Allgeier",
-          "nfl": "ARI",
-          "pos": "RB"
-        },
-        {
-          "slot": "DEF",
-          "name": "Vikings",
-          "nfl": "MIN",
-          "pos": "DEF"
-        },
-        {
-          "slot": "BN",
-          "name": "Kendrick Bourne",
-          "nfl": "ARI",
-          "pos": "WR"
-        },
-        {
-          "slot": "BN",
-          "name": "Tyler Warren",
-          "nfl": "IND",
-          "pos": "TE",
-          "status": "O"
-        },
-        {
-          "slot": "BN",
-          "name": "TreVeyon Henderson",
-          "nfl": "NE",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "Bhayshul Tuten",
-          "nfl": "JAX",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
           "name": "DJ Moore",
           "nfl": "BUF",
           "pos": "WR",
@@ -201,9 +164,29 @@
         },
         {
           "slot": "BN",
-          "name": "Drake Maye",
+          "name": "TreVeyon Henderson",
           "nfl": "NE",
+          "pos": "RB",
+          "status": "O"
+        },
+        {
+          "slot": "BN",
+          "name": "Christian McCaffrey",
+          "nfl": "SF",
+          "pos": "RB",
+          "status": "Q"
+        },
+        {
+          "slot": "BN",
+          "name": "Jordan Love",
+          "nfl": "GB",
           "pos": "QB"
+        },
+        {
+          "slot": "BN",
+          "name": "Kendrick Bourne",
+          "nfl": "ARI",
+          "pos": "WR"
         },
         {
           "slot": "BN",
@@ -218,11 +201,29 @@
           "pos": "RB"
         },
         {
+          "slot": "BN",
+          "name": "Antonio Williams",
+          "nfl": "WAS",
+          "pos": "WR"
+        },
+        {
           "slot": "IR",
           "name": "Terry McLaurin",
           "nfl": "WAS",
           "pos": "WR",
-          "status": "O"
+          "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Packers",
+          "nfl": "GB",
+          "pos": "DEF"
+        },
+        {
+          "slot": "BN",
+          "name": "Vikings",
+          "nfl": "MIN",
+          "pos": "DEF"
         }
       ]
     },
@@ -244,8 +245,8 @@
         },
         {
           "slot": "RB",
-          "name": "Roschon Johnson",
-          "nfl": "CHI",
+          "name": "Ashton Jeanty",
+          "nfl": "LV",
           "pos": "RB"
         },
         {
@@ -256,15 +257,15 @@
         },
         {
           "slot": "TE",
-          "name": "Mark Andrews",
-          "nfl": "BAL",
+          "name": "Eli Raridon",
+          "nfl": "NE",
           "pos": "TE"
         },
         {
           "slot": "W/R/T",
-          "name": "Ashton Jeanty",
-          "nfl": "LV",
-          "pos": "RB"
+          "name": "Stefon Diggs",
+          "nfl": "WAS",
+          "pos": "WR"
         },
         {
           "slot": "W/R/T",
@@ -273,41 +274,28 @@
           "pos": "WR"
         },
         {
-          "slot": "DEF",
-          "name": "Browns",
-          "nfl": "CLE",
-          "pos": "DEF"
+          "slot": "BN",
+          "name": "Mark Andrews",
+          "nfl": "BAL",
+          "pos": "TE"
         },
         {
           "slot": "BN",
-          "name": "Juwan Johnson",
-          "nfl": "NO",
-          "pos": "TE"
+          "name": "Rashee Rice",
+          "nfl": "KC",
+          "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "Roschon Johnson",
+          "nfl": "CHI",
+          "pos": "RB"
         },
         {
           "slot": "BN",
           "name": "Patrick Mahomes",
           "nfl": "KC",
           "pos": "QB"
-        },
-        {
-          "slot": "BN",
-          "name": "MarShawn Lloyd",
-          "nfl": "GB",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "Rashee Rice",
-          "nfl": "KC",
-          "pos": "WR",
-          "status": "O"
-        },
-        {
-          "slot": "BN",
-          "name": "Stefon Diggs",
-          "nfl": "WAS",
-          "pos": "WR"
         },
         {
           "slot": "BN",
@@ -323,6 +311,18 @@
           "status": "IR-R"
         },
         {
+          "slot": "BN",
+          "name": "Jaydon Blue",
+          "nfl": "PHI",
+          "pos": "RB"
+        },
+        {
+          "slot": "BN",
+          "name": "Elijah Mitchell",
+          "nfl": "PHI",
+          "pos": "RB"
+        },
+        {
           "slot": "IR",
           "name": "Jacory Croskey-Merritt",
           "nfl": "WAS",
@@ -330,9 +330,9 @@
           "status": "IR"
         },
         {
-          "slot": "BN",
-          "name": "Bills",
-          "nfl": "BUF",
+          "slot": "DEF",
+          "name": "Browns",
+          "nfl": "CLE",
           "pos": "DEF"
         }
       ]
@@ -343,8 +343,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "C.J. Stroud",
-          "nfl": "HOU",
+          "name": "Baker Mayfield",
+          "nfl": "TB",
           "pos": "QB"
         },
         {
@@ -357,13 +357,12 @@
           "slot": "RB",
           "name": "Jonah Coleman",
           "nfl": "DEN",
-          "pos": "RB",
-          "status": "Q"
+          "pos": "RB"
         },
         {
           "slot": "WR",
-          "name": "Germie Bernard",
-          "nfl": "PIT",
+          "name": "Justin Jefferson",
+          "nfl": "MIN",
           "pos": "WR"
         },
         {
@@ -374,33 +373,21 @@
         },
         {
           "slot": "W/R/T",
-          "name": "Justin Jefferson",
-          "nfl": "MIN",
-          "pos": "WR"
-        },
-        {
-          "slot": "W/R/T",
-          "name": "Jaylen Waddle",
-          "nfl": "DEN",
-          "pos": "WR"
-        },
-        {
-          "slot": "DEF",
-          "name": "Jets",
-          "nfl": "NYJ",
-          "pos": "DEF"
-        },
-        {
-          "slot": "BN",
           "name": "KC Concepcion Jr.",
           "nfl": "CLE",
           "pos": "WR"
         },
         {
-          "slot": "BN",
-          "name": "Rico Dowdle",
+          "slot": "W/R/T",
+          "name": "Germie Bernard",
           "nfl": "PIT",
-          "pos": "RB"
+          "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "C.J. Stroud",
+          "nfl": "HOU",
+          "pos": "QB"
         },
         {
           "slot": "BN",
@@ -411,15 +398,22 @@
         },
         {
           "slot": "BN",
-          "name": "Omarion Hampton",
-          "nfl": "LAC",
+          "name": "Jaylen Waddle",
+          "nfl": "DEN",
+          "pos": "WR",
+          "status": "Q"
+        },
+        {
+          "slot": "BN",
+          "name": "Rico Dowdle",
+          "nfl": "PIT",
           "pos": "RB"
         },
         {
           "slot": "BN",
-          "name": "Keenan Allen",
-          "nfl": "IND",
-          "pos": "WR"
+          "name": "Omarion Hampton",
+          "nfl": "LAC",
+          "pos": "RB"
         },
         {
           "slot": "BN",
@@ -445,6 +439,12 @@
           "nfl": "SF",
           "pos": "WR",
           "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Jets",
+          "nfl": "NYJ",
+          "pos": "DEF"
         }
       ]
     },
@@ -478,8 +478,8 @@
         },
         {
           "slot": "TE",
-          "name": "Isaiah Likely",
-          "nfl": "NYG",
+          "name": "Travis Kelce",
+          "nfl": "KC",
           "pos": "TE"
         },
         {
@@ -495,22 +495,16 @@
           "pos": "RB"
         },
         {
-          "slot": "DEF",
-          "name": "Broncos",
-          "nfl": "DEN",
-          "pos": "DEF"
+          "slot": "BN",
+          "name": "Isaiah Likely",
+          "nfl": "NYG",
+          "pos": "TE"
         },
         {
           "slot": "BN",
           "name": "Aaron Jones Sr.",
           "nfl": "MIN",
           "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "Travis Kelce",
-          "nfl": "KC",
-          "pos": "TE"
         },
         {
           "slot": "BN",
@@ -522,7 +516,8 @@
           "slot": "BN",
           "name": "Jakobi Meyers",
           "nfl": "JAX",
-          "pos": "WR"
+          "pos": "WR",
+          "status": "Q"
         },
         {
           "slot": "BN",
@@ -554,7 +549,13 @@
           "name": "Deebo Samuel Sr.",
           "nfl": "SF",
           "pos": "WR",
-          "status": "O"
+          "status": "Q"
+        },
+        {
+          "slot": "DEF",
+          "name": "Broncos",
+          "nfl": "DEN",
+          "pos": "DEF"
         }
       ]
     },
@@ -564,8 +565,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Aaron Rodgers",
-          "nfl": "PIT",
+          "name": "Lamar Jackson",
+          "nfl": "BAL",
           "pos": "QB"
         },
         {
@@ -576,15 +577,16 @@
         },
         {
           "slot": "RB",
-          "name": "Woody Marks",
-          "nfl": "HOU",
+          "name": "Tony Pollard",
+          "nfl": "TEN",
           "pos": "RB"
         },
         {
           "slot": "WR",
           "name": "Christian Watson",
           "nfl": "GB",
-          "pos": "WR"
+          "pos": "WR",
+          "status": "Q"
         },
         {
           "slot": "TE",
@@ -594,9 +596,9 @@
         },
         {
           "slot": "W/R/T",
-          "name": "Tony Pollard",
-          "nfl": "TEN",
-          "pos": "RB"
+          "name": "Michael Wilson",
+          "nfl": "ARI",
+          "pos": "WR"
         },
         {
           "slot": "W/R/T",
@@ -605,16 +607,22 @@
           "pos": "RB"
         },
         {
-          "slot": "DEF",
-          "name": "Texans",
-          "nfl": "HOU",
-          "pos": "DEF"
+          "slot": "BN",
+          "name": "J.K. Dobbins",
+          "nfl": "DEN",
+          "pos": "RB"
         },
         {
           "slot": "BN",
-          "name": "Michael Wilson",
-          "nfl": "ARI",
-          "pos": "WR"
+          "name": "Aaron Rodgers",
+          "nfl": "PIT",
+          "pos": "QB"
+        },
+        {
+          "slot": "BN",
+          "name": "Woody Marks",
+          "nfl": "HOU",
+          "pos": "RB"
         },
         {
           "slot": "BN",
@@ -625,34 +633,14 @@
         },
         {
           "slot": "BN",
-          "name": "Lamar Jackson",
-          "nfl": "BAL",
-          "pos": "QB",
-          "status": "O"
-        },
-        {
-          "slot": "BN",
-          "name": "Bo Nix",
-          "nfl": "DEN",
-          "pos": "QB"
-        },
-        {
-          "slot": "BN",
           "name": "Ladd McConkey",
           "nfl": "LAC",
-          "pos": "WR",
-          "status": "Q"
+          "pos": "WR"
         },
         {
           "slot": "BN",
           "name": "Blake Corum",
           "nfl": "LAR",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "J.K. Dobbins",
-          "nfl": "DEN",
           "pos": "RB"
         },
         {
@@ -667,6 +655,18 @@
           "nfl": "CAR",
           "pos": "RB",
           "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Commanders",
+          "nfl": "WAS",
+          "pos": "DEF"
+        },
+        {
+          "slot": "BN",
+          "name": "Texans",
+          "nfl": "HOU",
+          "pos": "DEF"
         }
       ]
     },
@@ -676,8 +676,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Kirk Cousins",
-          "nfl": "LV",
+          "name": "Josh Allen",
+          "nfl": "BUF",
           "pos": "QB"
         },
         {
@@ -694,21 +694,15 @@
         },
         {
           "slot": "WR",
-          "name": "A.J. Brown",
-          "nfl": "NE",
+          "name": "Jameson Williams",
+          "nfl": "DET",
           "pos": "WR"
         },
         {
           "slot": "TE",
-          "name": "George Kittle",
-          "nfl": "SF",
+          "name": "Chig Okonkwo",
+          "nfl": "WAS",
           "pos": "TE"
-        },
-        {
-          "slot": "W/R/T",
-          "name": "Jameson Williams",
-          "nfl": "DET",
-          "pos": "WR"
         },
         {
           "slot": "W/R/T",
@@ -717,48 +711,10 @@
           "pos": "WR"
         },
         {
-          "slot": "DEF",
-          "name": "Seahawks",
-          "nfl": "SEA",
-          "pos": "DEF"
-        },
-        {
-          "slot": "BN",
-          "name": "Mike Washington Jr.",
-          "nfl": "LV",
-          "pos": "RB",
-          "status": "Q"
-        },
-        {
-          "slot": "BN",
-          "name": "Devaughn Vele",
-          "nfl": "NO",
+          "slot": "W/R/T",
+          "name": "Wan'Dale Robinson",
+          "nfl": "TEN",
           "pos": "WR"
-        },
-        {
-          "slot": "BN",
-          "name": "Kimani Vidal",
-          "nfl": "LAC",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "Josh Allen",
-          "nfl": "BUF",
-          "pos": "QB"
-        },
-        {
-          "slot": "BN",
-          "name": "Kenyon Sadiq",
-          "nfl": "NYJ",
-          "pos": "TE"
-        },
-        {
-          "slot": "BN",
-          "name": "Jadarian Price",
-          "nfl": "SEA",
-          "pos": "RB",
-          "status": "IR"
         },
         {
           "slot": "BN",
@@ -768,9 +724,47 @@
         },
         {
           "slot": "BN",
-          "name": "Jaylin Noel",
-          "nfl": "HOU",
+          "name": "A.J. Brown",
+          "nfl": "NE",
+          "pos": "WR",
+          "status": "O"
+        },
+        {
+          "slot": "BN",
+          "name": "Kenyon Sadiq",
+          "nfl": "NYJ",
+          "pos": "TE"
+        },
+        {
+          "slot": "BN",
+          "name": "George Kittle",
+          "nfl": "SF",
+          "pos": "TE"
+        },
+        {
+          "slot": "BN",
+          "name": "Kirk Cousins",
+          "nfl": "LV",
+          "pos": "QB"
+        },
+        {
+          "slot": "BN",
+          "name": "Mike Washington Jr.",
+          "nfl": "LV",
+          "pos": "RB"
+        },
+        {
+          "slot": "BN",
+          "name": "Devaughn Vele",
+          "nfl": "NO",
           "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "Jadarian Price",
+          "nfl": "SEA",
+          "pos": "RB",
+          "status": "IR-R"
         },
         {
           "slot": "IR",
@@ -778,6 +772,12 @@
           "nfl": "NO",
           "pos": "RB",
           "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Seahawks",
+          "nfl": "SEA",
+          "pos": "DEF"
         }
       ]
     },
@@ -793,14 +793,14 @@
         },
         {
           "slot": "RB",
-          "name": "Cam Skattebo",
-          "nfl": "NYG",
+          "name": "Jaylen Warren",
+          "nfl": "PIT",
           "pos": "RB"
         },
         {
           "slot": "RB",
-          "name": "Jaylen Warren",
-          "nfl": "PIT",
+          "name": "Dylan Sampson",
+          "nfl": "CLE",
           "pos": "RB"
         },
         {
@@ -828,16 +828,17 @@
           "pos": "WR"
         },
         {
-          "slot": "DEF",
-          "name": "Lions",
-          "nfl": "DET",
-          "pos": "DEF"
+          "slot": "BN",
+          "name": "Bam Knight",
+          "nfl": "ARI",
+          "pos": "RB"
         },
         {
           "slot": "BN",
-          "name": "Wan'Dale Robinson",
-          "nfl": "TEN",
-          "pos": "WR"
+          "name": "Cam Skattebo",
+          "nfl": "NYG",
+          "pos": "RB",
+          "status": "Q"
         },
         {
           "slot": "BN",
@@ -864,12 +865,6 @@
           "pos": "QB"
         },
         {
-          "slot": "BN",
-          "name": "Bam Knight",
-          "nfl": "ARI",
-          "pos": "RB"
-        },
-        {
           "slot": "IR",
           "name": "Alec Pierce",
           "nfl": "IND",
@@ -877,9 +872,15 @@
           "status": "IR"
         },
         {
-          "slot": "BN",
+          "slot": "DEF",
           "name": "Patriots",
           "nfl": "NE",
+          "pos": "DEF"
+        },
+        {
+          "slot": "BN",
+          "name": "Lions",
+          "nfl": "DET",
           "pos": "DEF"
         },
         {
@@ -896,8 +897,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Jared Goff",
-          "nfl": "DET",
+          "name": "Trevor Lawrence",
+          "nfl": "JAX",
           "pos": "QB"
         },
         {
@@ -914,8 +915,8 @@
         },
         {
           "slot": "WR",
-          "name": "Chris Godwin Jr.",
-          "nfl": "TB",
+          "name": "Puka Nacua",
+          "nfl": "LAR",
           "pos": "WR"
         },
         {
@@ -932,16 +933,9 @@
         },
         {
           "slot": "W/R/T",
-          "name": "Puka Nacua",
-          "nfl": "LAR",
-          "pos": "WR",
-          "status": "Q"
-        },
-        {
-          "slot": "DEF",
-          "name": "Steelers",
-          "nfl": "PIT",
-          "pos": "DEF"
+          "name": "Chris Godwin Jr.",
+          "nfl": "TB",
+          "pos": "WR"
         },
         {
           "slot": "BN",
@@ -951,9 +945,9 @@
         },
         {
           "slot": "BN",
-          "name": "Dameon Pierce",
-          "nfl": "PHI",
-          "pos": "RB"
+          "name": "Jared Goff",
+          "nfl": "DET",
+          "pos": "QB"
         },
         {
           "slot": "BN",
@@ -969,19 +963,6 @@
         },
         {
           "slot": "BN",
-          "name": "Trevor Lawrence",
-          "nfl": "JAX",
-          "pos": "QB"
-        },
-        {
-          "slot": "BN",
-          "name": "Dontayvion Wicks",
-          "nfl": "PHI",
-          "pos": "WR",
-          "status": "O"
-        },
-        {
-          "slot": "BN",
           "name": "Caleb Douglas",
           "nfl": "MIA",
           "pos": "WR"
@@ -993,10 +974,22 @@
           "pos": "RB"
         },
         {
-          "slot": "IR",
+          "slot": "BN",
           "name": "Tank Dell",
           "nfl": "HOU",
           "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "Kendre Miller",
+          "nfl": "NO",
+          "pos": "RB"
+        },
+        {
+          "slot": "DEF",
+          "name": "Steelers",
+          "nfl": "PIT",
+          "pos": "DEF"
         }
       ]
     },
@@ -1006,8 +999,8 @@
       "players": [
         {
           "slot": "QB",
-          "name": "Brock Purdy",
-          "nfl": "SF",
+          "name": "Jacoby Brissett",
+          "nfl": "ARI",
           "pos": "QB"
         },
         {
@@ -1024,33 +1017,40 @@
         },
         {
           "slot": "WR",
-          "name": "Luther Burden III",
-          "nfl": "CHI",
-          "pos": "WR"
-        },
-        {
-          "slot": "TE",
-          "name": "Tyler Higbee",
-          "nfl": "LAR",
-          "pos": "TE"
-        },
-        {
-          "slot": "W/R/T",
           "name": "Zay Flowers",
           "nfl": "BAL",
           "pos": "WR"
         },
         {
+          "slot": "TE",
+          "name": "Brenton Strange",
+          "nfl": "JAX",
+          "pos": "TE"
+        },
+        {
           "slot": "W/R/T",
           "name": "George Pickens",
           "nfl": "DAL",
-          "pos": "WR"
+          "pos": "WR",
+          "status": "Q"
         },
         {
-          "slot": "DEF",
-          "name": "Titans",
-          "nfl": "TEN",
-          "pos": "DEF"
+          "slot": "W/R/T",
+          "name": "James Cook III",
+          "nfl": "BUF",
+          "pos": "RB"
+        },
+        {
+          "slot": "BN",
+          "name": "Brock Purdy",
+          "nfl": "SF",
+          "pos": "QB"
+        },
+        {
+          "slot": "BN",
+          "name": "Luther Burden III",
+          "nfl": "CHI",
+          "pos": "WR"
         },
         {
           "slot": "BN",
@@ -1063,18 +1063,6 @@
           "name": "Emanuel Wilson",
           "nfl": "SEA",
           "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "James Cook III",
-          "nfl": "BUF",
-          "pos": "RB"
-        },
-        {
-          "slot": "BN",
-          "name": "Brenton Strange",
-          "nfl": "JAX",
-          "pos": "TE"
         },
         {
           "slot": "BN",
@@ -1095,13 +1083,13 @@
           "pos": "WR"
         },
         {
-          "slot": "IR",
+          "slot": "BN",
           "name": "Jordan Mason",
           "nfl": "MIN",
           "pos": "RB"
         },
         {
-          "slot": "BN",
+          "slot": "DEF",
           "name": "Jaguars",
           "nfl": "JAX",
           "pos": "DEF"
@@ -1126,52 +1114,61 @@
         },
         {
           "slot": "RB",
-          "name": "Alvin Kamara",
-          "nfl": "NO",
+          "name": "Saquon Barkley",
+          "nfl": "PHI",
           "pos": "RB"
         },
         {
           "slot": "WR",
-          "name": "Chris Olave",
-          "nfl": "NO",
+          "name": "Drake London",
+          "nfl": "ATL",
           "pos": "WR"
         },
         {
           "slot": "TE",
           "name": "Dalton Kincaid",
           "nfl": "BUF",
-          "pos": "TE"
+          "pos": "TE",
+          "status": "Q"
         },
         {
           "slot": "W/R/T",
-          "name": "Drake London",
-          "nfl": "ATL",
-          "pos": "WR"
-        },
-        {
-          "slot": "W/R/T",
-          "name": "Mike Evans",
-          "nfl": "SF",
+          "name": "Rashid Shaheed",
+          "nfl": "SEA",
           "pos": "WR",
           "status": "O"
         },
         {
-          "slot": "DEF",
-          "name": "Rams",
-          "nfl": "LAR",
-          "pos": "DEF"
+          "slot": "W/R/T",
+          "name": "Kyle Pitts Sr.",
+          "nfl": "ATL",
+          "pos": "TE"
         },
         {
           "slot": "BN",
-          "name": "Rashid Shaheed",
-          "nfl": "SEA",
+          "name": "Michael Pittman Jr.",
+          "nfl": "PIT",
+          "pos": "WR",
+          "status": "IR"
+        },
+        {
+          "slot": "BN",
+          "name": "Mike Evans",
+          "nfl": "SF",
+          "pos": "WR",
+          "status": "Q"
+        },
+        {
+          "slot": "BN",
+          "name": "Chris Olave",
+          "nfl": "NO",
           "pos": "WR"
         },
         {
           "slot": "BN",
-          "name": "Jake Ferguson",
-          "nfl": "DAL",
-          "pos": "TE"
+          "name": "Alvin Kamara",
+          "nfl": "NO",
+          "pos": "RB"
         },
         {
           "slot": "BN",
@@ -1181,36 +1178,21 @@
         },
         {
           "slot": "BN",
-          "name": "Adonai Mitchell",
-          "nfl": "NYJ",
+          "name": "Zach Charbonnet",
+          "nfl": "SEA",
+          "pos": "RB"
+        },
+        {
+          "slot": "BN",
+          "name": "Keenan Allen",
+          "nfl": "IND",
           "pos": "WR"
         },
         {
           "slot": "BN",
-          "name": "Kyle Pitts Sr.",
-          "nfl": "ATL",
-          "pos": "TE"
-        },
-        {
-          "slot": "BN",
-          "name": "Tyreek Hill",
-          "nfl": "MIA",
-          "pos": "WR",
-          "status": "NA"
-        },
-        {
-          "slot": "BN",
-          "name": "Zach Charbonnet",
-          "nfl": "SEA",
-          "pos": "RB",
-          "status": "O"
-        },
-        {
-          "slot": "BN",
-          "name": "Saquon Barkley",
-          "nfl": "PHI",
-          "pos": "RB",
-          "status": "Q"
+          "name": "Bo Nix",
+          "nfl": "DEN",
+          "pos": "QB"
         },
         {
           "slot": "IR",
@@ -1218,6 +1200,12 @@
           "nfl": "PHI",
           "pos": "QB",
           "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Rams",
+          "nfl": "LAR",
+          "pos": "DEF"
         }
       ]
     },
@@ -1233,15 +1221,16 @@
         },
         {
           "slot": "RB",
-          "name": "RJ Harvey",
-          "nfl": "DEN",
+          "name": "Rachaad White",
+          "nfl": "WAS",
           "pos": "RB"
         },
         {
           "slot": "RB",
-          "name": "Tyrone Tracy Jr.",
-          "nfl": "NYG",
-          "pos": "RB"
+          "name": "RJ Harvey",
+          "nfl": "DEN",
+          "pos": "RB",
+          "status": "IR"
         },
         {
           "slot": "WR",
@@ -1259,38 +1248,33 @@
           "slot": "W/R/T",
           "name": "Carnell Tate",
           "nfl": "TEN",
-          "pos": "WR"
-        },
-        {
-          "slot": "W/R/T",
-          "name": "Xavier Worthy",
-          "nfl": "KC",
-          "pos": "WR"
-        },
-        {
-          "slot": "DEF",
-          "name": "Ravens",
-          "nfl": "BAL",
-          "pos": "DEF"
-        },
-        {
-          "slot": "BN",
-          "name": "Breece Hall",
-          "nfl": "NYJ",
-          "pos": "RB",
+          "pos": "WR",
           "status": "O"
         },
         {
-          "slot": "BN",
+          "slot": "W/R/T",
           "name": "Parker Washington",
           "nfl": "JAX",
           "pos": "WR"
         },
         {
           "slot": "BN",
-          "name": "Davante Adams",
-          "nfl": "LAR",
-          "pos": "WR",
+          "name": "Breece Hall",
+          "nfl": "NYJ",
+          "pos": "RB",
+          "status": "Q"
+        },
+        {
+          "slot": "BN",
+          "name": "Xavier Worthy",
+          "nfl": "KC",
+          "pos": "WR"
+        },
+        {
+          "slot": "BN",
+          "name": "Tyrone Tracy Jr.",
+          "nfl": "NYG",
+          "pos": "RB",
           "status": "IR"
         },
         {
@@ -1304,7 +1288,7 @@
           "name": "David Montgomery",
           "nfl": "HOU",
           "pos": "RB",
-          "status": "O"
+          "status": "Q"
         },
         {
           "slot": "BN",
@@ -1319,10 +1303,17 @@
           "pos": "WR"
         },
         {
-          "slot": "BN",
-          "name": "Rachaad White",
-          "nfl": "WAS",
-          "pos": "RB"
+          "slot": "IR",
+          "name": "Davante Adams",
+          "nfl": "LAR",
+          "pos": "WR",
+          "status": "IR"
+        },
+        {
+          "slot": "DEF",
+          "name": "Ravens",
+          "nfl": "BAL",
+          "pos": "DEF"
         }
       ]
     }
