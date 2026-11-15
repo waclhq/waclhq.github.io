@@ -15602,6 +15602,11 @@
           "player": "Jameson Williams",
           "cost": 4,
           "contractYear": "B"
+        },
+        {
+          "player": "Derrick Henry",
+          "cost": 48,
+          "contractYear": "B"
         }
       ],
       "keepers": [
@@ -15624,9 +15629,14 @@
           "player": "Josh Allen",
           "salary": 45,
           "contractYear": "B"
+        },
+        {
+          "player": "Derrick Henry",
+          "salary": 48,
+          "contractYear": "C"
         }
       ],
-      "keeperSalary": 64,
+      "keeperSalary": 112,
       "cashTraded": 0,
       "draftBudget": 133
     },
@@ -15643,11 +15653,6 @@
           "player": "Justin Jefferson",
           "cost": 82,
           "contractYear": "A"
-        },
-        {
-          "player": "Derrick Henry",
-          "cost": 48,
-          "contractYear": "B"
         },
         {
           "player": "Ashton Jeanty",
@@ -15717,11 +15722,6 @@
           "contractYear": "B"
         },
         {
-          "player": "Derrick Henry",
-          "salary": 48,
-          "contractYear": "C"
-        },
-        {
           "player": "Ashton Jeanty",
           "salary": 70,
           "contractYear": "B"
@@ -15732,7 +15732,7 @@
           "contractYear": "D"
         }
       ],
-      "keeperSalary": 125,
+      "keeperSalary": 77,
       "cashTraded": 0,
       "draftBudget": 40
     },
